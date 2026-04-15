@@ -5,6 +5,8 @@ struct SpectrumCarouselView: View {
     var showDots: Bool = true
 
     @State private var scrollPosition: Int?
+    @State private var dotsVisible: Bool = true
+    @State private var hideTask: Task<Void, Never>?
 
     private let styles = VisualizerStyle.allCases
 
@@ -51,12 +53,28 @@ struct SpectrumCarouselView: View {
                     }
                 }
                 .padding(.top, 8)
+                .opacity(dotsVisible ? 1 : 0)
+                .animation(.easeInOut(duration: 0.6), value: dotsVisible)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentIndex)
             }
         }
         .onAppear {
             let idx = styles.firstIndex(of: state.selectedVisualizer) ?? 0
             scrollPosition = idx
+            scheduleDotsFade()
+        }
+        .onChange(of: scrollPosition) { _, _ in
+            dotsVisible = true
+            scheduleDotsFade()
+        }
+    }
+
+    private func scheduleDotsFade() {
+        hideTask?.cancel()
+        hideTask = Task {
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            dotsVisible = false
         }
     }
 
