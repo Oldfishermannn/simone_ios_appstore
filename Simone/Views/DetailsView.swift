@@ -55,23 +55,29 @@ struct DetailsView: View {
                 Spacer()
 
                 HStack(spacing: 8) {
+                    // 循环播放喜爱栏
                     Button {
-                        state.playbackMode = .sequential
+                        state.playNextInPlaylist()
                     } label: {
                         Text("🔁")
                             .font(.system(size: 14))
-                            .opacity(state.playbackMode == .sequential ? 1.0 : 0.35)
+                            .opacity(state.pinnedStyles.isEmpty ? 0.2 : 0.7)
                     }
                     .buttonStyle(.plain)
+                    .disabled(state.pinnedStyles.isEmpty)
 
+                    // 随机播放推荐栏
                     Button {
-                        state.playbackMode = .shuffle
+                        if let random = state.exploredStyles.randomElement() {
+                            state.selectStyle(random)
+                        }
                     } label: {
                         Text("🔀")
                             .font(.system(size: 14))
-                            .opacity(state.playbackMode == .shuffle ? 1.0 : 0.35)
+                            .opacity(state.exploredStyles.isEmpty ? 0.2 : 0.7)
                     }
                     .buttonStyle(.plain)
+                    .disabled(state.exploredStyles.isEmpty)
                 }
             }
 
