@@ -76,9 +76,9 @@ struct PlayControlView: View {
 
             Spacer()
 
-            // New random style
+            // Regenerate current style
             Button {
-                state.nextStyle()
+                state.regenerate()
             } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 18))
