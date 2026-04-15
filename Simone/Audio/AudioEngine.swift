@@ -49,10 +49,14 @@ final class AudioEngine {
         }
 
         #if os(iOS)
-        // Set category at init, but don't activate until start()
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        try? AVAudioSession.sharedInstance().setActive(true)
         setupInterruptionObserver()
         #endif
+
+        // Pre-warm the entire audio pipeline at init
+        // so the first real playback has zero transient pop
+        warmUpEngine()
     }
 
     deinit {
@@ -63,12 +67,8 @@ final class AudioEngine {
         removeInterruptionObserver()
     }
 
-    func start() {
+    private func warmUpEngine() {
         guard engine == nil else { return }
-
-        #if os(iOS)
-        try? AVAudioSession.sharedInstance().setActive(true)
-        #endif
 
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
@@ -95,27 +95,29 @@ final class AudioEngine {
             try engine.start()
             player.play()
 
-            // Prime the audio pipeline with a short silent buffer
-            // to absorb the first-activation transient
-            let primeFormat = AVAudioFormat(
-                standardFormatWithSampleRate: sampleRate,
-                channels: channels
-            )!
+            // Schedule silent buffer to fully activate the system audio graph
             if let silentBuffer = AVAudioPCMBuffer(
-                pcmFormat: primeFormat,
-                frameCapacity: 4800 // 100ms of silence
+                pcmFormat: format,
+                frameCapacity: 4800
             ) {
                 silentBuffer.frameLength = 4800
-                // Buffer is already zero-filled
                 player.scheduleBuffer(silentBuffer)
             }
 
             self.engine = engine
             self.playerNode = player
-            isPlaying = true
+            // Don't set isPlaying = true, engine is just pre-warmed
         } catch {
-            print("AudioEngine start failed: \(error)")
+            print("AudioEngine warmup failed: \(error)")
         }
+    }
+
+    func start() {
+        // Engine is already warm from init
+        if engine == nil {
+            warmUpEngine()
+        }
+        isPlaying = true
     }
 
     func stop() {
