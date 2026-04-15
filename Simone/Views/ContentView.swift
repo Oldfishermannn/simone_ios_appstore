@@ -52,9 +52,16 @@ struct ContentView: View {
 
             // Style name above controls
             Text(state.selectedStyle?.name ?? "Simone")
-                .font(.system(size: 20, weight: .semibold))
-                .tracking(0.3)
-                .foregroundStyle(Color(white: 0.88))
+                .font(.system(size: 22, weight: .light, design: .serif))
+                .italic()
+                .tracking(1.5)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color(white: 0.92), MorandiPalette.rose.opacity(0.7)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .lineLimit(1)
 
             Spacer().frame(height: 14)
