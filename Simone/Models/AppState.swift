@@ -92,7 +92,7 @@ final class AppState {
         }
 
         // Populate initial exploration list
-        exploredStyles = MoodStyle.randomSelection(count: 8, excluding: [])
+        exploredStyles = MoodStyle.randomSelection(count: 4, excluding: [])
 
         lyriaClient.onAudioChunk = { [weak self] data in
             self?.audioEngine.handleAudioChunk(data)
