@@ -90,8 +90,6 @@ struct SpectrumCarouselView: View {
         switch style {
         case .horizon:
             HorizonView(spectrumData: spectrumData, density: density)
-        case .nebula:
-            NebulaView(spectrumData: spectrumData, density: density)
         case .ringPulse:
             RingPulseView(spectrumData: spectrumData, density: density)
         case .terrain:

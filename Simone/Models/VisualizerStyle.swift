@@ -1,7 +1,7 @@
 import Foundation
 
 enum VisualizerStyle: String, CaseIterable, Identifiable {
-    case horizon, nebula, ringPulse, terrain, rainfall, helix, lattice, prism, tide
+    case horizon, ringPulse, terrain, rainfall, helix, lattice, prism, tide
 
     var id: String { rawValue }
 
@@ -10,7 +10,6 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .horizon: "Horizon"
-        case .nebula: "Nebula"
         case .ringPulse: "Ring Pulse"
         case .terrain: "Terrain"
         case .rainfall: "Rainfall"
