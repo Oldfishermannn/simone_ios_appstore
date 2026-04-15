@@ -1,10 +1,20 @@
 import Foundation
+import CoreTransferable
+import UniformTypeIdentifiers
 
-struct MoodStyle: Identifiable, Equatable, Codable {
+extension UTType {
+    static let moodStyle = UTType(exportedAs: "com.simone.moodstyle")
+}
+
+struct MoodStyle: Identifiable, Equatable, Codable, Transferable {
     let id: String
     let name: String
     let prompt: String
     var promptWeight: Float = 1.0
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .moodStyle)
+    }
 
     // MARK: - Preset Pool
 

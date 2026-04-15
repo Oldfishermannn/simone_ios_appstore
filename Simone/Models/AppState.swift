@@ -28,14 +28,31 @@ final class AppState {
         case auto1m = "1 min"
         case auto5m = "5 min"
     }
-    var evolveMode: EvolveMode = .locked
+    var evolveMode: EvolveMode = .locked {
+        didSet { restartEvolveTimer() }
+    }
+    private var evolveTimer: Timer?
 
     // Config
     var temperature: Float = 1.1
     var guidance: Float = 4.0
+    var bpm: Int = 0           // 0 = 由模型决定
+    var density: Float = -1    // -1 = 由模型决定
+    var brightness: Float = -1 // -1 = 由模型决定
+    var topK: Int = 40
+    var muteBass: Bool = false
+    var muteDrums: Bool = false
+    var onlyBassAndDrums: Bool = false
+    var musicMode: String = "QUALITY"  // QUALITY / DIVERSITY / VOCALIZATION
 
     // Details card
     var isDetailsExpanded = false
+
+    /// UI 切换参数后调用，立刻发送完整 config 给服务端
+    func applyConfig() {
+        guard lyriaClient.connectionState == .connected else { return }
+        lyriaClient.sendConfig(buildFullConfig())
+    }
 
     // Dependencies
     let audioEngine = AudioEngine()
@@ -112,20 +129,16 @@ final class AppState {
             lyriaClient.connect()
             isGenerating = true
         } else {
-            // Stop current, clear, re-send with nudged temperature to force new generation
-            lyriaClient.sendCommand("pause")
             audioEngine.clearQueue()
-
-            lyriaClient.sendPrompts(prompts)
-
-            let nudge = Float.random(in: -0.05...0.05)
+            // 重置 Lyria 上下文，强制全新生成
+            lyriaClient.sendCommand("reset_context")
+            let nudge = Float.random(in: -0.3...0.3)
             let config: [String: Any] = [
                 "temperature": temperature + nudge,
                 "guidance": guidance
             ]
             lyriaClient.sendConfig(config)
-            lyriaClient.sendCommand("play")
-            audioEngine.resume()
+            lyriaClient.sendPrompts(prompts)
         }
     }
 
@@ -184,8 +197,13 @@ final class AppState {
             lyriaClient.connect()
             isGenerating = true
         } else {
-            // 直接切：清本地缓冲（立即静音）→ 发新 prompts（服务端热切换）
-            audioEngine.clearQueue()
+            if audioEngine.isPlaying {
+                // 播放中切歌：只清队列，不打断播放
+                audioEngine.clearQueue()
+            } else {
+                // 暂停状态切歌：flush 旧 buffer，保持暂停
+                audioEngine.flushScheduledBuffers()
+            }
             lyriaClient.sendPrompts(prompts)
         }
         #if os(iOS)
@@ -202,11 +220,65 @@ final class AppState {
         guard !prompts.isEmpty else { return }
         lyriaClient.sendPrompts(prompts)
         lyriaClient.sendCommand("play")
+        lyriaClient.sendConfig(buildFullConfig())
+    }
 
-        let config: [String: Any] = [
+    private func buildFullConfig() -> [String: Any] {
+        var config: [String: Any] = [
             "temperature": temperature,
-            "guidance": guidance
+            "guidance": guidance,
+            "top_k": topK
         ]
+        if bpm > 0 { config["bpm"] = bpm }
+        if density >= 0 { config["density"] = density }
+        if brightness >= 0 { config["brightness"] = brightness }
+        if muteBass { config["mute_bass"] = true }
+        if muteDrums { config["mute_drums"] = true }
+        if onlyBassAndDrums { config["only_bass_and_drums"] = true }
+        config["music_generation_mode"] = musicMode
+        return config
+    }
+
+    // MARK: - Auto Evolve
+
+    private func restartEvolveTimer() {
+        evolveTimer?.invalidate()
+        evolveTimer = nil
+
+        let interval: TimeInterval
+        switch evolveMode {
+        case .locked: return
+        case .auto10s: interval = 10
+        case .auto1m: interval = 60
+        case .auto5m: interval = 300
+        }
+
+        evolveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            guard let self, self.audioEngine.isPlaying else { return }
+            self.evolve()
+        }
+    }
+
+    private func evolve() {
+        guard let style = selectedStyle,
+              lyriaClient.connectionState == .connected else { return }
+
+        let newTemp = max(0.1, min(3.0, temperature + Float.random(in: -0.2...0.2)))
+        let newGuidance = max(0.0, min(6.0, guidance + Float.random(in: -0.5...0.5)))
+        temperature = newTemp
+        guidance = newGuidance
+
+        if density >= 0 {
+            density = max(0.0, min(1.0, density + Float.random(in: -0.15...0.15)))
+        }
+        if brightness >= 0 {
+            brightness = max(0.0, min(1.0, brightness + Float.random(in: -0.15...0.15)))
+        }
+
+        let config = buildFullConfig()
         lyriaClient.sendConfig(config)
+
+        let prompts = PromptBuilder.build(style: style)
+        lyriaClient.sendPrompts(prompts)
     }
 }

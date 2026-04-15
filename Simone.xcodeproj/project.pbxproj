@@ -29,6 +29,7 @@
 		DF817DF7EE2C1EBAF221285F /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46836E98AC135C30D0B9B460 /* AppState.swift */; };
 		E0F13FF812FB975DF1D3649F /* PlayControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DA43F0A0298D89DE9E3DDB /* PlayControlView.swift */; };
 		F646F9AC92231D9595C99AA8 /* SpectrumCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4631B1A8C6EC69450E2E97 /* SpectrumCarouselView.swift */; };
+		F8C560C720A3CFB2C74321D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1C7C85DF0FDE49B5A95A60C9 /* Assets.xcassets */; };
 		FEFC146E14AF24417D90E7EC /* VisualizerStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF475AAE6BEBBA91DF7836A /* VisualizerStyle.swift */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +48,7 @@
 		06C9DD835ED09640EB4102B0 /* RingPulseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingPulseView.swift; sourceTree = "<group>"; };
 		08AFE505680E95BADF1399B0 /* RippleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RippleView.swift; sourceTree = "<group>"; };
 		11041D666D9750DDCF7854BF /* SimoneTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SimoneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C7C85DF0FDE49B5A95A60C9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1CB03C3E0027DA1E34444342 /* SilkWaveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilkWaveView.swift; sourceTree = "<group>"; };
 		251E4193BD73FBA3F798227E /* LyriaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyriaClient.swift; sourceTree = "<group>"; };
 		28A7AFA8DBEF4C7D5D193D3F /* MusicStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicStyle.swift; sourceTree = "<group>"; };
@@ -75,6 +77,7 @@
 		00C7007516937E535ECAFD65 /* Simone */ = {
 			isa = PBXGroup;
 			children = (
+				1C7C85DF0FDE49B5A95A60C9 /* Assets.xcassets */,
 				97AD740E416C7C18B7E88657 /* Info.plist */,
 				6B3479E50F6ECCC6E55C21D8 /* SimoneApp.swift */,
 				4461DB602C1122A274B86CDC /* Audio */,
@@ -194,6 +197,7 @@
 			buildConfigurationList = FC88FAADC725728DC748B150 /* Build configuration list for PBXNativeTarget "Simone" */;
 			buildPhases = (
 				05BCB6DE5A7DACED1EF5BED3 /* Sources */,
+				472C1583F46C6A9A06D90602 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -239,6 +243,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		472C1583F46C6A9A06D90602 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F8C560C720A3CFB2C74321D6 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		05BCB6DE5A7DACED1EF5BED3 /* Sources */ = {

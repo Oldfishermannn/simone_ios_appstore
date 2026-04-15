@@ -128,6 +128,14 @@ final class AudioEngine {
         isDraining = false
     }
 
+    /// 暂停状态下切歌用：flush 掉 playerNode 里的旧 buffer，保持暂停
+    func flushScheduledBuffers() {
+        bufferQueue.clear()
+        isDraining = false
+        playerNode?.stop()
+        // 丢弃接下来几个旧 chunk（服务端切换 prompt 有延迟）
+    }
+
     // MARK: - Private
 
     private func drainQueue() {

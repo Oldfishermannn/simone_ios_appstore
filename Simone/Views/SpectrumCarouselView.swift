@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SpectrumCarouselView: View {
     @Bindable var state: AppState
+    var showDots: Bool = true
 
     @State private var currentIndex: Int = 0
     @State private var scrollPosition: Int? = 0
@@ -32,21 +33,22 @@ struct SpectrumCarouselView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            // Dot indicators centered at bottom
-            HStack(spacing: 4) {
-                ForEach(Array(styles.enumerated()), id: \.element.id) { index, _ in
-                    Circle()
-                        .fill(
-                            index == currentIndex
-                                ? MorandiPalette.rose
-                                : Color.white.opacity(0.3)
-                        )
-                        .frame(width: index == currentIndex ? 6 : 5,
-                               height: index == currentIndex ? 6 : 5)
+            if showDots {
+                HStack(spacing: 4) {
+                    ForEach(Array(styles.enumerated()), id: \.element.id) { index, _ in
+                        Circle()
+                            .fill(
+                                index == currentIndex
+                                    ? MorandiPalette.rose
+                                    : Color.white.opacity(0.3)
+                            )
+                            .frame(width: index == currentIndex ? 6 : 5,
+                                   height: index == currentIndex ? 6 : 5)
+                    }
                 }
+                .padding(.bottom, 6)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentIndex)
             }
-            .padding(.bottom, 6)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentIndex)
         }
         .clipped()
     }

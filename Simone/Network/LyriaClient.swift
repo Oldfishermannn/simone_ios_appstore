@@ -17,6 +17,7 @@ final class LyriaClient {
     private var session: URLSession
     private var serverURL: URL
     private var autoReconnect = true
+    private var reconnectAttempts = 0
 
     init(serverURL: URL = URL(string: "ws://10.0.0.128:8765/ws")!) {
         self.serverURL = serverURL
@@ -94,6 +95,7 @@ final class LyriaClient {
                     self.statusMessage = msg
                     if msg == "connected" {
                         self.connectionState = .connected
+                        self.reconnectAttempts = 0
                         self.onConnected?()
                     } else if msg == "reconnecting" {
                         self.connectionState = .reconnecting
@@ -119,7 +121,9 @@ final class LyriaClient {
             self.statusMessage = "连接断开"
         }
         if autoReconnect {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            reconnectAttempts += 1
+            let delay = min(Double(reconnectAttempts) * 2.0, 15.0)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 self?.connectionState = .disconnected
                 self?.connect()
             }

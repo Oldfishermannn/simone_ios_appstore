@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient - deep warm dark -->
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#2E2A2F"/>
+      <stop offset="100%" stop-color="#1A181C"/>
+    </radialGradient>
+    <!-- Rose accent gradient -->
+    <linearGradient id="rose" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C4A0A5"/>
+      <stop offset="50%" stop-color="#B8919A"/>
+      <stop offset="100%" stop-color="#A07882"/>
+    </linearGradient>
+    <!-- Subtle glow -->
+    <radialGradient id="glow" cx="50%" cy="40%" r="35%">
+      <stop offset="0%" stop-color="#C4A0A5" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#C4A0A5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+
+  <!-- Subtle ambient glow -->
+  <rect width="1024" height="1024" rx="224" fill="url(#glow)"/>
+
+  <!-- Sound wave bars - minimal spectrum visualization -->
+  <!-- 7 bars, centered, representing the audio spectrum essence -->
+  <g transform="translate(512, 520)" opacity="0.9">
+    <!-- Bar 1 (leftmost) -->
+    <rect x="-168" y="-60" width="20" rx="10" height="120" fill="url(#rose)" opacity="0.45"/>
+    <!-- Bar 2 -->
+    <rect x="-112" y="-100" width="20" rx="10" height="200" fill="url(#rose)" opacity="0.6"/>
+    <!-- Bar 3 -->
+    <rect x="-56" y="-150" width="20" rx="10" height="300" fill="url(#rose)" opacity="0.78"/>
+    <!-- Bar 4 (center, tallest) -->
+    <rect x="0" y="-180" width="20" rx="10" height="360" fill="url(#rose)" opacity="1"/>
+    <!-- Bar 5 -->
+    <rect x="56" y="-130" width="20" rx="10" height="260" fill="url(#rose)" opacity="0.72"/>
+    <!-- Bar 6 -->
+    <rect x="112" y="-85" width="20" rx="10" height="170" fill="url(#rose)" opacity="0.55"/>
+    <!-- Bar 7 (rightmost) -->
+    <rect x="168" y="-45" width="20" rx="10" height="90" fill="url(#rose)" opacity="0.4"/>
+  </g>
+
+  <!-- "S" letterform - elegant, thin -->
+  <text x="512" y="445" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="420" font-weight="400" font-style="italic" fill="url(#rose)" opacity="0.15" letter-spacing="-10">S</text>
+
+</svg>

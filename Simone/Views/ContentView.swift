@@ -2,11 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @State var state = AppState()
-    @State private var showSettings = true
+    @State private var expanded = true
 
     var body: some View {
         GeometryReader { geo in
-            let size = min(geo.size.width, 400)
+            let specSize = expanded ? min(geo.size.width, 400) - 40 : min(geo.size.width, 400) - 80
 
             ZStack {
                 Color(red: 0.165, green: 0.165, blue: 0.18)
@@ -20,56 +20,60 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        Spacer().frame(height: 28)
+                if expanded {
+                    // Expanded: full player UI
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            Spacer().frame(height: 28)
 
-                        // Cover art — spectrum visualizer
-                        SpectrumCarouselView(state: state)
-                            .frame(width: size - 40, height: size - 40)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+                            // Spectrum — tap to collapse
+                            SpectrumCarouselView(state: state)
+                                .frame(width: specSize, height: specSize)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+                                .onTapGesture {
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        expanded = false
+                                    }
+                                }
 
-                        Spacer().frame(height: 14)
+                            Spacer().frame(height: 14)
 
-                        // Style name
-                        Text(state.selectedStyle?.name ?? "Simone")
-                            .font(.system(size: 20, weight: .semibold))
-                            .tracking(0.3)
-                            .foregroundStyle(Color(white: 0.88))
-                            .lineLimit(1)
+                            // Style name
+                            Text(state.selectedStyle?.name ?? "Simone")
+                                .font(.system(size: 20, weight: .semibold))
+                                .tracking(0.3)
+                                .foregroundStyle(Color(white: 0.88))
+                                .lineLimit(1)
 
-                        Spacer().frame(height: 14)
+                            Spacer().frame(height: 14)
 
-                        // Transport controls
-                        PlayControlView(state: state)
+                            // Transport controls
+                            PlayControlView(state: state)
 
-                        Spacer().frame(height: 8)
+                            Spacer().frame(height: 12)
 
-                        // Toggle arrow
-                        Button {
-                            showSettings.toggle()
-                        } label: {
-                            Image(systemName: showSettings ? "chevron.compact.down" : "chevron.compact.up")
-                                .font(.system(size: 22, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.35))
-                                .frame(width: 44, height: 28)
-                        }
-                        .buttonStyle(.plain)
-
-                        // Settings panel — only this part animates
-                        if showSettings {
+                            // Details
                             ExpandableCardView(state: state)
-                                .transition(.opacity)
-                        }
 
-                        Spacer().frame(height: 8)
+                            Spacer().frame(height: 8)
+                        }
+                        .frame(maxWidth: 400)
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: 400)
-                    .frame(maxWidth: .infinity)
+                } else {
+                    // Collapsed: spectrum centered, tap to expand
+                    SpectrumCarouselView(state: state, showDots: false)
+                        .frame(width: specSize, height: specSize)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                expanded = true
+                            }
+                        }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: showSettings)
         }
     }
 }
