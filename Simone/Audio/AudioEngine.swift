@@ -54,13 +54,14 @@ final class AudioEngine {
 
         #if os(iOS)
         let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.playback, mode: .default)
+        try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? audioSession.setActive(true)
+        observeInterruptions()
         #endif
 
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
-        player.volume = volume
+        player.volume = 0 // start silent, fade in
 
         engine.attach(player)
 
@@ -85,12 +86,15 @@ final class AudioEngine {
             self.engine = engine
             self.playerNode = player
             isPlaying = true
+            // Fade in to avoid pop
+            fadeVolume(to: volume, duration: 0.15)
         } catch {
             print("AudioEngine start failed: \(error)")
         }
     }
 
     func stop() {
+        playerNode?.volume = 0
         playerNode?.stop()
         engine?.mainMixerNode.removeTap(onBus: 0)
         engine?.stop()
@@ -99,6 +103,9 @@ final class AudioEngine {
         isPlaying = false
         bufferQueue.clear()
         spectrumData = Array(repeating: 0, count: displayBins)
+        #if os(iOS)
+        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
+        #endif
     }
 
     func pause() {
@@ -134,6 +141,54 @@ final class AudioEngine {
         isDraining = false
         playerNode?.stop()
         // 丢弃接下来几个旧 chunk（服务端切换 prompt 有延迟）
+    }
+
+    // MARK: - Interruption Handling
+
+    #if os(iOS)
+    private func observeInterruptions() {
+        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let info = notification.userInfo,
+                  let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+            switch type {
+            case .began:
+                // System sound is playing — mute to prevent pop on resume
+                self.playerNode?.volume = 0
+            case .ended:
+                // Restart engine if needed, fade back in
+                try? AVAudioSession.sharedInstance().setActive(true)
+                if let engine = self.engine, !engine.isRunning {
+                    try? engine.start()
+                    self.playerNode?.play()
+                }
+                self.fadeVolume(to: self.volume, duration: 0.2)
+            @unknown default:
+                break
+            }
+        }
+    }
+    #endif
+
+    private func fadeVolume(to target: Float, duration: TimeInterval) {
+        guard let player = playerNode else { return }
+        let steps = 10
+        let interval = duration / Double(steps)
+        let startVol = player.volume
+        let delta = (target - startVol) / Float(steps)
+
+        for i in 1...steps {
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval * Double(i)) { [weak player] in
+                player?.volume = startVol + delta * Float(i)
+            }
+        }
     }
 
     // MARK: - Private
