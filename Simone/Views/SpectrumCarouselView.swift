@@ -78,7 +78,7 @@ struct SpectrumCarouselView: View {
     private func scheduleDotsFade() {
         hideTask?.cancel()
         hideTask = Task {
-            try? await Task.sleep(for: .seconds(3))
+            try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             dotsVisible = false
         }
