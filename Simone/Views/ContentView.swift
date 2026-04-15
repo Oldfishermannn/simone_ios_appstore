@@ -48,7 +48,7 @@ struct ContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
 
-            Spacer()
+            Spacer().frame(height: 24)
 
             // Style name above controls
             Text(state.selectedStyle?.name ?? "")
@@ -59,9 +59,10 @@ struct ContentView: View {
 
             Spacer().frame(height: 14)
 
-            // Transport controls at bottom
+            // Transport controls
             PlayControlView(state: state)
-                .padding(.bottom, 40)
+
+            Spacer()
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)

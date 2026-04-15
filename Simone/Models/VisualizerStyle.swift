@@ -1,9 +1,9 @@
 import Foundation
 
 enum VisualizerStyle: String, CaseIterable, Identifiable {
-    // Lines group: aurora, horizon, waveform, cascade
+    // Lines group: horizon, aurora, waveform, cascade
     // Circles group: constellation, orbital, pulseBubble, ringPulse
-    case aurora, horizon, waveform, cascade, constellation, orbital, pulseBubble, ringPulse
+    case horizon, aurora, waveform, cascade, constellation, orbital, pulseBubble, ringPulse
 
     var id: String { rawValue }
 
@@ -22,5 +22,5 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
         }
     }
 
-    static var defaultStyle: VisualizerStyle { .aurora }
+    static var defaultStyle: VisualizerStyle { .horizon }
 }
