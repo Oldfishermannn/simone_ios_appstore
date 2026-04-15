@@ -2,11 +2,13 @@ import SwiftUI
 
 struct ContentView: View {
     @State var state = AppState()
-    @State private var currentPage: Int = 1  // Start on Main
+    @State private var currentPage: Int = 1  // 0=Immersive, 1=Main, 2=Details
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         GeometryReader { geo in
             let specSize = min(geo.size.width, 400) - 40
+            let pageHeight = geo.size.height
 
             ZStack {
                 Color(red: 0.165, green: 0.165, blue: 0.18)
@@ -20,40 +22,53 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea()
 
-                TabView(selection: $currentPage) {
-                    // Page 0: Immersive (swipe up from main)
+                VStack(spacing: 0) {
+                    // Page 0: Immersive
                     ImmersiveView(state: state)
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .tag(0)
+                        .frame(width: geo.size.width, height: pageHeight)
 
-                    // Page 1: Main (default)
-                    mainPage(specSize: specSize)
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .tag(1)
+                    // Page 1: Main
+                    mainPage(specSize: specSize, geo: geo)
+                        .frame(width: geo.size.width, height: pageHeight)
 
-                    // Page 2: Details (swipe down from main)
+                    // Page 2: Details
                     DetailsView(state: state)
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .tag(2)
+                        .frame(width: geo.size.width, height: pageHeight)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .rotationEffect(.degrees(90))
-                .frame(width: geo.size.height, height: geo.size.width)
-                .frame(width: geo.size.width, height: geo.size.height)
-                .ignoresSafeArea()
+                .offset(y: -CGFloat(currentPage) * pageHeight + dragOffset)
+                .animation(.spring(response: 0.4, dampingFraction: 0.86), value: currentPage)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragOffset = value.translation.height
+                        }
+                        .onEnded { value in
+                            let threshold: CGFloat = pageHeight * 0.15
+                            let velocity = value.predictedEndTranslation.height - value.translation.height
+
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                                if value.translation.height < -threshold || velocity < -200 {
+                                    // Swiped up → next page
+                                    currentPage = min(currentPage + 1, 2)
+                                } else if value.translation.height > threshold || velocity > 200 {
+                                    // Swiped down → previous page
+                                    currentPage = max(currentPage - 1, 0)
+                                }
+                                dragOffset = 0
+                            }
+                        }
+                )
             }
+            .ignoresSafeArea()
         }
     }
 
     @ViewBuilder
-    private func mainPage(specSize: CGFloat) -> some View {
+    private func mainPage(specSize: CGFloat, geo: GeometryProxy) -> some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 28)
+            Spacer().frame(height: geo.safeAreaInsets.top + 28)
 
-            // Spectrum — keep exactly as before
+            // Spectrum
             SpectrumCarouselView(state: state)
                 .frame(width: specSize, height: specSize)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
@@ -72,7 +87,7 @@ struct ContentView: View {
 
             // Transport controls at bottom
             PlayControlView(state: state)
-                .padding(.bottom, 40)
+                .padding(.bottom, geo.safeAreaInsets.bottom + 20)
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
