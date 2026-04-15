@@ -90,34 +90,22 @@ struct SpectrumCarouselView: View {
         switch style {
         case .horizon:
             HorizonView(spectrumData: spectrumData, density: density)
-        case .aurora:
-            AuroraView(spectrumData: spectrumData, density: density)
-        case .cascade:
-            CascadeView(spectrumData: spectrumData, density: density)
-        case .tide:
-            TideView(spectrumData: spectrumData, density: density)
-        case .terrain:
-            TerrainView(spectrumData: spectrumData, density: density)
-        case .constellation:
-            ConstellationView(spectrumData: spectrumData, density: density)
-        case .ringPulse:
-            RingPulseView(spectrumData: spectrumData, density: density)
-        case .waveRipple:
-            WaveRippleView(spectrumData: spectrumData, density: density)
-        case .prism:
-            PrismView(spectrumData: spectrumData, density: density)
-        case .vortex:
-            VortexView(spectrumData: spectrumData, density: density)
         case .nebula:
             NebulaView(spectrumData: spectrumData, density: density)
+        case .ringPulse:
+            RingPulseView(spectrumData: spectrumData, density: density)
+        case .terrain:
+            TerrainView(spectrumData: spectrumData, density: density)
         case .rainfall:
             RainfallView(spectrumData: spectrumData, density: density)
-        case .lattice:
-            LatticeView(spectrumData: spectrumData, density: density)
-        case .firefly:
-            FireflyView(spectrumData: spectrumData, density: density)
         case .helix:
             HelixView(spectrumData: spectrumData, density: density)
+        case .lattice:
+            LatticeView(spectrumData: spectrumData, density: density)
+        case .prism:
+            PrismView(spectrumData: spectrumData, density: density)
+        case .tide:
+            TideView(spectrumData: spectrumData, density: density)
         }
     }
 }
