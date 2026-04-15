@@ -39,6 +39,16 @@
 		7E67A637DED8FDB76593D656 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */; };
 		2599C9A151CD0D8AB2939962 /* CascadeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532F490D936EAD1319237263 /* CascadeView.swift */; };
 		B1C2D3E4F5A6B7C8D9E0F1A3 /* ImmersiveCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* ImmersiveCanvasView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F1 /* NebulaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* NebulaView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E2F1 /* RainfallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E2F2 /* RainfallView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E3F1 /* LatticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E3F2 /* LatticeView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E4F1 /* VortexView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E4F2 /* VortexView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E5F1 /* TerrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E5F2 /* TerrainView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E6F1 /* WaveRippleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E6F2 /* WaveRippleView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E7F1 /* PrismView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E7F2 /* PrismView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E8F1 /* TideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E8F2 /* TideView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E9F1 /* FireflyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E9F2 /* FireflyView.swift */; };
+		A1B2C3D4E5F6A7B8C9D0EAF1 /* HelixView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0EAF2 /* HelixView.swift */; };
 		C407265F73AB6EB00CC5BC6B /* OrbitalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */; };
 		105AFFD1F23FB8689224EABD /* PulseBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CC7371907F5619091630B6A /* PulseBubbleView.swift */; };
 /* End PBXBuildFile section */
@@ -89,6 +99,16 @@
 		A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		532F490D936EAD1319237263 /* CascadeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CascadeView.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* ImmersiveCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveCanvasView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* NebulaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NebulaView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E2F2 /* RainfallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RainfallView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E3F2 /* LatticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatticeView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E4F2 /* VortexView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VortexView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E5F2 /* TerrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerrainView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E6F2 /* WaveRippleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveRippleView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E7F2 /* PrismView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E8F2 /* TideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TideView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E9F2 /* FireflyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FireflyView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0EAF2 /* HelixView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelixView.swift; sourceTree = "<group>"; };
 		8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalView.swift; sourceTree = "<group>"; };
 		5CC7371907F5619091630B6A /* PulseBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseBubbleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -178,6 +198,16 @@
 				8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */,
 				5CC7371907F5619091630B6A /* PulseBubbleView.swift */,
 				B1C2D3E4F5A6B7C8D9E0F1A2 /* ImmersiveCanvasView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* NebulaView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E2F2 /* RainfallView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E3F2 /* LatticeView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E4F2 /* VortexView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E5F2 /* TerrainView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E6F2 /* WaveRippleView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E7F2 /* PrismView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E8F2 /* TideView.swift */,
+				A1B2C3D4E5F6A7B8C9D0E9F2 /* FireflyView.swift */,
+				A1B2C3D4E5F6A7B8C9D0EAF2 /* HelixView.swift */,
 			);
 			path = Visualizers;
 			sourceTree = "<group>";
@@ -319,6 +349,16 @@
 				7E67A637DED8FDB76593D656 /* WaveformView.swift in Sources */,
 				2599C9A151CD0D8AB2939962 /* CascadeView.swift in Sources */,
 				B1C2D3E4F5A6B7C8D9E0F1A3 /* ImmersiveCanvasView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F1 /* NebulaView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E2F1 /* RainfallView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E3F1 /* LatticeView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E4F1 /* VortexView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E5F1 /* TerrainView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E6F1 /* WaveRippleView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E7F1 /* PrismView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E8F1 /* TideView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E9F1 /* FireflyView.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0EAF1 /* HelixView.swift in Sources */,
 				C407265F73AB6EB00CC5BC6B /* OrbitalView.swift in Sources */,
 				105AFFD1F23FB8689224EABD /* PulseBubbleView.swift in Sources */,
 			);
