@@ -51,7 +51,7 @@ final class AudioEngine {
         // Configure audio session once at init, never again
         #if os(iOS)
         let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? audioSession.setCategory(.playback, mode: .default)
         try? audioSession.setActive(true)
         setupInterruptionObserver()
         #endif
