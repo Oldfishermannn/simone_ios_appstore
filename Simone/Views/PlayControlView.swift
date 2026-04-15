@@ -76,17 +76,16 @@ struct PlayControlView: View {
 
             Spacer()
 
-            // Regenerate current style
+            // New random style
             Button {
-                state.regenerate()
+                state.nextStyle()
             } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(state.selectedStyle == nil ? 0.2 : 0.4))
+                    .foregroundStyle(.white.opacity(0.4))
             }
             .buttonStyle(.plain)
             .frame(width: 44)
-            .disabled(state.selectedStyle == nil)
         }
         .padding(.horizontal, 0)
     }
