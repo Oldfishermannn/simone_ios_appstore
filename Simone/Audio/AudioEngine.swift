@@ -48,11 +48,9 @@ final class AudioEngine {
             logBinMap.append(lo...min(hi, maxFreqBin))
         }
 
-        // Configure audio session once at init, never again
         #if os(iOS)
-        let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.playback, mode: .default)
-        try? audioSession.setActive(true)
+        // Set category at init, but don't activate until start()
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
         setupInterruptionObserver()
         #endif
     }
@@ -67,6 +65,10 @@ final class AudioEngine {
 
     func start() {
         guard engine == nil else { return }
+
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        #endif
 
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
@@ -92,6 +94,22 @@ final class AudioEngine {
         do {
             try engine.start()
             player.play()
+
+            // Prime the audio pipeline with a short silent buffer
+            // to absorb the first-activation transient
+            let primeFormat = AVAudioFormat(
+                standardFormatWithSampleRate: sampleRate,
+                channels: channels
+            )!
+            if let silentBuffer = AVAudioPCMBuffer(
+                pcmFormat: primeFormat,
+                frameCapacity: 4800 // 100ms of silence
+            ) {
+                silentBuffer.frameLength = 4800
+                // Buffer is already zero-filled
+                player.scheduleBuffer(silentBuffer)
+            }
+
             self.engine = engine
             self.playerNode = player
             isPlaying = true
