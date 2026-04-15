@@ -257,13 +257,7 @@ final class AppState {
     }
 
     func refreshRecommendations() {
-        let excludedIDs = pinnedStyles.map(\.id) + exploredStyles.map(\.id)
-        let newStyles = MoodStyle.randomSelection(count: 4, excluding: excludedIDs)
-        if newStyles.isEmpty {
-            exploredStyles = MoodStyle.randomSelection(count: 4, excluding: pinnedStyles.map(\.id))
-        } else {
-            exploredStyles = newStyles
-        }
+        exploredStyles = MoodStyle.generateNewStyles(count: 4)
     }
 
     // MARK: - Private

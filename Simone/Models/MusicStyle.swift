@@ -130,4 +130,60 @@ struct MoodStyle: Identifiable, Equatable, Codable, Transferable {
         let picks = min(count, available.count)
         return Array(available.shuffled().prefix(picks))
     }
+
+    // MARK: - Generate New Styles
+
+    /// Generate completely new styles by combining genre, mood, instruments, and texture.
+    static func generateNewStyles(count: Int) -> [MoodStyle] {
+        let genres = [
+            "jazz", "ambient", "lo-fi hip hop", "bossa nova", "synthwave", "classical",
+            "folk", "blues", "soul", "R&B", "trip-hop", "downtempo", "dream pop",
+            "post-rock", "new age", "chillwave", "electronica", "baroque pop",
+            "chamber music", "minimalism", "neo-soul", "acid jazz", "afrobeat",
+            "world fusion", "flamenco", "Celtic", "reggae", "dub", "IDM",
+            "shoegaze", "math rock", "progressive", "fusion jazz", "swing"
+        ]
+
+        let moods = [
+            "warm", "melancholic", "dreamy", "energetic", "intimate", "ethereal",
+            "dark", "uplifting", "nostalgic", "mysterious", "serene", "brooding",
+            "playful", "contemplative", "romantic", "hypnotic", "bittersweet",
+            "euphoric", "meditative", "cinematic", "wistful", "luminous",
+            "haunting", "tender", "fierce", "delicate", "smoky", "crisp"
+        ]
+
+        let instruments = [
+            "piano", "acoustic guitar", "electric guitar", "saxophone", "trumpet",
+            "cello", "violin", "vibraphone", "Rhodes", "flute", "clarinet",
+            "upright bass", "harp", "marimba", "kalimba", "synthesizer",
+            "harmonica", "mandolin", "banjo", "organ", "accordion",
+            "sitar", "oud", "koto", "steel drums", "tabla", "hang drum",
+            "theremin", "pedal steel guitar", "oboe", "bassoon"
+        ]
+
+        let textures = [
+            "lush reverb", "vinyl crackle", "tape saturation", "granular textures",
+            "ambient pads", "arpeggiated patterns", "subtle distortion", "shimmer delay",
+            "soft percussion", "deep sub bass", "airy harmonics", "rhythmic pulses",
+            "layered drones", "staccato plucks", "legato swells", "filtered sweeps",
+            "bitcrushed glitches", "organic rustling", "bell-like tones", "chorus effects"
+        ]
+
+        var results: [MoodStyle] = []
+        for _ in 0..<count {
+            let genre = genres.randomElement()!
+            let mood = moods.randomElement()!
+            let inst1 = instruments.randomElement()!
+            var inst2 = instruments.randomElement()!
+            while inst2 == inst1 { inst2 = instruments.randomElement()! }
+            let texture = textures.randomElement()!
+
+            let id = "gen-\(UUID().uuidString.prefix(8).lowercased())"
+            let name = "\(mood.capitalized) \(genre.capitalized)"
+            let prompt = "\(mood.capitalized) \(genre) with expressive \(inst1), \(inst2) accents, and \(texture)"
+
+            results.append(MoodStyle(id: id, name: name, prompt: prompt))
+        }
+        return results
+    }
 }

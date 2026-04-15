@@ -4,43 +4,41 @@ struct DetailsView: View {
     @Bindable var state: AppState
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 0) {
-                Spacer().frame(height: 16)
+        VStack(spacing: 0) {
+            Spacer().frame(height: 16)
 
-                // Mini Player
-                MiniPlayerView(state: state)
-                    .padding(.horizontal, 16)
+            // Mini Player
+            MiniPlayerView(state: state)
+                .padding(.horizontal, 16)
 
-                Spacer().frame(height: 20)
+            Spacer().frame(height: 20)
 
-                // Favorites
-                favoritesSection
-                    .padding(.horizontal, 16)
+            // Favorites
+            favoritesSection
+                .padding(.horizontal, 16)
 
-                Spacer().frame(height: 20)
+            Spacer().frame(height: 20)
 
-                // Recommendations
-                recommendationsSection
-                    .padding(.horizontal, 16)
+            // Recommendations
+            recommendationsSection
+                .padding(.horizontal, 16)
 
-                Spacer().frame(height: 24)
+            Spacer().frame(height: 24)
 
-                // Evolve
-                evolveSection
-                    .padding(.horizontal, 16)
+            // Evolve
+            evolveSection
+                .padding(.horizontal, 16)
 
-                Spacer().frame(height: 16)
+            Spacer().frame(height: 16)
 
-                // Sleep Timer
-                sleepTimerSection
-                    .padding(.horizontal, 16)
+            // Sleep Timer
+            sleepTimerSection
+                .padding(.horizontal, 16)
 
-                Spacer().frame(height: 32)
-            }
-            .frame(maxWidth: 400)
-            .frame(maxWidth: .infinity)
+            Spacer().frame(height: 32)
         }
+        .frame(maxWidth: 400)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Favorites
@@ -106,8 +104,7 @@ struct DetailsView: View {
                     }
                 }
                 .listStyle(.plain)
-                .frame(height: CGFloat(state.pinnedStyles.count) * 48)
-                .scrollDisabled(true)
+                .frame(maxHeight: 200)
             }
         }
     }
