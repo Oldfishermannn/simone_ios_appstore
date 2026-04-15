@@ -35,6 +35,11 @@
 		AA11BB22CC33DD44EE55FF05 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */; };
 		AA11BB22CC33DD44EE55FF07 /* StyleRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */; };
 		AA11BB22CC33DD44EE55FF10 /* VerticalPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF09 /* VerticalPageView.swift */; };
+		18D4FD5C4231F570598FF39B /* HorizonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6546CD53C9DB2F3D1351561 /* HorizonView.swift */; };
+		7E67A637DED8FDB76593D656 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */; };
+		2599C9A151CD0D8AB2939962 /* CascadeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532F490D936EAD1319237263 /* CascadeView.swift */; };
+		C407265F73AB6EB00CC5BC6B /* OrbitalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */; };
+		105AFFD1F23FB8689224EABD /* PulseBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CC7371907F5619091630B6A /* PulseBubbleView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +84,11 @@
 		AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleRowView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF09 /* VerticalPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalPageView.swift; sourceTree = "<group>"; };
+		A6546CD53C9DB2F3D1351561 /* HorizonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizonView.swift; sourceTree = "<group>"; };
+		A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
+		532F490D936EAD1319237263 /* CascadeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CascadeView.swift; sourceTree = "<group>"; };
+		8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalView.swift; sourceTree = "<group>"; };
+		5CC7371907F5619091630B6A /* PulseBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseBubbleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -160,6 +170,11 @@
 				1CB03C3E0027DA1E34444342 /* SilkWaveView.swift */,
 				CB75D286C86C9126CF4E106A /* SpectrumDataProvider.swift */,
 				B622969586557E8AE6AF0564 /* VinylView.swift */,
+				A6546CD53C9DB2F3D1351561 /* HorizonView.swift */,
+				A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */,
+				532F490D936EAD1319237263 /* CascadeView.swift */,
+				8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */,
+				5CC7371907F5619091630B6A /* PulseBubbleView.swift */,
 			);
 			path = Visualizers;
 			sourceTree = "<group>";
@@ -297,6 +312,11 @@
 				5E7B0A06C987DE1DF22E2B2D /* SpectrumDataProvider.swift in Sources */,
 				17380085E9BD8693861558D1 /* VinylView.swift in Sources */,
 				FEFC146E14AF24417D90E7EC /* VisualizerStyle.swift in Sources */,
+				18D4FD5C4231F570598FF39B /* HorizonView.swift in Sources */,
+				7E67A637DED8FDB76593D656 /* WaveformView.swift in Sources */,
+				2599C9A151CD0D8AB2939962 /* CascadeView.swift in Sources */,
+				C407265F73AB6EB00CC5BC6B /* OrbitalView.swift in Sources */,
+				105AFFD1F23FB8689224EABD /* PulseBubbleView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

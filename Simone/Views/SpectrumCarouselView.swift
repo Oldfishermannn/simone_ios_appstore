@@ -4,10 +4,11 @@ struct SpectrumCarouselView: View {
     @Bindable var state: AppState
     var showDots: Bool = true
 
-    @State private var currentIndex: Int = 0
-    @State private var scrollPosition: Int? = 0
-
     private let styles = VisualizerStyle.allCases
+
+    private var currentIndex: Int {
+        styles.firstIndex(of: state.selectedVisualizer) ?? 0
+    }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
@@ -24,13 +25,14 @@ struct SpectrumCarouselView: View {
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $scrollPosition)
-            .onChange(of: scrollPosition) { _, newValue in
-                if let idx = newValue {
-                    currentIndex = idx
-                    state.selectedVisualizer = styles[idx]
+            .scrollPosition(id: Binding(
+                get: { currentIndex },
+                set: { newValue in
+                    if let idx = newValue, idx >= 0, idx < styles.count {
+                        state.selectedVisualizer = styles[idx]
+                    }
                 }
-            }
+            ))
         }
         .overlay(alignment: .bottom) {
             if showDots {
@@ -56,20 +58,20 @@ struct SpectrumCarouselView: View {
     @ViewBuilder
     private func visualizerView(for style: VisualizerStyle, spectrumData: [Float]) -> some View {
         switch style {
-        case .fountain:
-            FountainView(spectrumData: spectrumData)
         case .aurora:
             AuroraView(spectrumData: spectrumData)
-        case .vinyl:
-            VinylView(spectrumData: spectrumData)
-        case .silkWave:
-            SilkWaveView(spectrumData: spectrumData)
+        case .horizon:
+            HorizonView(spectrumData: spectrumData)
+        case .waveform:
+            WaveformView(spectrumData: spectrumData)
+        case .cascade:
+            CascadeView(spectrumData: spectrumData)
         case .constellation:
             ConstellationView(spectrumData: spectrumData)
-        case .particleFlow:
-            ParticleFlowView(spectrumData: spectrumData)
-        case .ripple:
-            RippleView(spectrumData: spectrumData)
+        case .orbital:
+            OrbitalView(spectrumData: spectrumData)
+        case .pulseBubble:
+            PulseBubbleView(spectrumData: spectrumData)
         case .ringPulse:
             RingPulseView(spectrumData: spectrumData)
         }

@@ -1,7 +1,9 @@
 import Foundation
 
 enum VisualizerStyle: String, CaseIterable, Identifiable {
-    case aurora, fountain, vinyl, silkWave, constellation, particleFlow, ripple, ringPulse
+    // Lines group: aurora, horizon, waveform, cascade
+    // Circles group: constellation, orbital, pulseBubble, ringPulse
+    case aurora, horizon, waveform, cascade, constellation, orbital, pulseBubble, ringPulse
 
     var id: String { rawValue }
 
@@ -9,13 +11,13 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .fountain: "Fountain"
         case .aurora: "Aurora"
-        case .vinyl: "Vinyl"
-        case .silkWave: "Silk Wave"
+        case .horizon: "Horizon"
+        case .waveform: "Waveform"
+        case .cascade: "Cascade"
         case .constellation: "Constellation"
-        case .particleFlow: "Particle Flow"
-        case .ripple: "Ripple"
+        case .orbital: "Orbital"
+        case .pulseBubble: "Pulse Bubble"
         case .ringPulse: "Ring Pulse"
         }
     }
