@@ -1,0 +1,76 @@
+import SwiftUI
+import UIKit
+
+/// A vertical paging container that properly coordinates with child ScrollViews.
+struct VerticalPageView<Content: View>: UIViewControllerRepresentable {
+    let pageCount: Int
+    @Binding var currentPage: Int
+    let content: (Int) -> Content
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIPageViewController {
+        let pvc = UIPageViewController(
+            transitionStyle: .scroll,
+            navigationOrientation: .vertical,
+            options: [.interPageSpacing: 0]
+        )
+        pvc.dataSource = context.coordinator
+        pvc.delegate = context.coordinator
+        pvc.view.backgroundColor = .clear
+
+        let initial = context.coordinator.makeHostingController(for: currentPage)
+        pvc.setViewControllers([initial], direction: .forward, animated: false)
+
+        return pvc
+    }
+
+    func updateUIViewController(_ pvc: UIPageViewController, context: Context) {
+        let displayed = context.coordinator.currentIndex
+        if currentPage != displayed {
+            let direction: UIPageViewController.NavigationDirection = currentPage > displayed ? .forward : .reverse
+            let vc = context.coordinator.makeHostingController(for: currentPage)
+            pvc.setViewControllers([vc], direction: direction, animated: true)
+            context.coordinator.currentIndex = currentPage
+        }
+    }
+
+    class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
+        let parent: VerticalPageView
+        var currentIndex: Int
+
+        init(_ parent: VerticalPageView) {
+            self.parent = parent
+            self.currentIndex = parent.currentPage
+        }
+
+        func makeHostingController(for index: Int) -> UIHostingController<AnyView> {
+            let vc = UIHostingController(rootView: AnyView(parent.content(index)))
+            vc.view.backgroundColor = .clear
+            vc.view.tag = index
+            return vc
+        }
+
+        func pageViewController(_ pvc: UIPageViewController, viewControllerBefore vc: UIViewController) -> UIViewController? {
+            let index = vc.view.tag
+            guard index > 0 else { return nil }
+            return makeHostingController(for: index - 1)
+        }
+
+        func pageViewController(_ pvc: UIPageViewController, viewControllerAfter vc: UIViewController) -> UIViewController? {
+            let index = vc.view.tag
+            guard index < parent.pageCount - 1 else { return nil }
+            return makeHostingController(for: index + 1)
+        }
+
+        func pageViewController(_ pvc: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+            guard completed,
+                  let current = pvc.viewControllers?.first else { return }
+            let index = current.view.tag
+            currentIndex = index
+            parent.currentPage = index
+        }
+    }
+}

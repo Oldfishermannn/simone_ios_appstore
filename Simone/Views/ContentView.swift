@@ -3,12 +3,10 @@ import SwiftUI
 struct ContentView: View {
     @State var state = AppState()
     @State private var currentPage: Int = 1  // 0=Immersive, 1=Main, 2=Details
-    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         GeometryReader { geo in
             let specSize = min(geo.size.width, 400) - 40
-            let pageHeight = geo.size.height
 
             ZStack {
                 Color(red: 0.165, green: 0.165, blue: 0.18)
@@ -22,51 +20,27 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    // Page 0: Immersive
-                    ImmersiveView(state: state)
-                        .frame(width: geo.size.width, height: pageHeight)
-
-                    // Page 1: Main
-                    mainPage(specSize: specSize, geo: geo)
-                        .frame(width: geo.size.width, height: pageHeight)
-
-                    // Page 2: Details
-                    DetailsView(state: state)
-                        .frame(width: geo.size.width, height: pageHeight)
+                VerticalPageView(pageCount: 3, currentPage: $currentPage) { index in
+                    Group {
+                        switch index {
+                        case 0:
+                            ImmersiveView(state: state)
+                        case 2:
+                            DetailsView(state: state)
+                        default:
+                            self.mainPage(specSize: specSize)
+                        }
+                    }
                 }
-                .offset(y: -CGFloat(currentPage) * pageHeight + dragOffset)
-                .animation(.spring(response: 0.4, dampingFraction: 0.86), value: currentPage)
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            dragOffset = value.translation.height
-                        }
-                        .onEnded { value in
-                            let threshold: CGFloat = pageHeight * 0.15
-                            let velocity = value.predictedEndTranslation.height - value.translation.height
-
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                                if value.translation.height < -threshold || velocity < -200 {
-                                    // Swiped up → next page
-                                    currentPage = min(currentPage + 1, 2)
-                                } else if value.translation.height > threshold || velocity > 200 {
-                                    // Swiped down → previous page
-                                    currentPage = max(currentPage - 1, 0)
-                                }
-                                dragOffset = 0
-                            }
-                        }
-                )
+                .ignoresSafeArea()
             }
-            .ignoresSafeArea()
         }
     }
 
     @ViewBuilder
-    private func mainPage(specSize: CGFloat, geo: GeometryProxy) -> some View {
+    private func mainPage(specSize: CGFloat) -> some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: geo.safeAreaInsets.top + 28)
+            Spacer().frame(height: 28)
 
             // Spectrum
             SpectrumCarouselView(state: state)
@@ -87,7 +61,7 @@ struct ContentView: View {
 
             // Transport controls at bottom
             PlayControlView(state: state)
-                .padding(.bottom, geo.safeAreaInsets.bottom + 20)
+                .padding(.bottom, 40)
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)

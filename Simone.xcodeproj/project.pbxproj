@@ -34,6 +34,7 @@
 		AA11BB22CC33DD44EE55FF03 /* ImmersiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF04 /* ImmersiveView.swift */; };
 		AA11BB22CC33DD44EE55FF05 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */; };
 		AA11BB22CC33DD44EE55FF07 /* StyleRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */; };
+		AA11BB22CC33DD44EE55FF10 /* VerticalPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF09 /* VerticalPageView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +78,7 @@
 		AA11BB22CC33DD44EE55FF04 /* ImmersiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleRowView.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF09 /* VerticalPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalPageView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -121,6 +123,7 @@
 				AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */,
 				33DA43F0A0298D89DE9E3DDB /* PlayControlView.swift */,
 				AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */,
+				AA11BB22CC33DD44EE55FF09 /* VerticalPageView.swift */,
 				6C4631B1A8C6EC69450E2E97 /* SpectrumCarouselView.swift */,
 				7FA551E57F59F9976B132116 /* Visualizers */,
 			);
@@ -279,6 +282,7 @@
 				AA11BB22CC33DD44EE55FF03 /* ImmersiveView.swift in Sources */,
 				AA11BB22CC33DD44EE55FF05 /* MiniPlayerView.swift in Sources */,
 				AA11BB22CC33DD44EE55FF07 /* StyleRowView.swift in Sources */,
+				AA11BB22CC33DD44EE55FF10 /* VerticalPageView.swift in Sources */,
 				A2A5B643BA227229887CB35C /* FountainView.swift in Sources */,
 				4BB2C421AA09A83D7187399C /* LyriaClient.swift in Sources */,
 				AEDCE52FD41257F56771DE7E /* MusicStyle.swift in Sources */,
