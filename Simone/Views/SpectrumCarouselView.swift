@@ -4,10 +4,12 @@ struct SpectrumCarouselView: View {
     @Bindable var state: AppState
     var showDots: Bool = true
 
+    @State private var scrollPosition: Int?
+
     private let styles = VisualizerStyle.allCases
 
     private var currentIndex: Int {
-        styles.firstIndex(of: state.selectedVisualizer) ?? 0
+        scrollPosition ?? 0
     }
 
     var body: some View {
@@ -25,14 +27,12 @@ struct SpectrumCarouselView: View {
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.paging)
-            .scrollPosition(id: Binding(
-                get: { currentIndex },
-                set: { newValue in
-                    if let idx = newValue, idx >= 0, idx < styles.count {
-                        state.selectedVisualizer = styles[idx]
-                    }
+            .scrollPosition(id: $scrollPosition)
+            .onChange(of: scrollPosition) { _, newValue in
+                if let idx = newValue, idx >= 0, idx < styles.count {
+                    state.selectedVisualizer = styles[idx]
                 }
-            ))
+            }
         }
         .overlay(alignment: .bottom) {
             if showDots {
@@ -53,6 +53,10 @@ struct SpectrumCarouselView: View {
             }
         }
         .clipped()
+        .onAppear {
+            let idx = styles.firstIndex(of: state.selectedVisualizer) ?? 0
+            scrollPosition = idx
+        }
     }
 
     @ViewBuilder
