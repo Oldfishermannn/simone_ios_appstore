@@ -17,6 +17,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.simone.ios
         TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_ROTATION: true
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
   SimoneTests:
     type: bundle.unit-test
     platform: iOS

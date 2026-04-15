@@ -18,7 +18,7 @@ final class LyriaClient {
     private var serverURL: URL
     private var autoReconnect = true
 
-    init(serverURL: URL = URL(string: "ws://localhost:8765/ws")!) {
+    init(serverURL: URL = URL(string: "ws://10.0.0.128:8765/ws")!) {
         self.serverURL = serverURL
         self.session = URLSession(configuration: .default)
     }
