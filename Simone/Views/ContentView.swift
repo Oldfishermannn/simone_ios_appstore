@@ -48,7 +48,7 @@ struct ContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
 
-            Spacer().frame(height: 24)
+            Spacer().frame(height: 36)
 
             // Style name above controls
             Text(state.selectedStyle?.name ?? "")

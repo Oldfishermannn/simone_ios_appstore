@@ -13,28 +13,30 @@ struct SpectrumCarouselView: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-            let spectrumData = state.audioEngine.spectrumData
+        VStack(spacing: 0) {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
+                let spectrumData = state.audioEngine.spectrumData
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 0) {
-                    ForEach(Array(styles.enumerated()), id: \.element.id) { index, style in
-                        visualizerView(for: style, spectrumData: spectrumData)
-                            .containerRelativeFrame(.horizontal)
-                            .id(index)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 0) {
+                        ForEach(Array(styles.enumerated()), id: \.element.id) { index, style in
+                            visualizerView(for: style, spectrumData: spectrumData)
+                                .containerRelativeFrame(.horizontal)
+                                .id(index)
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $scrollPosition)
+                .onChange(of: scrollPosition) { _, newValue in
+                    if let idx = newValue, idx >= 0, idx < styles.count {
+                        state.selectedVisualizer = styles[idx]
                     }
                 }
-                .scrollTargetLayout()
             }
-            .scrollTargetBehavior(.paging)
-            .scrollPosition(id: $scrollPosition)
-            .onChange(of: scrollPosition) { _, newValue in
-                if let idx = newValue, idx >= 0, idx < styles.count {
-                    state.selectedVisualizer = styles[idx]
-                }
-            }
-        }
-        .overlay(alignment: .bottom) {
+            .clipped()
+
             if showDots {
                 HStack(spacing: 4) {
                     ForEach(Array(styles.enumerated()), id: \.element.id) { index, _ in
@@ -48,11 +50,10 @@ struct SpectrumCarouselView: View {
                                    height: index == currentIndex ? 6 : 5)
                     }
                 }
-                .padding(.bottom, 6)
+                .padding(.top, 8)
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentIndex)
             }
         }
-        .clipped()
         .onAppear {
             let idx = styles.firstIndex(of: state.selectedVisualizer) ?? 0
             scrollPosition = idx
