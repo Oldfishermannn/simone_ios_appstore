@@ -13,17 +13,21 @@ final class AudioEngine {
     private let sampleRate: Double = 48000
     private let channels: AVAudioChannelCount = 2
     private let bufferMin = 1
+    private let fadeSamples = 96 // 2ms at 48kHz — imperceptible but kills pops
 
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private let bufferQueue = AudioBufferQueue()
     private var isDraining = false
-    private var needsFadeIn = true // fade in first buffer after gap
+
+    /// Tracks how many buffers are scheduled but not yet played
+    private var scheduledBufferCount = 0
+    private let scheduleLock = NSLock()
 
     // Interruption observer token
     private var interruptionObserver: NSObjectProtocol?
 
-    // FFT — use 2048 for better frequency resolution
+    // FFT
     private let fftSize = 2048
     private let displayBins = 64
     private var fftSetup: vDSP_DFT_Setup?
@@ -43,6 +47,14 @@ final class AudioEngine {
             let hi = max(lo, Int(pow(2.0, logMin + t1 * (logMax - logMin))) - 1)
             logBinMap.append(lo...min(hi, maxFreqBin))
         }
+
+        // Configure audio session once at init, never again
+        #if os(iOS)
+        let audioSession = AVAudioSession.sharedInstance()
+        try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? audioSession.setActive(true)
+        setupInterruptionObserver()
+        #endif
     }
 
     deinit {
@@ -50,17 +62,11 @@ final class AudioEngine {
         if let setup = fftSetup {
             vDSP_DFT_DestroySetup(setup)
         }
+        removeInterruptionObserver()
     }
 
     func start() {
         guard engine == nil else { return }
-
-        #if os(iOS)
-        let audioSession = AVAudioSession.sharedInstance()
-        try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try? audioSession.setActive(true)
-        setupInterruptionObserver()
-        #endif
 
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
@@ -88,7 +94,6 @@ final class AudioEngine {
             player.play()
             self.engine = engine
             self.playerNode = player
-            self.needsFadeIn = true
             isPlaying = true
         } catch {
             print("AudioEngine start failed: \(error)")
@@ -103,9 +108,8 @@ final class AudioEngine {
         playerNode = nil
         isPlaying = false
         bufferQueue.clear()
-        needsFadeIn = true
+        resetScheduledCount()
         spectrumData = Array(repeating: 0, count: displayBins)
-        removeInterruptionObserver()
     }
 
     func pause() {
@@ -114,7 +118,13 @@ final class AudioEngine {
     }
 
     func resume() {
-        needsFadeIn = true
+        // Re-activate session in case it was deactivated
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        #endif
+        if let engine, !engine.isRunning {
+            try? engine.start()
+        }
         playerNode?.play()
         isPlaying = true
     }
@@ -132,14 +142,16 @@ final class AudioEngine {
     func clearQueue() {
         bufferQueue.clear()
         isDraining = false
-        needsFadeIn = true
+        resetScheduledCount()
     }
 
     func flushScheduledBuffers() {
         bufferQueue.clear()
         isDraining = false
-        needsFadeIn = true
+        resetScheduledCount()
         playerNode?.stop()
+        // Restart player so it's ready for new buffers
+        playerNode?.play()
     }
 
     // MARK: - Interruption Handling
@@ -157,18 +169,12 @@ final class AudioEngine {
                   let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
 
-            switch type {
-            case .began:
-                break // mixWithOthers prevents engine stop
-            case .ended:
+            if type == .ended {
                 try? AVAudioSession.sharedInstance().setActive(true)
                 if let engine = self.engine, !engine.isRunning {
                     try? engine.start()
                     self.playerNode?.play()
                 }
-                self.needsFadeIn = true
-            @unknown default:
-                break
             }
         }
         #endif
@@ -178,6 +184,58 @@ final class AudioEngine {
         if let observer = interruptionObserver {
             NotificationCenter.default.removeObserver(observer)
             interruptionObserver = nil
+        }
+    }
+
+    // MARK: - Scheduled buffer tracking
+
+    private var isUnderrun: Bool {
+        scheduleLock.lock()
+        defer { scheduleLock.unlock() }
+        return scheduledBufferCount == 0
+    }
+
+    private func incrementScheduled() {
+        scheduleLock.lock()
+        scheduledBufferCount += 1
+        scheduleLock.unlock()
+    }
+
+    private func decrementScheduled() {
+        scheduleLock.lock()
+        scheduledBufferCount = max(0, scheduledBufferCount - 1)
+        scheduleLock.unlock()
+    }
+
+    private func resetScheduledCount() {
+        scheduleLock.lock()
+        scheduledBufferCount = 0
+        scheduleLock.unlock()
+    }
+
+    // MARK: - Buffer processing
+
+    /// Apply fade-in to the beginning of a buffer
+    private func applyFadeIn(_ buffer: AVAudioPCMBuffer, frames: Int) {
+        let count = min(frames, Int(buffer.frameLength))
+        for ch in 0..<Int(channels) {
+            guard let data = buffer.floatChannelData?[ch] else { continue }
+            for i in 0..<count {
+                data[i] *= Float(i) / Float(count)
+            }
+        }
+    }
+
+    /// Apply fade-out to the end of a buffer
+    private func applyFadeOut(_ buffer: AVAudioPCMBuffer, frames: Int) {
+        let total = Int(buffer.frameLength)
+        let count = min(frames, total)
+        let start = total - count
+        for ch in 0..<Int(channels) {
+            guard let data = buffer.floatChannelData?[ch] else { continue }
+            for i in 0..<count {
+                data[start + i] *= Float(count - i) / Float(count)
+            }
         }
     }
 
@@ -192,8 +250,10 @@ final class AudioEngine {
             channels: channels
         )!
 
+        let wasUnderrun = isUnderrun
         let chunks = bufferQueue.drainAll()
-        for chunk in chunks {
+
+        for (idx, chunk) in chunks.enumerated() {
             let numBytes = chunk.count - (chunk.count % (Int(channels) * 2))
             guard numBytes > 0 else { continue }
 
@@ -215,20 +275,15 @@ final class AudioEngine {
                 }
             }
 
-            // Apply fade-in on first buffer after a gap to prevent pop
-            if needsFadeIn {
-                let fadeFrames = min(numSamples, 480) // 10ms at 48kHz
-                for ch in 0..<Int(channels) {
-                    guard let channelData = pcmBuffer.floatChannelData?[ch] else { continue }
-                    for i in 0..<fadeFrames {
-                        let gain = Float(i) / Float(fadeFrames)
-                        channelData[i] *= gain
-                    }
-                }
-                needsFadeIn = false
+            // Fade-in on first buffer after underrun (silence → audio transition)
+            if wasUnderrun && idx == 0 {
+                applyFadeIn(pcmBuffer, frames: fadeSamples)
             }
 
-            player.scheduleBuffer(pcmBuffer)
+            incrementScheduled()
+            player.scheduleBuffer(pcmBuffer) { [weak self] in
+                self?.decrementScheduled()
+            }
         }
     }
 
