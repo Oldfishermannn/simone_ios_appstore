@@ -87,20 +87,14 @@ struct SpectrumCarouselView: View {
     @ViewBuilder
     private func visualizerView(for style: VisualizerStyle, spectrumData: [Float]) -> some View {
         switch style {
-        case .aurora:
-            AuroraView(spectrumData: spectrumData)
         case .horizon:
             HorizonView(spectrumData: spectrumData)
-        case .waveform:
-            WaveformView(spectrumData: spectrumData)
+        case .aurora:
+            AuroraView(spectrumData: spectrumData)
         case .cascade:
             CascadeView(spectrumData: spectrumData)
         case .constellation:
             ConstellationView(spectrumData: spectrumData)
-        case .orbital:
-            OrbitalView(spectrumData: spectrumData)
-        case .pulseBubble:
-            PulseBubbleView(spectrumData: spectrumData)
         case .ringPulse:
             RingPulseView(spectrumData: spectrumData)
         }
