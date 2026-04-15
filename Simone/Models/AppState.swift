@@ -72,9 +72,6 @@ final class AppState {
     var onlyBassAndDrums: Bool = false
     var musicMode: String = "QUALITY"  // QUALITY / DIVERSITY / VOCALIZATION
 
-    // Details card
-    var isDetailsExpanded = false
-
     /// UI 切换参数后调用，立刻发送完整 config 给服务端
     func applyConfig() {
         guard lyriaClient.connectionState == .connected else { return }
