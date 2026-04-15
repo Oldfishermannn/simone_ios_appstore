@@ -28,6 +28,11 @@ struct VerticalPageView<Content: View>: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ pvc: UIPageViewController, context: Context) {
+        // Update content of the currently displayed page
+        if let current = pvc.viewControllers?.first as? UIHostingController<AnyView> {
+            current.rootView = AnyView(content(context.coordinator.currentIndex))
+        }
+
         let displayed = context.coordinator.currentIndex
         if currentPage != displayed {
             let direction: UIPageViewController.NavigationDirection = currentPage > displayed ? .forward : .reverse
