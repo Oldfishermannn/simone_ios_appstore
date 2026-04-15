@@ -83,16 +83,31 @@ struct DetailsView: View {
                     .foregroundStyle(.white.opacity(0.15))
                     .padding(.vertical, 12)
             } else {
-                ForEach(state.pinnedStyles) { style in
-                    StyleRowView(
-                        style: style,
-                        isPlaying: state.selectedStyle?.id == style.id,
-                        isFavorite: true,
-                        showFavoriteButton: true,
-                        onTap: { state.selectStyle(style) },
-                        onToggleFavorite: { state.unpinStyle(style) }
-                    )
+                List {
+                    ForEach(state.pinnedStyles) { style in
+                        StyleRowView(
+                            style: style,
+                            isPlaying: state.selectedStyle?.id == style.id,
+                            isFavorite: true,
+                            showFavoriteButton: true,
+                            onTap: { state.selectStyle(style) },
+                            onToggleFavorite: { state.unpinStyle(style) }
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
+                        .listRowSeparator(.hidden)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                state.unpinStyle(style)
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                        }
+                    }
                 }
+                .listStyle(.plain)
+                .frame(height: CGFloat(state.pinnedStyles.count) * 48)
+                .scrollDisabled(true)
             }
         }
     }
