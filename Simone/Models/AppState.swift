@@ -28,7 +28,7 @@ final class AppState {
         case auto1m = "1 min"
         case auto5m = "5 min"
     }
-    var evolveMode: EvolveMode = .locked {
+    var evolveMode: EvolveMode = .auto10s {
         didSet { restartEvolveTimer() }
     }
     private var evolveTimer: Timer?
