@@ -18,6 +18,10 @@ final class AudioEngine {
     private var playerNode: AVAudioPlayerNode?
     private let bufferQueue = AudioBufferQueue()
     private var isDraining = false
+    private var needsFadeIn = true // fade in first buffer after gap
+
+    // Interruption observer token
+    private var interruptionObserver: NSObjectProtocol?
 
     // FFT — use 2048 for better frequency resolution
     private let fftSize = 2048
@@ -27,9 +31,8 @@ final class AudioEngine {
 
     init() {
         fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(fftSize), .FORWARD)
-        // Pre-compute logarithmic bin mapping: 128 display bins from 1024 FFT bins
-        let nyquist = fftSize / 2  // 1024 linear bins
-        let minFreqBin = 1         // skip DC
+        let nyquist = fftSize / 2
+        let minFreqBin = 1
         let maxFreqBin = nyquist - 1
         let logMin = log2(Float(minFreqBin))
         let logMax = log2(Float(maxFreqBin))
@@ -56,12 +59,12 @@ final class AudioEngine {
         let audioSession = AVAudioSession.sharedInstance()
         try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
         try? audioSession.setActive(true)
-        observeInterruptions()
+        setupInterruptionObserver()
         #endif
 
         let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
-        player.volume = 0 // start silent, fade in
+        player.volume = volume
 
         engine.attach(player)
 
@@ -85,16 +88,14 @@ final class AudioEngine {
             player.play()
             self.engine = engine
             self.playerNode = player
+            self.needsFadeIn = true
             isPlaying = true
-            // Fade in to avoid pop
-            fadeVolume(to: volume, duration: 0.15)
         } catch {
             print("AudioEngine start failed: \(error)")
         }
     }
 
     func stop() {
-        playerNode?.volume = 0
         playerNode?.stop()
         engine?.mainMixerNode.removeTap(onBus: 0)
         engine?.stop()
@@ -102,10 +103,9 @@ final class AudioEngine {
         playerNode = nil
         isPlaying = false
         bufferQueue.clear()
+        needsFadeIn = true
         spectrumData = Array(repeating: 0, count: displayBins)
-        #if os(iOS)
-        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
-        #endif
+        removeInterruptionObserver()
     }
 
     func pause() {
@@ -114,12 +114,11 @@ final class AudioEngine {
     }
 
     func resume() {
+        needsFadeIn = true
         playerNode?.play()
         isPlaying = true
     }
 
-    /// Called by LyriaClient when a new PCM chunk arrives.
-    /// Data is raw PCM16 stereo 48kHz (already base64-decoded by LyriaClient).
     func handleAudioChunk(_ data: Data) {
         bufferQueue.enqueue(data)
 
@@ -133,22 +132,22 @@ final class AudioEngine {
     func clearQueue() {
         bufferQueue.clear()
         isDraining = false
+        needsFadeIn = true
     }
 
-    /// 暂停状态下切歌用：flush 掉 playerNode 里的旧 buffer，保持暂停
     func flushScheduledBuffers() {
         bufferQueue.clear()
         isDraining = false
+        needsFadeIn = true
         playerNode?.stop()
-        // 丢弃接下来几个旧 chunk（服务端切换 prompt 有延迟）
     }
 
     // MARK: - Interruption Handling
 
-    #if os(iOS)
-    private func observeInterruptions() {
-        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
-        NotificationCenter.default.addObserver(
+    private func setupInterruptionObserver() {
+        #if os(iOS)
+        removeInterruptionObserver()
+        interruptionObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.interruptionNotification,
             object: AVAudioSession.sharedInstance(),
             queue: .main
@@ -160,34 +159,25 @@ final class AudioEngine {
 
             switch type {
             case .began:
-                // System sound is playing — mute to prevent pop on resume
-                self.playerNode?.volume = 0
+                break // mixWithOthers prevents engine stop
             case .ended:
-                // Restart engine if needed, fade back in
                 try? AVAudioSession.sharedInstance().setActive(true)
                 if let engine = self.engine, !engine.isRunning {
                     try? engine.start()
                     self.playerNode?.play()
                 }
-                self.fadeVolume(to: self.volume, duration: 0.2)
+                self.needsFadeIn = true
             @unknown default:
                 break
             }
         }
+        #endif
     }
-    #endif
 
-    private func fadeVolume(to target: Float, duration: TimeInterval) {
-        guard let player = playerNode else { return }
-        let steps = 10
-        let interval = duration / Double(steps)
-        let startVol = player.volume
-        let delta = (target - startVol) / Float(steps)
-
-        for i in 1...steps {
-            DispatchQueue.main.asyncAfter(deadline: .now() + interval * Double(i)) { [weak player] in
-                player?.volume = startVol + delta * Float(i)
-            }
+    private func removeInterruptionObserver() {
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+            interruptionObserver = nil
         }
     }
 
@@ -225,6 +215,19 @@ final class AudioEngine {
                 }
             }
 
+            // Apply fade-in on first buffer after a gap to prevent pop
+            if needsFadeIn {
+                let fadeFrames = min(numSamples, 480) // 10ms at 48kHz
+                for ch in 0..<Int(channels) {
+                    guard let channelData = pcmBuffer.floatChannelData?[ch] else { continue }
+                    for i in 0..<fadeFrames {
+                        let gain = Float(i) / Float(fadeFrames)
+                        channelData[i] *= gain
+                    }
+                }
+                needsFadeIn = false
+            }
+
             player.scheduleBuffer(pcmBuffer)
         }
     }
@@ -241,7 +244,6 @@ final class AudioEngine {
         var realOut = [Float](repeating: 0, count: fftSize)
         var imagOut = [Float](repeating: 0, count: fftSize)
 
-        // Copy samples and apply Hann window
         for i in 0..<fftSize {
             let window = 0.5 * (1.0 - cos(2.0 * .pi * Float(i) / Float(fftSize)))
             realIn[i] = channelData[i] * window
@@ -249,17 +251,13 @@ final class AudioEngine {
 
         vDSP_DFT_Execute(setup, &realIn, &imagIn, &realOut, &imagOut)
 
-        // Compute magnitudes for first half (nyquist)
         let nyquist = fftSize / 2
         var linearMags = [Float](repeating: 0, count: nyquist)
         for i in 0..<nyquist {
             linearMags[i] = sqrt(realOut[i] * realOut[i] + imagOut[i] * imagOut[i])
         }
 
-        // Map to logarithmic display bins
         var mapped = [Float](repeating: 0, count: displayBins)
-
-        // Find max magnitude for normalization
         var globalMax: Float = 0
         vDSP_maxv(linearMags, 1, &globalMax, vDSP_Length(nyquist))
         let normFactor: Float = globalMax > 0 ? 1.0 / globalMax : 0
@@ -270,11 +268,9 @@ final class AudioEngine {
             for bin in range {
                 maxVal = max(maxVal, linearMags[bin])
             }
-            // Normalize and apply sqrt for perceptual scaling (boosts quieter parts)
             mapped[i] = sqrt(maxVal * normFactor)
         }
 
-        // Light spatial smoothing — 3-tap
         var smoothed = [Float](repeating: 0, count: displayBins)
         for i in 0..<displayBins {
             let lo = max(0, i - 1)
@@ -282,7 +278,6 @@ final class AudioEngine {
             smoothed[i] = (mapped[lo] + mapped[i] * 2 + mapped[hi]) / 4.0
         }
 
-        // Temporal smoothing — batch update
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var newData = self.spectrumData
