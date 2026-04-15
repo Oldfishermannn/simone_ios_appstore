@@ -38,6 +38,7 @@
 		18D4FD5C4231F570598FF39B /* HorizonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6546CD53C9DB2F3D1351561 /* HorizonView.swift */; };
 		7E67A637DED8FDB76593D656 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */; };
 		2599C9A151CD0D8AB2939962 /* CascadeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532F490D936EAD1319237263 /* CascadeView.swift */; };
+		B1C2D3E4F5A6B7C8D9E0F1A3 /* ImmersiveCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* ImmersiveCanvasView.swift */; };
 		C407265F73AB6EB00CC5BC6B /* OrbitalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */; };
 		105AFFD1F23FB8689224EABD /* PulseBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CC7371907F5619091630B6A /* PulseBubbleView.swift */; };
 /* End PBXBuildFile section */
@@ -87,6 +88,7 @@
 		A6546CD53C9DB2F3D1351561 /* HorizonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizonView.swift; sourceTree = "<group>"; };
 		A125076B9D6FAAA9FD6F32F5 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		532F490D936EAD1319237263 /* CascadeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CascadeView.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* ImmersiveCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveCanvasView.swift; sourceTree = "<group>"; };
 		8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalView.swift; sourceTree = "<group>"; };
 		5CC7371907F5619091630B6A /* PulseBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseBubbleView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -175,6 +177,7 @@
 				532F490D936EAD1319237263 /* CascadeView.swift */,
 				8A4BCAC5F432FE5FFBE0E13F /* OrbitalView.swift */,
 				5CC7371907F5619091630B6A /* PulseBubbleView.swift */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* ImmersiveCanvasView.swift */,
 			);
 			path = Visualizers;
 			sourceTree = "<group>";
@@ -315,6 +318,7 @@
 				18D4FD5C4231F570598FF39B /* HorizonView.swift in Sources */,
 				7E67A637DED8FDB76593D656 /* WaveformView.swift in Sources */,
 				2599C9A151CD0D8AB2939962 /* CascadeView.swift in Sources */,
+				B1C2D3E4F5A6B7C8D9E0F1A3 /* ImmersiveCanvasView.swift in Sources */,
 				C407265F73AB6EB00CC5BC6B /* OrbitalView.swift in Sources */,
 				105AFFD1F23FB8689224EABD /* PulseBubbleView.swift in Sources */,
 			);
