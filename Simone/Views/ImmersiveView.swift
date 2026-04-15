@@ -3,20 +3,6 @@ import SwiftUI
 struct ImmersiveView: View {
     @Bindable var state: AppState
 
-    // Ambient particles
-    @State private var particles: [ImmersiveParticle] = []
-
-    // Breathing
-    @State private var breathScale: CGFloat = 1.0
-
-    struct ImmersiveParticle: Identifiable {
-        let id = UUID()
-        var x: CGFloat
-        var y: CGFloat
-        var size: CGFloat
-        var opacity: Double
-        var color: Color
-    }
 
     var body: some View {
         GeometryReader { geo in
@@ -51,38 +37,13 @@ struct ImmersiveView: View {
                     // Layer 2: Edge glow (four sides)
                     edgeGlow(w: w, h: h, energy: avg)
 
-                    // Layer 3: Ambient floating particles
-                    Canvas { context, size in
-                        for particle in particles {
-                            let jitter = CGFloat(avg) * 1.5
-                            let pSize = particle.size + jitter * 0.3
-                            let pOpacity = particle.opacity + Double(avg) * 0.1
-                            let rect = CGRect(
-                                x: particle.x - pSize / 2,
-                                y: particle.y - pSize / 2,
-                                width: pSize,
-                                height: pSize
-                            )
-                            context.fill(
-                                Path(ellipseIn: rect),
-                                with: .color(particle.color.opacity(min(pOpacity, 0.35)))
-                            )
-                        }
-                    }
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-
-                    // Layer 4: Spectrum (core content, unchanged)
+                    // Layer 3: Spectrum (core content, unchanged)
                     SpectrumCarouselView(state: state, showDots: false)
                         .frame(width: specSize, height: specSize)
-                }
-                .onChange(of: timeline.date) { _, _ in
-                    tickParticles(w: w, h: h)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onAppear { seedParticles() }
         .statusBarHidden(true)
     }
 
@@ -130,31 +91,4 @@ struct ImmersiveView: View {
         .ignoresSafeArea()
     }
 
-    // MARK: - Particles
-
-    private func seedParticles() {
-        guard particles.isEmpty else { return }
-        let colors = MorandiPalette.all
-        particles = (0..<30).map { _ in
-            ImmersiveParticle(
-                x: CGFloat.random(in: 0...500),
-                y: CGFloat.random(in: 0...900),
-                size: CGFloat.random(in: 1.5...3.0),
-                opacity: Double.random(in: 0.08...0.2),
-                color: colors.randomElement() ?? .white
-            )
-        }
-    }
-
-    private func tickParticles(w: CGFloat, h: CGFloat) {
-        for i in particles.indices {
-            particles[i].x += CGFloat.random(in: -0.3...0.3)
-            particles[i].y += CGFloat.random(in: -0.25...0.25)
-            // Wrap around
-            if particles[i].x < 0 { particles[i].x += w }
-            if particles[i].x > w { particles[i].x -= w }
-            if particles[i].y < 0 { particles[i].y += h }
-            if particles[i].y > h { particles[i].y -= h }
-        }
-    }
 }
