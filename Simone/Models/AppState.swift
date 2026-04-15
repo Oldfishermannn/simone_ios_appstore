@@ -33,6 +33,33 @@ final class AppState {
     }
     private var evolveTimer: Timer?
 
+    // Playback Mode
+    enum PlaybackMode: String, CaseIterable {
+        case sequential = "顺序"
+        case shuffle = "随机"
+    }
+    var playbackMode: PlaybackMode = .sequential
+
+    // Sleep Timer
+    enum SleepDuration: Int, CaseIterable {
+        case fifteen = 15
+        case thirty = 30
+        case sixty = 60
+        case twoHours = 120
+
+        var label: String {
+            switch self {
+            case .fifteen: "15分"
+            case .thirty: "30分"
+            case .sixty: "1小时"
+            case .twoHours: "2小时"
+            }
+        }
+    }
+    var activeSleepDuration: SleepDuration? = nil
+    var sleepTimerEnd: Date? = nil
+    private var sleepTimer: Timer?
+
     // Config
     var temperature: Float = 1.1
     var guidance: Float = 4.0
@@ -177,6 +204,69 @@ final class AppState {
         let excludedIDs = exploredStyles.map(\.id)
         let newStyles = MoodStyle.randomSelection(count: 4, excluding: excludedIDs)
         exploredStyles.append(contentsOf: newStyles)
+    }
+
+    // MARK: - Sleep Timer
+
+    func startSleepTimer(_ duration: SleepDuration) {
+        sleepTimer?.invalidate()
+        activeSleepDuration = duration
+        sleepTimerEnd = Date().addingTimeInterval(TimeInterval(duration.rawValue * 60))
+        sleepTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(duration.rawValue * 60), repeats: false) { [weak self] _ in
+            guard let self else { return }
+            self.lyriaClient.sendCommand("pause")
+            self.audioEngine.pause()
+            self.activeSleepDuration = nil
+            self.sleepTimerEnd = nil
+        }
+    }
+
+    func cancelSleepTimer() {
+        sleepTimer?.invalidate()
+        sleepTimer = nil
+        activeSleepDuration = nil
+        sleepTimerEnd = nil
+    }
+
+    // MARK: - Playlist
+
+    func playNextInPlaylist() {
+        guard !pinnedStyles.isEmpty else { return }
+        let currentIndex = pinnedStyles.firstIndex(where: { $0.id == selectedStyle?.id })
+
+        let next: MoodStyle
+        switch playbackMode {
+        case .sequential:
+            let nextIndex = ((currentIndex ?? -1) + 1) % pinnedStyles.count
+            next = pinnedStyles[nextIndex]
+        case .shuffle:
+            let available = pinnedStyles.filter { $0.id != selectedStyle?.id }
+            next = available.randomElement() ?? pinnedStyles[0]
+        }
+        selectStyle(next)
+    }
+
+    func playPreviousInPlaylist() {
+        guard !pinnedStyles.isEmpty else { return }
+        let currentIndex = pinnedStyles.firstIndex(where: { $0.id == selectedStyle?.id })
+
+        switch playbackMode {
+        case .sequential:
+            let prevIndex = ((currentIndex ?? 1) - 1 + pinnedStyles.count) % pinnedStyles.count
+            selectStyle(pinnedStyles[prevIndex])
+        case .shuffle:
+            previousStyle()
+        }
+    }
+
+    func refreshRecommendations() {
+        let excludedIDs = pinnedStyles.map(\.id) + exploredStyles.map(\.id)
+        let newStyles = MoodStyle.randomSelection(count: 4, excluding: excludedIDs)
+        if newStyles.isEmpty {
+            exploredStyles = MoodStyle.randomSelection(count: 4, excluding: pinnedStyles.map(\.id))
+        } else {
+            exploredStyles = newStyles
+        }
     }
 
     // MARK: - Private
