@@ -64,7 +64,7 @@ struct ContentView: View {
                 )
                 .lineLimit(1)
 
-            Spacer().frame(height: 14)
+            Spacer().frame(height: 24)
 
             // Transport controls
             PlayControlView(state: state)
