@@ -31,12 +31,6 @@ struct RainfallView: View {
                 let opacity = 0.1 + Double(value) * 0.4
                 context.stroke(line, with: .color(color.opacity(opacity)), lineWidth: barWidth * 0.4)
 
-                // Drop head glow
-                if value > 0.15 {
-                    let dotSize = barWidth * 0.6 + value * 4
-                    let dotRect = CGRect(x: x - dotSize / 2, y: topY - dotSize / 2, width: dotSize, height: dotSize)
-                    context.fill(Path(ellipseIn: dotRect), with: .color(color.opacity(0.3 + Double(value) * 0.4)))
-                }
             }
         }
     }
