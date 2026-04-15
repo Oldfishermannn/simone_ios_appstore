@@ -88,6 +88,6 @@ struct PlayControlView: View {
             .frame(width: 44)
             .disabled(state.selectedStyle == nil)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 0)
     }
 }

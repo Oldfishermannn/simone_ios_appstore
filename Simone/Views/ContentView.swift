@@ -61,6 +61,7 @@ struct ContentView: View {
 
             // Transport controls
             PlayControlView(state: state)
+                .frame(width: specSize)
 
             Spacer()
         }
