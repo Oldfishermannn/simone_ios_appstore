@@ -34,7 +34,7 @@ struct ContentView: View {
 
                         // Style name
                         Text(state.selectedStyle?.name ?? "Simone")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 20, weight: .semibold))
                             .tracking(0.3)
                             .foregroundStyle(Color(white: 0.88))
                             .lineLimit(1)
@@ -51,9 +51,9 @@ struct ContentView: View {
                             showSettings.toggle()
                         } label: {
                             Image(systemName: showSettings ? "chevron.compact.down" : "chevron.compact.up")
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.system(size: 22, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.35))
-                                .frame(width: 40, height: 20)
+                                .frame(width: 44, height: 28)
                         }
                         .buttonStyle(.plain)
 

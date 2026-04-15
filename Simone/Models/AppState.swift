@@ -184,6 +184,7 @@ final class AppState {
             lyriaClient.connect()
             isGenerating = true
         } else {
+            // 直接切：清本地缓冲（立即静音）→ 发新 prompts（服务端热切换）
             audioEngine.clearQueue()
             lyriaClient.sendPrompts(prompts)
         }

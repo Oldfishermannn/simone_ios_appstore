@@ -4,13 +4,13 @@ struct PlayControlView: View {
     @Bindable var state: AppState
 
     var body: some View {
-        HStack(spacing: 32) {
+        HStack(spacing: 40) {
             // Previous style
             Button {
                 state.previousStyle()
             } label: {
                 Image(systemName: "backward.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: 24))
                     .foregroundStyle(.white.opacity(state.styleHistory.isEmpty ? 0.2 : 0.6))
             }
             .buttonStyle(.plain)
@@ -29,11 +29,11 @@ struct PlayControlView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 48, height: 48)
+                        .frame(width: 60, height: 60)
                         .shadow(color: MorandiPalette.rose.opacity(0.3), radius: 8, y: 4)
 
                     Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(Color(red: 0.23, green: 0.22, blue: 0.21))
                 }
             }
@@ -45,7 +45,7 @@ struct PlayControlView: View {
                 state.nextStyle()
             } label: {
                 Image(systemName: "forward.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: 24))
                     .foregroundStyle(.white.opacity(0.6))
             }
             .buttonStyle(.plain)

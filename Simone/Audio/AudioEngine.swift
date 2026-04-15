@@ -12,7 +12,7 @@ final class AudioEngine {
 
     private let sampleRate: Double = 48000
     private let channels: AVAudioChannelCount = 2
-    private let bufferMin = 3
+    private let bufferMin = 1
 
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?

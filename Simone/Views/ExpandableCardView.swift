@@ -9,10 +9,10 @@ struct ExpandableCardView: View {
             if !state.pinnedStyles.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("固定")
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: 11, weight: .medium))
                         .tracking(1)
                         .textCase(.uppercase)
-                        .foregroundStyle(.white.opacity(0.2))
+                        .foregroundStyle(.white.opacity(0.25))
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -32,29 +32,12 @@ struct ExpandableCardView: View {
             // Explore styles with arrows
             VStack(alignment: .leading, spacing: 6) {
                 Text("推荐")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .tracking(1)
                     .textCase(.uppercase)
-                    .foregroundStyle(.white.opacity(0.2))
+                    .foregroundStyle(.white.opacity(0.25))
 
                 ExploreRow(state: state)
-            }
-
-            // Volume
-            HStack(spacing: 12) {
-                Image(systemName: "speaker.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.4))
-
-                Slider(value: Binding(
-                    get: { state.audioEngine.volume },
-                    set: { state.audioEngine.volume = $0 }
-                ), in: 0...1)
-                .tint(MorandiPalette.rose)
-
-                Image(systemName: "speaker.wave.3.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.4))
             }
 
             // Evolve mode
@@ -64,9 +47,9 @@ struct ExpandableCardView: View {
                         state.evolveMode = mode
                     } label: {
                         Text(mode.rawValue)
-                            .font(.system(size: 10, weight: .medium))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
+                            .font(.system(size: 13, weight: .medium))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
                             .background(
                                 state.evolveMode == mode
                                     ? MorandiPalette.mauve.opacity(0.2)
@@ -88,8 +71,8 @@ struct ExpandableCardView: View {
                     state.regenerate()
                 } label: {
                     Image(systemName: "arrow.trianglehead.2.counterclockwise")
-                        .font(.system(size: 12))
-                        .padding(8)
+                        .font(.system(size: 15))
+                        .padding(10)
                         .background(MorandiPalette.sand.opacity(0.15))
                         .clipShape(Circle())
                         .foregroundStyle(MorandiPalette.sand)
@@ -97,16 +80,6 @@ struct ExpandableCardView: View {
                 .buttonStyle(.plain)
             }
 
-            // Labels
-            HStack {
-                Text("Temperature: \(String(format: "%.1f", state.temperature))")
-                Spacer()
-                Text("Guidance: \(String(format: "%.1f", state.guidance))")
-            }
-            .font(.system(size: 10))
-            .tracking(1)
-            .textCase(.uppercase)
-            .foregroundStyle(.white.opacity(0.2))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -125,10 +98,10 @@ private struct StylePill: View {
     var body: some View {
         Button(action: onTap) {
             Text(style.name)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .lineLimit(1)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
                 .background(
                     isActive
                         ? MorandiPalette.rose.opacity(0.2)
@@ -139,15 +112,23 @@ private struct StylePill: View {
                         ? MorandiPalette.rose
                         : .white.opacity(0.5)
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
         .contextMenu {
             if let onPin {
-                Button("固定") { onPin() }
+                Button {
+                    onPin()
+                } label: {
+                    Label("固定", systemImage: "pin.fill")
+                }
             }
             if let onUnpin {
-                Button("取消固定") { onUnpin() }
+                Button {
+                    onUnpin()
+                } label: {
+                    Label("取消固定", systemImage: "pin.slash.fill")
+                }
             }
         }
     }
@@ -177,7 +158,7 @@ private struct ExploreRow: View {
                 withAnimation(.easeInOut(duration: 0.15)) { page -= 1 }
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(canGoBack ? 0.5 : 0.15))
                     .frame(width: 20, height: 24)
             }
@@ -204,7 +185,7 @@ private struct ExploreRow: View {
                 }
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.5))
                     .frame(width: 20, height: 24)
             }
