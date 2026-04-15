@@ -2,13 +2,14 @@ import SwiftUI
 
 struct CascadeView: View {
     let spectrumData: [Float]
+    var density: Int = 1
 
     var body: some View {
         Canvas { context, size in
             let w = size.width
             let h = size.height
-            let lineCount = 12
-            let segments = 60
+            let lineCount = density > 1 ? 24 : 12
+            let segments = density > 1 ? 90 : 60
 
             guard spectrumData.count > 0 else { return }
 

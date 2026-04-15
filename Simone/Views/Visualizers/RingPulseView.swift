@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RingPulseView: View {
     let spectrumData: [Float]
+    var density: Int = 1
 
     var body: some View {
         Canvas { context, size in
@@ -9,8 +10,8 @@ struct RingPulseView: View {
             let h = size.height
             let cx = w / 2
             let cy = h / 2
-            let segments = 36
-            let ringCount = 4
+            let segments = density > 1 ? 64 : 36
+            let ringCount = density > 1 ? 7 : 4
             let binCount = spectrumData.count
 
             guard binCount > 0 else { return }

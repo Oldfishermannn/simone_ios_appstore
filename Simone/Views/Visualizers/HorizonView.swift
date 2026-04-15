@@ -2,20 +2,32 @@ import SwiftUI
 
 struct HorizonView: View {
     let spectrumData: [Float]
+    var density: Int = 1
 
     var body: some View {
         Canvas { context, size in
             let w = size.width
             let h = size.height
 
-            let layers: [(color: Color, baseY: CGFloat, amp: CGFloat)] = [
-                (MorandiPalette.blue,  0.75, 0.20),
-                (MorandiPalette.sage,  0.68, 0.18),
-                (MorandiPalette.mauve, 0.60, 0.16),
-                (MorandiPalette.rose,  0.52, 0.14),
-            ]
+            let layers: [(color: Color, baseY: CGFloat, amp: CGFloat)] = density > 1
+                ? [
+                    (MorandiPalette.sand,  0.88, 0.16),
+                    (MorandiPalette.blue,  0.82, 0.22),
+                    (MorandiPalette.sage,  0.75, 0.20),
+                    (MorandiPalette.mauve, 0.68, 0.18),
+                    (MorandiPalette.rose,  0.60, 0.16),
+                    (MorandiPalette.blue,  0.52, 0.14),
+                    (MorandiPalette.sage,  0.44, 0.12),
+                    (MorandiPalette.mauve, 0.36, 0.10),
+                ]
+                : [
+                    (MorandiPalette.blue,  0.75, 0.20),
+                    (MorandiPalette.sage,  0.68, 0.18),
+                    (MorandiPalette.mauve, 0.60, 0.16),
+                    (MorandiPalette.rose,  0.52, 0.14),
+                ]
 
-            let points = 64
+            let points = density > 1 ? 96 : 64
 
             for (layerIdx, layer) in layers.enumerated() {
                 var yValues = [CGFloat]()

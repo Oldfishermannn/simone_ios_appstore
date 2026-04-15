@@ -2,12 +2,13 @@ import SwiftUI
 
 struct ConstellationView: View {
     let spectrumData: [Float]
+    var density: Int = 1
 
     var body: some View {
         Canvas { context, size in
             let w = size.width
             let h = size.height
-            let starCount = 28
+            let starCount = density > 1 ? 48 : 28
 
             var positions: [CGPoint] = []
             var brightnesses: [CGFloat] = []

@@ -3,6 +3,7 @@ import SwiftUI
 struct SpectrumCarouselView: View {
     @Bindable var state: AppState
     var showDots: Bool = true
+    var density: Int = 1
 
     @State private var scrollPosition: Int?
     @State private var dotsVisible: Bool = true
@@ -88,15 +89,15 @@ struct SpectrumCarouselView: View {
     private func visualizerView(for style: VisualizerStyle, spectrumData: [Float]) -> some View {
         switch style {
         case .horizon:
-            HorizonView(spectrumData: spectrumData)
+            HorizonView(spectrumData: spectrumData, density: density)
         case .aurora:
-            AuroraView(spectrumData: spectrumData)
+            AuroraView(spectrumData: spectrumData, density: density)
         case .cascade:
-            CascadeView(spectrumData: spectrumData)
+            CascadeView(spectrumData: spectrumData, density: density)
         case .constellation:
-            ConstellationView(spectrumData: spectrumData)
+            ConstellationView(spectrumData: spectrumData, density: density)
         case .ringPulse:
-            RingPulseView(spectrumData: spectrumData)
+            RingPulseView(spectrumData: spectrumData, density: density)
         }
     }
 }
