@@ -51,17 +51,10 @@ struct ContentView: View {
             Spacer().frame(height: 36)
 
             // Style name above controls
-            Text(state.selectedStyle?.name ?? "")
-                .font(.system(size: 22, weight: .light, design: .serif))
-                .italic()
-                .tracking(1.5)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(white: 0.92), MorandiPalette.rose.opacity(0.7)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+            Text(state.selectedStyle?.name ?? "– –")
+                .font(.system(size: 18, weight: .regular))
+                .tracking(0.5)
+                .foregroundStyle(Color(white: 0.65))
                 .lineLimit(1)
 
             Spacer().frame(height: 24)
