@@ -51,7 +51,7 @@ struct ContentView: View {
             Spacer().frame(height: 56)
 
             // Style name above controls
-            Text(state.selectedStyle?.name ?? "– –")
+            Text(state.selectedStyle?.name ?? " ")
                 .font(.system(size: 18, weight: .regular))
                 .tracking(0.5)
                 .foregroundStyle(Color(white: 0.65))
