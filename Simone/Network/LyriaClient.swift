@@ -19,7 +19,7 @@ final class LyriaClient {
     private var autoReconnect = true
     private var reconnectAttempts = 0
 
-    init(serverURL: URL = URL(string: "ws://10.0.0.128:8765/ws")!) {
+    init(serverURL: URL = URL(string: "wss://generic-unshackle-coral.ngrok-free.dev/ws")!) {
         self.serverURL = serverURL
         self.session = URLSession(configuration: .default)
     }
