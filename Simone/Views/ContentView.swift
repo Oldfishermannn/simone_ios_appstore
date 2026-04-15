@@ -40,7 +40,7 @@ struct ContentView: View {
     @ViewBuilder
     private func mainPage(specSize: CGFloat) -> some View {
         VStack(spacing: 0) {
-            Spacer().frame(height: 28)
+            Spacer().frame(height: 48)
 
             // Spectrum
             SpectrumCarouselView(state: state)

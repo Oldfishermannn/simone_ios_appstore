@@ -22,19 +22,16 @@ struct PlayControlView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [MorandiPalette.rose, MorandiPalette.mauve],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 52, height: 52)
+                        .overlay(
+                            Circle()
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
                         )
-                        .frame(width: 60, height: 60)
-                        .shadow(color: MorandiPalette.rose.opacity(0.3), radius: 8, y: 4)
 
                     Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.23, green: 0.22, blue: 0.21))
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
                 }
             }
             .buttonStyle(.plain)
