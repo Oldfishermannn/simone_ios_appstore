@@ -76,19 +76,17 @@ struct PlayControlView: View {
 
             Spacer()
 
-            // Refresh style
+            // Regenerate current style
             Button {
-                state.refreshRecommendations()
-                if let style = state.exploredStyles.first {
-                    state.selectStyle(style)
-                }
+                state.regenerate()
             } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(0.4))
+                    .foregroundStyle(.white.opacity(state.selectedStyle == nil ? 0.2 : 0.4))
             }
             .buttonStyle(.plain)
             .frame(width: 44)
+            .disabled(state.selectedStyle == nil)
         }
         .padding(.horizontal, 20)
     }
