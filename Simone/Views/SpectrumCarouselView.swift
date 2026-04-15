@@ -63,6 +63,12 @@ struct SpectrumCarouselView: View {
             scrollPosition = idx
             scheduleDotsFade()
         }
+        .onChange(of: state.selectedVisualizer) { _, newValue in
+            let idx = styles.firstIndex(of: newValue) ?? 0
+            if scrollPosition != idx {
+                scrollPosition = idx
+            }
+        }
         .onChange(of: scrollPosition) { _, _ in
             dotsVisible = true
             scheduleDotsFade()
