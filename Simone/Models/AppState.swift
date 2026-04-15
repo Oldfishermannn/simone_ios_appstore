@@ -5,7 +5,7 @@ import Observation
 final class AppState {
     // Selection
     var selectedStyle: MoodStyle? = nil
-    var selectedVisualizer: VisualizerStyle = .aurora
+    var selectedVisualizer: VisualizerStyle = .horizon
 
     // Style history (for previous/next navigation)
     var styleHistory: [MoodStyle] = []
