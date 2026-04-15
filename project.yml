@@ -1,0 +1,29 @@
+name: Simone
+options:
+  bundleIdPrefix: com.simone
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+targets:
+  Simone:
+    type: application
+    platform: iOS
+    sources:
+      - Simone
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        INFOPLIST_FILE: Simone/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.simone.ios
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_ROTATION: true
+  SimoneTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - SimoneTests
+    dependencies:
+      - target: Simone
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
