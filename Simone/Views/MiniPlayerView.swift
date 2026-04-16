@@ -36,7 +36,7 @@ struct MiniPlayerView: View {
                     .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(1)
 
-                Text(state.audioEngine.isPlaying ? "播放中" : "已暂停")
+                Text(state.audioEngine.isPlaying ? "Now Playing" : "Paused")
                     .font(.system(size: 10))
                     .foregroundStyle(.white.opacity(0.3))
             }

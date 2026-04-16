@@ -210,7 +210,14 @@ struct SettingsView: View {
                 Divider().background(Color.white.opacity(0.05))
                 aboutRow(icon: "cpu", label: "Powered by", detail: "Google Lyria AI")
                 Divider().background(Color.white.opacity(0.05))
-                aboutRow(icon: "shield", label: "Privacy Policy", detail: "→")
+                Button {
+                    if let url = URL(string: "https://oldfishermannn.github.io/simone_ios_appstore/privacy.html") {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    aboutRow(icon: "shield", label: "Privacy Policy", detail: "→")
+                }
+                .buttonStyle(.plain)
             }
             .background(Color.white.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 12))

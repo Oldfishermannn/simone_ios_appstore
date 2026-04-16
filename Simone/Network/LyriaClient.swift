@@ -39,19 +39,19 @@ final class LyriaClient {
 
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else {
             DispatchQueue.main.async {
-                self.statusMessage = "请先设置 Gemini API Key"
+                self.statusMessage = "API Key not configured"
             }
             return
         }
 
         connectionState = .connecting
-        statusMessage = "正在连接 Lyria..."
+        statusMessage = "Connecting..."
         isSetupComplete = false
         reconnectAttempts = 0
         autoReconnect = true
 
         guard let url = URL(string: "\(Self.endpoint)?key=\(apiKey)") else {
-            statusMessage = "无效的 API Key"
+            statusMessage = "Invalid API Key"
             connectionState = .disconnected
             return
         }
@@ -76,7 +76,7 @@ final class LyriaClient {
         webSocket?.cancel(with: .goingAway, reason: nil)
         webSocket = nil
         connectionState = .disconnected
-        statusMessage = "已断开"
+        statusMessage = "Disconnected"
         isSetupComplete = false
     }
 
@@ -149,7 +149,7 @@ final class LyriaClient {
         webSocket?.send(.string(string)) { [weak self] error in
             if let error {
                 DispatchQueue.main.async {
-                    self?.statusMessage = "发送失败: \(error.localizedDescription)"
+                    self?.statusMessage = "Send failed: \(error.localizedDescription)"
                 }
             }
         }
@@ -189,7 +189,7 @@ final class LyriaClient {
             DispatchQueue.main.async {
                 self.connectionState = .connected
                 self.reconnectAttempts = 0
-                self.statusMessage = "已连接"
+                self.statusMessage = "Connected"
                 self.onConnected?()
             }
         } else if let serverContent = json["serverContent"] as? [String: Any],
@@ -203,7 +203,7 @@ final class LyriaClient {
             }
         } else if json["filteredPrompt"] != nil {
             DispatchQueue.main.async {
-                self.statusMessage = "Prompt 被安全过滤"
+                self.statusMessage = "Prompt filtered by safety"
             }
         }
     }
@@ -214,7 +214,7 @@ final class LyriaClient {
 
         DispatchQueue.main.async {
             self.connectionState = wasPlaying ? .reconnecting : .disconnected
-            self.statusMessage = wasPlaying ? "会话轮转中..." : "连接断开"
+            self.statusMessage = wasPlaying ? "Reconnecting..." : "Disconnected"
         }
 
         // Lyria ~30s 超时自动断开，需要自动重连（会话轮转）
@@ -273,7 +273,7 @@ final class LyriaClient {
                     DispatchQueue.main.async {
                         self.connectionState = .connected
                         self.reconnectAttempts = 0
-                        self.statusMessage = "已重连"
+                        self.statusMessage = "Reconnected"
                     }
                     // 恢复之前的参数
                     if let prompts = self.lastPrompts {
