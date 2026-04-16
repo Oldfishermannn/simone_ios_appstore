@@ -8,3 +8,6 @@ xcuserdata/
 Secrets.xcconfig
 Simone/Network/APIKeyObfuscator.swift
 .superpowers/
+
+# Asset backups
+Simone/Assets.xcassets/AppIcon.appiconset/AppIcon_backup.png
