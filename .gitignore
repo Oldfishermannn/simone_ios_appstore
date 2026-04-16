@@ -7,3 +7,4 @@ xcuserdata/
 .env.local
 Secrets.xcconfig
 Simone/Network/APIKeyObfuscator.swift
+.superpowers/

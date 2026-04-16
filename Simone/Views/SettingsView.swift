@@ -25,6 +25,11 @@ struct SettingsView: View {
 
             Spacer().frame(height: 20)
 
+            // Session Rotation（稳定性：25min 同频道自动换台）
+            sessionRotationSection
+
+            Spacer().frame(height: 20)
+
             // Visualizer
             visualizerSection
 
@@ -166,6 +171,28 @@ struct SettingsView: View {
 
                 Spacer()
             }
+        }
+    }
+
+    // MARK: - Session Rotation
+
+    private var sessionRotationSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("AUTO CHANNEL ROTATE")
+                    .font(.system(size: 11, weight: .medium))
+                    .tracking(1)
+                    .foregroundStyle(.white.opacity(0.25))
+                Spacer()
+                Toggle("", isOn: $state.sessionRotationEnabled)
+                    .labelsHidden()
+                    .tint(MorandiPalette.sand)
+            }
+
+            Text("Rotate to the next station in the same channel every 25 minutes to keep the stream fresh.")
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(0.35))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

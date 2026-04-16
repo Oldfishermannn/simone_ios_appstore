@@ -24,6 +24,12 @@ final class AudioEngine {
     private var scheduledBufferCount = 0
     private let scheduleLock = NSLock()
 
+    // Playback watchdog — 卡死检测（isPlaying 但长时间无新 chunk 且 buffer 排空 → 触发外部重连）
+    var onPlaybackStalled: (() -> Void)?
+    private var lastChunkReceivedAt: Date?
+    private var watchdogTimer: Timer?
+    private let stallThreshold: TimeInterval = 10
+
     // Interruption observer token
     private var interruptionObserver: NSObjectProtocol?
 
@@ -120,6 +126,7 @@ final class AudioEngine {
             warmUpEngine()
         }
         isPlaying = true
+        startWatchdog()
     }
 
     func stop() {
@@ -129,6 +136,7 @@ final class AudioEngine {
         engine = nil
         playerNode = nil
         isPlaying = false
+        stopWatchdog()
         bufferQueue.clear()
         resetScheduledCount()
         spectrumData = Array(repeating: 0, count: displayBins)
@@ -137,6 +145,7 @@ final class AudioEngine {
     func pause() {
         playerNode?.pause()
         isPlaying = false
+        stopWatchdog()
     }
 
     func resume() {
@@ -149,9 +158,11 @@ final class AudioEngine {
         }
         playerNode?.play()
         isPlaying = true
+        startWatchdog()
     }
 
     func handleAudioChunk(_ data: Data) {
+        lastChunkReceivedAt = Date()
         bufferQueue.enqueue(data)
 
         if !isDraining && bufferQueue.count >= bufferMin {
@@ -233,6 +244,34 @@ final class AudioEngine {
         scheduleLock.lock()
         scheduledBufferCount = 0
         scheduleLock.unlock()
+    }
+
+    // MARK: - Watchdog
+
+    private func startWatchdog() {
+        stopWatchdog()
+        lastChunkReceivedAt = Date()
+        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            self?.checkStall()
+        }
+    }
+
+    private func stopWatchdog() {
+        watchdogTimer?.invalidate()
+        watchdogTimer = nil
+    }
+
+    private func checkStall() {
+        guard isPlaying, let last = lastChunkReceivedAt else { return }
+        let elapsed = Date().timeIntervalSince(last)
+        // 卡死条件：长时间没新 chunk + player 已经把 30s ring buffer 吃空
+        if elapsed > stallThreshold, isUnderrun {
+            // 先 bump 时间戳防止重复触发
+            lastChunkReceivedAt = Date()
+            DispatchQueue.main.async { [weak self] in
+                self?.onPlaybackStalled?()
+            }
+        }
     }
 
     // MARK: - Buffer processing
@@ -369,14 +408,76 @@ final class AudioEngine {
 
 #if os(iOS)
 import MediaPlayer
+import UIKit
 
 extension AudioEngine {
-    func updateNowPlaying(scene: String, style: String?) {
+    func updateNowPlaying(
+        scene: String,
+        style: String?,
+        tintRGB: (CGFloat, CGFloat, CGFloat)? = nil
+    ) {
         var info = [String: Any]()
-        info[MPMediaItemPropertyTitle] = style.map { "\(scene) × \($0)" } ?? scene
-        info[MPMediaItemPropertyArtist] = "Simone"
+        info[MPMediaItemPropertyTitle] = style ?? scene
+        info[MPMediaItemPropertyArtist] = "Simone — AI Ambient Radio"
         info[MPNowPlayingInfoPropertyIsLiveStream] = true
+
+        let tint: UIColor = {
+            if let rgb = tintRGB {
+                return UIColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
+            }
+            return UIColor(red: 196/255, green: 166/255, blue: 157/255, alpha: 1)
+        }()
+
+        if let artwork = Self.makeArtwork(tint: tint, title: style ?? scene) {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: artwork.size) { _ in artwork }
+        }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    private static func makeArtwork(tint: UIColor, title: String) -> UIImage? {
+        let size = CGSize(width: 512, height: 512)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            // 渐变底（频道色 → 深色）
+            let cg = ctx.cgContext
+            let colors = [tint.cgColor, UIColor(white: 0.08, alpha: 1).cgColor]
+            let colorSpace = CGColorSpaceCreateDeviceRGB()
+            if let gradient = CGGradient(
+                colorsSpace: colorSpace,
+                colors: colors as CFArray,
+                locations: [0, 1]
+            ) {
+                cg.drawLinearGradient(
+                    gradient,
+                    start: CGPoint(x: 0, y: 0),
+                    end: CGPoint(x: size.width, y: size.height),
+                    options: []
+                )
+            }
+
+            // "Simone" logo
+            let brandAttr: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 48, weight: .light),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.9),
+                .kern: 4
+            ]
+            let brandSize = ("Simone" as NSString).size(withAttributes: brandAttr)
+            ("Simone" as NSString).draw(
+                at: CGPoint(x: (size.width - brandSize.width) / 2, y: 180),
+                withAttributes: brandAttr
+            )
+
+            // style/scene 副标题
+            let subAttr: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 26, weight: .regular),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.55)
+            ]
+            let subSize = (title as NSString).size(withAttributes: subAttr)
+            (title as NSString).draw(
+                at: CGPoint(x: (size.width - subSize.width) / 2, y: 260),
+                withAttributes: subAttr
+            )
+        }
     }
 
     func setupRemoteCommandCenter(

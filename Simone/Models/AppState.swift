@@ -50,6 +50,23 @@ final class AppState {
     var sleepTimerEnd: Date? = nil
     private var sleepTimer: Timer?
 
+    // Session Rotation — 规避 Lyria 长连接老化，25min 后主动在同频道内换台
+    // 可逆：用户可在设置关闭，回退到"纯手动换台"行为
+    var sessionRotationEnabled: Bool = true {
+        didSet {
+            UserDefaults.standard.set(sessionRotationEnabled, forKey: sessionRotationKey)
+            if sessionRotationEnabled, audioEngine.isPlaying {
+                restartSessionRotationTimer()
+            } else {
+                sessionRotationTimer?.invalidate()
+                sessionRotationTimer = nil
+            }
+        }
+    }
+    private let sessionRotationKey = "sessionRotationEnabled"
+    private let sessionRotationInterval: TimeInterval = 25 * 60  // 25min
+    private var sessionRotationTimer: Timer?
+
 
     // Config
     var temperature: Float = 1.1
@@ -86,11 +103,23 @@ final class AppState {
             pinnedStyles = decoded
         }
 
+        // Load session rotation preference（首次启动默认开启）
+        if UserDefaults.standard.object(forKey: sessionRotationKey) != nil {
+            sessionRotationEnabled = UserDefaults.standard.bool(forKey: sessionRotationKey)
+        }
+
         lyriaClient.onAudioChunk = { [weak self] data in
             self?.audioEngine.handleAudioChunk(data)
         }
         lyriaClient.onConnected = { [weak self] in
             self?.sendCurrentPrompts()
+        }
+        // 卡死自救：AudioEngine 发现 10s 无新 chunk + buffer 空 → 触发重连
+        audioEngine.onPlaybackStalled = { [weak self] in
+            guard let self, self.audioEngine.isPlaying else { return }
+            self.statusMessage = "Recovering stream..."
+            self.lyriaClient.disconnect()
+            self.lyriaClient.connect()
         }
         #if os(iOS)
         audioEngine.setupRemoteCommandCenter(
@@ -118,9 +147,12 @@ final class AppState {
         if audioEngine.isPlaying {
             lyriaClient.sendCommand("pause")
             audioEngine.pause()
+            sessionRotationTimer?.invalidate()
+            sessionRotationTimer = nil
         } else if lyriaClient.connectionState == .connected {
             lyriaClient.sendCommand("play")
             audioEngine.resume()
+            restartSessionRotationTimer()
         } else {
             // Auto-select Lo-fi Chill preset if nothing selected
             if selectedStyle == nil {
@@ -229,6 +261,8 @@ final class AppState {
             guard let self else { return }
             self.lyriaClient.sendCommand("pause")
             self.audioEngine.pause()
+            self.sessionRotationTimer?.invalidate()
+            self.sessionRotationTimer = nil
             self.activeSleepDuration = nil
             self.sleepTimerEnd = nil
         }
@@ -266,13 +300,33 @@ final class AppState {
             }
             lyriaClient.sendPrompts(prompts)
         }
+        restartSessionRotationTimer()
         #if os(iOS)
         audioEngine.updateNowPlaying(
-            scene: "Simone",
-            style: style.name
+            scene: currentCategory.displayName,
+            style: style.name,
+            tintRGB: Self.tintRGB(for: currentCategory)
         )
         #endif
     }
+
+    #if os(iOS)
+    /// 频道色→UIColor RGB 三元组（避免 UI 层依赖渗进 Audio 层）
+    private static func tintRGB(for category: StyleCategory) -> (CGFloat, CGFloat, CGFloat) {
+        switch category {
+        case .lofi:       return (196/255, 166/255, 157/255)  // rose
+        case .jazz:       return (201/255, 178/255, 135/255)  // sand
+        case .blues:      return (146/255, 162/255, 181/255)  // blue
+        case .rnb:        return (181/255, 160/255, 181/255)  // mauve
+        case .rock:       return (180/255, 140/255, 140/255)
+        case .pop:        return (190/255, 175/255, 160/255)
+        case .electronic: return (146/255, 162/255, 181/255)
+        case .classical:  return (166/255, 178/255, 156/255)  // sage
+        case .ambient:    return (181/255, 160/255, 181/255)
+        case .folk:       return (166/255, 178/255, 156/255)
+        }
+    }
+    #endif
 
     private func sendCurrentPrompts() {
         guard let style = selectedStyle else { return }
@@ -316,6 +370,23 @@ final class AppState {
         evolveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self, self.audioEngine.isPlaying else { return }
             self.evolve()
+        }
+    }
+
+    // MARK: - Session Rotation（25min 自动在同频道内换台，规避 Lyria 长连接老化）
+
+    private func restartSessionRotationTimer() {
+        sessionRotationTimer?.invalidate()
+        sessionRotationTimer = nil
+        guard sessionRotationEnabled else { return }
+
+        sessionRotationTimer = Timer.scheduledTimer(
+            withTimeInterval: sessionRotationInterval,
+            repeats: false
+        ) { [weak self] _ in
+            guard let self, self.audioEngine.isPlaying else { return }
+            // 同频道下一台，触发 applySelection → 再次 restart 定时器（形成滚动）
+            self.nextStyle()
         }
     }
 
