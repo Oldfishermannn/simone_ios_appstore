@@ -45,16 +45,30 @@ struct VerticalPageView<Content: View>: UIViewControllerRepresentable {
     class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
         let parent: VerticalPageView
         var currentIndex: Int
+        private var cachedControllers: [Int: UIHostingController<AnyView>] = [:]
 
         init(_ parent: VerticalPageView) {
             self.parent = parent
             self.currentIndex = parent.currentPage
+            super.init()
+            // 预缓存所有页面，避免首次切页时卡顿
+            for i in 0..<parent.pageCount {
+                let vc = UIHostingController(rootView: AnyView(parent.content(i)))
+                vc.view.backgroundColor = .clear
+                vc.view.tag = i
+                cachedControllers[i] = vc
+            }
         }
 
         func makeHostingController(for index: Int) -> UIHostingController<AnyView> {
+            if let cached = cachedControllers[index] {
+                cached.rootView = AnyView(parent.content(index))
+                return cached
+            }
             let vc = UIHostingController(rootView: AnyView(parent.content(index)))
             vc.view.backgroundColor = .clear
             vc.view.tag = index
+            cachedControllers[index] = vc
             return vc
         }
 

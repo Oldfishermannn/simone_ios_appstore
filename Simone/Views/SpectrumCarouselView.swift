@@ -102,8 +102,14 @@ struct SpectrumCarouselView: View {
             LatticeView(spectrumData: spectrumData, density: density)
         case .prism:
             PrismView(spectrumData: spectrumData, density: density)
-        case .tide:
-            TideView(spectrumData: spectrumData, density: density)
+        case .matrix:
+            MatrixView(spectrumData: spectrumData, density: density)
+        case .flora:
+            FloraView(spectrumData: spectrumData, density: density)
+        case .glitch:
+            GlitchView(spectrumData: spectrumData, density: density)
+        case .oscilloscope:
+            OscilloscopeView(spectrumData: spectrumData, density: density)
         }
     }
 }

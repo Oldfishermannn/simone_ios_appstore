@@ -2,6 +2,12 @@ import SwiftUI
 
 struct DetailsView: View {
     @Bindable var state: AppState
+    @State private var selectedTab: ChannelTab = .favorites
+
+    enum ChannelTab: Hashable {
+        case favorites
+        case category(StyleCategory)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -11,240 +17,143 @@ struct DetailsView: View {
             MiniPlayerView(state: state)
                 .padding(.horizontal, 16)
 
-            Spacer().frame(height: 20)
-
-            // Favorites
-            favoritesSection
-                .padding(.horizontal, 16)
-
-            Spacer().frame(height: 20)
-
-            // Recommendations
-            recommendationsSection
-                .padding(.horizontal, 16)
-
-            Spacer().frame(height: 24)
-
-            // Evolve
-            evolveSection
-                .padding(.horizontal, 16)
-
             Spacer().frame(height: 16)
 
-            // Sleep Timer
-            sleepTimerSection
+            // Tab Bar
+            tabBar
                 .padding(.horizontal, 16)
 
-            Spacer().frame(height: 32)
+            Spacer().frame(height: 12)
+
+            // Style List
+            styleList
+                .padding(.horizontal, 16)
+
+            Spacer()
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Favorites
+    // MARK: - Tab Bar
 
-    private var favoritesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("喜爱")
-                    .font(.system(size: 11, weight: .medium))
-                    .tracking(1)
-                    .textCase(.uppercase)
-                    .foregroundStyle(.white.opacity(0.25))
-
-                Spacer()
-
-                HStack(spacing: 8) {
-                    // 循环播放喜爱栏
-                    Button {
-                        state.playNextInPlaylist()
-                    } label: {
-                        Text("🔁")
-                            .font(.system(size: 14))
-                            .opacity(state.pinnedStyles.isEmpty ? 0.2 : 0.7)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(state.pinnedStyles.isEmpty)
-
-                    // 随机播放推荐栏
-                    Button {
-                        if let random = state.exploredStyles.randomElement() {
-                            state.selectStyle(random)
-                        }
-                    } label: {
-                        Text("🔀")
-                            .font(.system(size: 14))
-                            .opacity(state.exploredStyles.isEmpty ? 0.2 : 0.7)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(state.exploredStyles.isEmpty)
+    private var tabBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                // Favorites tab
+                tabButton(
+                    label: "♡ Favorites",
+                    isSelected: selectedTab == .favorites,
+                    color: MorandiPalette.rose
+                ) {
+                    selectedTab = .favorites
                 }
-            }
 
-            if state.pinnedStyles.isEmpty {
-                Text("点击 ♡ 将喜爱的风格添加到这里")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.white.opacity(0.15))
-                    .padding(.vertical, 12)
-            } else {
-                List {
-                    ForEach(state.pinnedStyles) { style in
-                        StyleRowView(
-                            style: style,
-                            isPlaying: state.selectedStyle?.id == style.id,
-                            isFavorite: true,
-                            showFavoriteButton: true,
-                            onTap: { state.selectStyle(style) },
-                            onToggleFavorite: { state.unpinStyle(style) }
-                        )
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 2, leading: 0, bottom: 2, trailing: 0))
-                        .listRowSeparator(.hidden)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                state.unpinStyle(style)
-                            } label: {
-                                Label("删除", systemImage: "trash")
-                            }
-                        }
+                // Category tabs
+                ForEach(StyleCategory.allCases, id: \.rawValue) { category in
+                    tabButton(
+                        label: category.displayName,
+                        isSelected: selectedTab == .category(category),
+                        color: category.color
+                    ) {
+                        selectedTab = .category(category)
                     }
                 }
-                .listStyle(.plain)
-                .frame(maxHeight: 200)
             }
         }
     }
 
-    // MARK: - Recommendations
+    private func tabButton(label: String, isSelected: Bool, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 13, weight: .medium))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    isSelected
+                        ? color.opacity(0.2)
+                        : Color.white.opacity(0.04)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(
+                    isSelected
+                        ? color
+                        : .white.opacity(0.4)
+                )
+        }
+        .buttonStyle(.plain)
+    }
 
-    private var recommendationsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("推荐")
-                    .font(.system(size: 11, weight: .medium))
-                    .tracking(1)
-                    .textCase(.uppercase)
-                    .foregroundStyle(.white.opacity(0.25))
+    // MARK: - Style List
 
-                Spacer()
-
-                Button {
-                    state.refreshRecommendations()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "arrow.trianglehead.2.counterclockwise")
-                            .font(.system(size: 11))
-                        Text("换一批")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundStyle(MorandiPalette.rose)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(MorandiPalette.rose.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+    private var styleList: some View {
+        ScrollView {
+            LazyVStack(spacing: 4) {
+                switch selectedTab {
+                case .favorites:
+                    favoritesContent
+                case .category(let category):
+                    categoryContent(category)
                 }
-                .buttonStyle(.plain)
             }
+        }
+    }
 
-            ForEach(state.exploredStyles) { style in
-                let isFav = state.pinnedStyles.contains(where: { $0.id == style.id })
+    // MARK: - Favorites Content
+
+    @ViewBuilder
+    private var favoritesContent: some View {
+        if state.pinnedStyles.isEmpty {
+            VStack(spacing: 12) {
+                Spacer().frame(height: 40)
+                Image(systemName: "heart")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.white.opacity(0.15))
+                Text("Tap ♡ on any style to save it here")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white.opacity(0.2))
+                Spacer()
+            }
+        } else {
+            ForEach(state.pinnedStyles) { style in
                 StyleRowView(
                     style: style,
                     isPlaying: state.selectedStyle?.id == style.id,
-                    isFavorite: isFav,
+                    isFavorite: true,
                     showFavoriteButton: true,
                     onTap: { state.selectStyle(style) },
-                    onToggleFavorite: {
-                        if isFav {
-                            state.unpinStyle(style)
-                        } else {
-                            state.pinStyle(style)
-                        }
-                    }
+                    onToggleFavorite: { state.unpinStyle(style) }
                 )
             }
         }
     }
 
-    // MARK: - Evolve
+    // MARK: - Category Content
 
-    private var evolveSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("演化 EVOLVE")
-                .font(.system(size: 11, weight: .medium))
-                .tracking(1)
-                .textCase(.uppercase)
-                .foregroundStyle(.white.opacity(0.25))
+    @ViewBuilder
+    private func categoryContent(_ category: StyleCategory) -> some View {
+        let styles = MoodStyle.presets(for: category)
 
-            HStack(spacing: 6) {
-                ForEach(AppState.EvolveMode.allCases, id: \.rawValue) { mode in
-                    Button {
-                        state.evolveMode = mode
-                    } label: {
-                        Text(mode.rawValue)
-                            .font(.system(size: 13, weight: .medium))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(
-                                state.evolveMode == mode
-                                    ? MorandiPalette.mauve.opacity(0.2)
-                                    : Color.white.opacity(0.04)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .foregroundStyle(
-                                state.evolveMode == mode
-                                    ? MorandiPalette.mauve
-                                    : .white.opacity(0.4)
-                            )
+        ForEach(styles) { style in
+            StyleRowView(
+                style: style,
+                isPlaying: state.selectedStyle?.id == style.id,
+                isFavorite: state.isPinned(style),
+                showFavoriteButton: true,
+                onTap: {
+                    state.currentCategory = category
+                    state.selectStyle(style)
+                },
+                onToggleFavorite: {
+                    if state.isPinned(style) {
+                        state.unpinStyle(style)
+                    } else {
+                        state.pinStyle(style)
                     }
-                    .buttonStyle(.plain)
                 }
-
-                Spacer()
-            }
+            )
         }
+
     }
 
-    // MARK: - Sleep Timer
-
-    private var sleepTimerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("定时关闭")
-                .font(.system(size: 11, weight: .medium))
-                .tracking(1)
-                .textCase(.uppercase)
-                .foregroundStyle(.white.opacity(0.25))
-
-            HStack(spacing: 6) {
-                ForEach(AppState.SleepDuration.allCases, id: \.rawValue) { duration in
-                    Button {
-                        if state.activeSleepDuration == duration {
-                            state.cancelSleepTimer()
-                        } else {
-                            state.startSleepTimer(duration)
-                        }
-                    } label: {
-                        Text(duration.label)
-                            .font(.system(size: 13, weight: .medium))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(
-                                state.activeSleepDuration == duration
-                                    ? MorandiPalette.sand.opacity(0.2)
-                                    : Color.white.opacity(0.04)
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .foregroundStyle(
-                                state.activeSleepDuration == duration
-                                    ? MorandiPalette.sand
-                                    : .white.opacity(0.4)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Spacer()
-            }
-        }
-    }
 }

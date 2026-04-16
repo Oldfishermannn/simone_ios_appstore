@@ -13,7 +13,7 @@ final class AudioEngine {
     private let sampleRate: Double = 48000
     private let channels: AVAudioChannelCount = 2
     private let bufferMin = 1
-    private let fadeSamples = 96 // 2ms at 48kHz — imperceptible but kills pops
+    private let fadeSamples = 48 // 1ms at 48kHz — imperceptible but kills pops
 
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
@@ -37,7 +37,7 @@ final class AudioEngine {
         fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(fftSize), .FORWARD)
         let nyquist = fftSize / 2
         let minFreqBin = 1
-        let maxFreqBin = nyquist - 1
+        let maxFreqBin = nyquist / 2  // Cap at ~12kHz — music content lives here
         let logMin = log2(Float(minFreqBin))
         let logMax = log2(Float(maxFreqBin))
         for i in 0..<displayBins {
@@ -50,6 +50,8 @@ final class AudioEngine {
 
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        // 增大 IO buffer（默认~5ms → 46ms），防止 UI 动画/截图导致的系统级 audio pop
+        try? AVAudioSession.sharedInstance().setPreferredIOBufferDuration(0.046)
         try? AVAudioSession.sharedInstance().setActive(true)
         setupInterruptionObserver()
         #endif
@@ -295,10 +297,11 @@ final class AudioEngine {
                 }
             }
 
-            // Fade-in on first buffer after underrun (silence → audio transition)
-            if wasUnderrun && idx == 0 {
-                applyFadeIn(pcmBuffer, frames: fadeSamples)
-            }
+            // Fade-in/out on every buffer: ensures all transitions are smooth
+            // - Normal playback: buffer boundaries go through 0 seamlessly (1ms dip, inaudible)
+            // - Underrun: both edges fade to/from 0, no pop
+            applyFadeIn(pcmBuffer, frames: fadeSamples)
+            applyFadeOut(pcmBuffer, frames: fadeSamples)
 
             incrementScheduled()
             player.scheduleBuffer(pcmBuffer) { [weak self] in

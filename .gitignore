@@ -5,3 +5,5 @@ DerivedData/
 xcuserdata/
 *.xcscmblueprint
 .env.local
+Secrets.xcconfig
+Simone/Network/APIKeyObfuscator.swift

@@ -7,12 +7,11 @@ final class AppState {
     var selectedStyle: MoodStyle? = nil
     var selectedVisualizer: VisualizerStyle = .horizon
 
+    // Category navigation
+    var currentCategory: StyleCategory = .lofi
+
     // Style history (for previous/next navigation)
     var styleHistory: [MoodStyle] = []
-
-    // Explore (kept for compatibility)
-    var exploredStyles: [MoodStyle] = []
-    var exploredIndex: Int = 0
 
     // Pinned (persisted)
     var pinnedStyles: [MoodStyle] = []
@@ -23,7 +22,7 @@ final class AppState {
 
     // Auto-Evolve
     enum EvolveMode: String, CaseIterable {
-        case locked = "锁定"
+        case locked = "Lock"
         case auto10s = "10 sec"
         case auto1m = "1 min"
         case auto5m = "5 min"
@@ -33,26 +32,17 @@ final class AppState {
     }
     private var evolveTimer: Timer?
 
-    // Playback Mode
-    enum PlaybackMode: String, CaseIterable {
-        case sequential = "顺序"
-        case shuffle = "随机"
-    }
-    var playbackMode: PlaybackMode = .sequential
-
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
-        case fifteen = 15
         case thirty = 30
         case sixty = 60
         case twoHours = 120
 
         var label: String {
             switch self {
-            case .fifteen: "15分"
-            case .thirty: "30分"
-            case .sixty: "1小时"
-            case .twoHours: "2小时"
+            case .thirty: "30 min"
+            case .sixty: "1 hour"
+            case .twoHours: "2 hours"
             }
         }
     }
@@ -60,19 +50,24 @@ final class AppState {
     var sleepTimerEnd: Date? = nil
     private var sleepTimer: Timer?
 
+
     // Config
     var temperature: Float = 1.1
     var guidance: Float = 4.0
-    var bpm: Int = 0           // 0 = 由模型决定
-    var density: Float = -1    // -1 = 由模型决定
-    var brightness: Float = -1 // -1 = 由模型决定
+    var bpm: Int = 0           // 0 = model decides
+    var density: Float = -1    // -1 = model decides
+    var brightness: Float = -1 // -1 = model decides
     var topK: Int = 40
     var muteBass: Bool = false
     var muteDrums: Bool = false
     var onlyBassAndDrums: Bool = false
     var musicMode: String = "QUALITY"  // QUALITY / DIVERSITY / VOCALIZATION
 
-    /// UI 切换参数后调用，立刻发送完整 config 给服务端
+    // Energy / Mood sliders (Max feature, sent as config)
+    var energy: Float = 0.5    // 0..1
+    var mood: Float = 0.5      // 0..1
+
+    /// Apply current config to server
     func applyConfig() {
         guard lyriaClient.connectionState == .connected else { return }
         lyriaClient.sendConfig(buildFullConfig())
@@ -90,9 +85,6 @@ final class AppState {
            let decoded = try? JSONDecoder().decode([MoodStyle].self, from: data) {
             pinnedStyles = decoded
         }
-
-        // Populate initial exploration list
-        exploredStyles = MoodStyle.randomSelection(count: 4, excluding: [])
 
         lyriaClient.onAudioChunk = { [weak self] data in
             self?.audioEngine.handleAudioChunk(data)
@@ -112,6 +104,7 @@ final class AppState {
             }
         )
         #endif
+
     }
 
     // MARK: - Actions
@@ -129,13 +122,10 @@ final class AppState {
             lyriaClient.sendCommand("play")
             audioEngine.resume()
         } else {
-            // Auto-select first pinned style if nothing selected
+            // Auto-select Lo-fi Chill preset if nothing selected
             if selectedStyle == nil {
-                if let first = pinnedStyles.first {
-                    selectedStyle = first
-                } else if let first = exploredStyles.first {
-                    selectedStyle = first
-                }
+                selectedStyle = MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
+                    ?? MoodStyle.presets.first
             }
             audioEngine.start()
             lyriaClient.connect()
@@ -154,7 +144,6 @@ final class AppState {
             isGenerating = true
         } else {
             audioEngine.clearQueue()
-            // 重置 Lyria 上下文，强制全新生成
             lyriaClient.sendCommand("reset_context")
             let nudge = Float.random(in: -0.3...0.3)
             let config: [String: Any] = [
@@ -166,7 +155,43 @@ final class AppState {
         }
     }
 
+    /// Next style — cycles within current category
     func nextStyle() {
+        if let current = selectedStyle {
+            styleHistory.append(current)
+        }
+        let categoryStyles = MoodStyle.presets(for: currentCategory)
+        guard !categoryStyles.isEmpty else { return }
+
+        if let current = selectedStyle,
+           let idx = categoryStyles.firstIndex(where: { $0.id == current.id }) {
+            let nextIdx = (idx + 1) % categoryStyles.count
+            selectStyle(categoryStyles[nextIdx])
+        } else {
+            selectStyle(categoryStyles[0])
+        }
+    }
+
+    /// Previous style — cycles within current category or pops history
+    func previousStyle() {
+        if let prev = styleHistory.popLast() {
+            selectStyle(prev)
+            return
+        }
+        let categoryStyles = MoodStyle.presets(for: currentCategory)
+        guard !categoryStyles.isEmpty else { return }
+
+        if let current = selectedStyle,
+           let idx = categoryStyles.firstIndex(where: { $0.id == current.id }) {
+            let prevIdx = (idx - 1 + categoryStyles.count) % categoryStyles.count
+            selectStyle(categoryStyles[prevIdx])
+        } else {
+            selectStyle(categoryStyles.last!)
+        }
+    }
+
+    /// Random style — used by Free tier (random radio)
+    func randomStyle() {
         if let current = selectedStyle {
             styleHistory.append(current)
         }
@@ -175,11 +200,6 @@ final class AppState {
         if let style = next.first {
             selectStyle(style)
         }
-    }
-
-    func previousStyle() {
-        guard let prev = styleHistory.popLast() else { return }
-        selectStyle(prev)
     }
 
     // MARK: - Pin / Unpin
@@ -195,12 +215,8 @@ final class AppState {
         savePinnedStyles()
     }
 
-    // MARK: - Explore
-
-    func exploreMore() {
-        let excludedIDs = exploredStyles.map(\.id)
-        let newStyles = MoodStyle.randomSelection(count: 4, excluding: excludedIDs)
-        exploredStyles.append(contentsOf: newStyles)
+    func isPinned(_ style: MoodStyle) -> Bool {
+        pinnedStyles.contains(where: { $0.id == style.id })
     }
 
     // MARK: - Sleep Timer
@@ -225,41 +241,6 @@ final class AppState {
         sleepTimerEnd = nil
     }
 
-    // MARK: - Playlist
-
-    func playNextInPlaylist() {
-        guard !pinnedStyles.isEmpty else { return }
-        let currentIndex = pinnedStyles.firstIndex(where: { $0.id == selectedStyle?.id })
-
-        let next: MoodStyle
-        switch playbackMode {
-        case .sequential:
-            let nextIndex = ((currentIndex ?? -1) + 1) % pinnedStyles.count
-            next = pinnedStyles[nextIndex]
-        case .shuffle:
-            let available = pinnedStyles.filter { $0.id != selectedStyle?.id }
-            next = available.randomElement() ?? pinnedStyles[0]
-        }
-        selectStyle(next)
-    }
-
-    func playPreviousInPlaylist() {
-        guard !pinnedStyles.isEmpty else { return }
-        let currentIndex = pinnedStyles.firstIndex(where: { $0.id == selectedStyle?.id })
-
-        switch playbackMode {
-        case .sequential:
-            let prevIndex = ((currentIndex ?? 1) - 1 + pinnedStyles.count) % pinnedStyles.count
-            selectStyle(pinnedStyles[prevIndex])
-        case .shuffle:
-            previousStyle()
-        }
-    }
-
-    func refreshRecommendations() {
-        exploredStyles = MoodStyle.generateNewStyles(count: 4)
-    }
-
     // MARK: - Private
 
     private func savePinnedStyles() {
@@ -279,10 +260,8 @@ final class AppState {
             isGenerating = true
         } else {
             if audioEngine.isPlaying {
-                // 播放中切歌：只清队列，不打断播放
                 audioEngine.clearQueue()
             } else {
-                // 暂停状态切歌：flush 旧 buffer，保持暂停
                 audioEngine.flushScheduledBuffers()
             }
             lyriaClient.sendPrompts(prompts)

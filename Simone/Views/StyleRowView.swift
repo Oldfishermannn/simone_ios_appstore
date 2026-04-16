@@ -11,9 +11,6 @@ struct StyleRowView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 10) {
-                Text(showFavoriteButton && !isFavorite ? "✨" : "🎵")
-                    .font(.system(size: 14))
-
                 Text(style.name)
                     .font(.system(size: 15, weight: isPlaying ? .semibold : .regular))
                     .foregroundStyle(isPlaying ? MorandiPalette.rose : .white.opacity(0.65))
