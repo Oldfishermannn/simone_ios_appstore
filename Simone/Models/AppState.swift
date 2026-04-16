@@ -50,23 +50,6 @@ final class AppState {
     var sleepTimerEnd: Date? = nil
     private var sleepTimer: Timer?
 
-    // Session Rotation — 规避 Lyria 长连接老化，25min 后主动在同频道内换台
-    // 可逆：用户可在设置关闭，回退到"纯手动换台"行为
-    var sessionRotationEnabled: Bool = true {
-        didSet {
-            UserDefaults.standard.set(sessionRotationEnabled, forKey: sessionRotationKey)
-            if sessionRotationEnabled, audioEngine.isPlaying {
-                restartSessionRotationTimer()
-            } else {
-                sessionRotationTimer?.invalidate()
-                sessionRotationTimer = nil
-            }
-        }
-    }
-    private let sessionRotationKey = "sessionRotationEnabled"
-    private let sessionRotationInterval: TimeInterval = 25 * 60  // 25min
-    private var sessionRotationTimer: Timer?
-
 
     // Config
     var temperature: Float = 1.1
@@ -101,11 +84,6 @@ final class AppState {
         if let data = UserDefaults.standard.data(forKey: pinnedKey),
            let decoded = try? JSONDecoder().decode([MoodStyle].self, from: data) {
             pinnedStyles = decoded
-        }
-
-        // Load session rotation preference（首次启动默认开启）
-        if UserDefaults.standard.object(forKey: sessionRotationKey) != nil {
-            sessionRotationEnabled = UserDefaults.standard.bool(forKey: sessionRotationKey)
         }
 
         lyriaClient.onAudioChunk = { [weak self] data in
@@ -147,12 +125,9 @@ final class AppState {
         if audioEngine.isPlaying {
             lyriaClient.sendCommand("pause")
             audioEngine.pause()
-            sessionRotationTimer?.invalidate()
-            sessionRotationTimer = nil
         } else if lyriaClient.connectionState == .connected {
             lyriaClient.sendCommand("play")
             audioEngine.resume()
-            restartSessionRotationTimer()
         } else {
             // Auto-select Lo-fi Chill preset if nothing selected
             if selectedStyle == nil {
@@ -261,8 +236,6 @@ final class AppState {
             guard let self else { return }
             self.lyriaClient.sendCommand("pause")
             self.audioEngine.pause()
-            self.sessionRotationTimer?.invalidate()
-            self.sessionRotationTimer = nil
             self.activeSleepDuration = nil
             self.sleepTimerEnd = nil
         }
@@ -300,7 +273,6 @@ final class AppState {
             }
             lyriaClient.sendPrompts(prompts)
         }
-        restartSessionRotationTimer()
         #if os(iOS)
         audioEngine.updateNowPlaying(
             scene: currentCategory.displayName,
@@ -370,23 +342,6 @@ final class AppState {
         evolveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self, self.audioEngine.isPlaying else { return }
             self.evolve()
-        }
-    }
-
-    // MARK: - Session Rotation（25min 自动在同频道内换台，规避 Lyria 长连接老化）
-
-    private func restartSessionRotationTimer() {
-        sessionRotationTimer?.invalidate()
-        sessionRotationTimer = nil
-        guard sessionRotationEnabled else { return }
-
-        sessionRotationTimer = Timer.scheduledTimer(
-            withTimeInterval: sessionRotationInterval,
-            repeats: false
-        ) { [weak self] _ in
-            guard let self, self.audioEngine.isPlaying else { return }
-            // 同频道下一台，触发 applySelection → 再次 restart 定时器（形成滚动）
-            self.nextStyle()
         }
     }
 
