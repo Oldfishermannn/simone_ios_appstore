@@ -54,11 +54,11 @@ struct ContentView: View {
 
             Spacer().frame(height: 60)
 
-            // Category badge
-            Text(state.currentCategory.displayName.uppercased())
+            // Channel badge — v1.1.1: binds to currentChannel so Favorites shows "FAVORITES".
+            Text(state.currentChannel.displayName.uppercased())
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2)
-                .foregroundStyle(state.currentCategory.color.opacity(0.5))
+                .foregroundStyle(channelBadgeTint.opacity(0.5))
 
             Spacer().frame(height: 8)
 
@@ -122,6 +122,13 @@ struct ContentView: View {
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
+    }
+
+    private var channelBadgeTint: Color {
+        switch state.currentChannel {
+        case .favorites:       return MorandiPalette.rose
+        case .category(let c): return c.color
+        }
     }
 
     // Two-phase slide animation: slide out → swap data → slide in
