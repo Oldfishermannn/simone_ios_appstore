@@ -5,6 +5,13 @@ struct ContentView: View {
     @State private var currentPage: Int = 1  // 0=Immersive, 1=Main, 2=Details
     @State private var nameSlideOffset: CGFloat = 0
     @State private var nameOpacity: Double = 1.0
+    @State private var channelSlideOffset: CGFloat = 0
+    @State private var channelOpacity: Double = 1.0
+    // Buffered display values — let us slide the OLD name out before the NEW
+    // value becomes visible. state.* updates the instant channel swipe lands,
+    // so reading it directly would skip the slide-out phase.
+    @State private var displayChannel: Channel = .category(.lofi)
+    @State private var displayStyleName: String = " "
 
     var body: some View {
         GeometryReader { geo in
@@ -38,6 +45,21 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
             }
+            .onAppear {
+                displayChannel = state.currentChannel
+                displayStyleName = state.selectedStyle?.name ?? " "
+            }
+            .onChange(of: state.currentChannel) { old, new in
+                slideOnChannelChange(from: old, to: new)
+            }
+            .onChange(of: state.selectedStyle?.id) { _, _ in
+                // Direct preset tap (e.g. from DetailsView) updates selectedStyle
+                // without going through switchStyle/slideOnChannelChange — sync
+                // the buffered name when we're not currently animating.
+                if nameSlideOffset == 0 && nameOpacity == 1.0 {
+                    displayStyleName = state.selectedStyle?.name ?? " "
+                }
+            }
         }
     }
 
@@ -54,16 +76,21 @@ struct ContentView: View {
 
             Spacer().frame(height: 60)
 
-            // Channel badge — v1.1.1: binds to currentChannel so Favorites shows "FAVORITES".
-            Text(state.currentChannel.displayName.uppercased())
+            // Channel badge — v1.1.1: binds to displayChannel (buffered) so
+            // Favorites shows "FAVORITES" and the slide-out phase renders the
+            // OLD channel name before the swap commits.
+            Text(displayChannel.displayName.uppercased())
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .tracking(2)
                 .foregroundStyle(channelBadgeTint.opacity(0.5))
+                .offset(x: channelSlideOffset)
+                .opacity(channelOpacity)
 
             Spacer().frame(height: 8)
 
-            // Style name with manual slide animation
-            Text(state.selectedStyle?.name ?? " ")
+            // Style name with manual slide animation (triggers on ◁▷ press
+            // AND on channel swipe — both drive the same buffered value).
+            Text(displayStyleName)
                 .font(.system(size: 20, weight: .regular))
                 .tracking(0.5)
                 .foregroundStyle(Color(white: 0.65))
@@ -125,7 +152,9 @@ struct ContentView: View {
     }
 
     private var channelBadgeTint: Color {
-        switch state.currentChannel {
+        // Reads displayChannel (not state.currentChannel) so the tint slides
+        // out with the OLD badge instead of snapping to the new color on swipe.
+        switch displayChannel {
         case .favorites:       return MorandiPalette.rose
         case .category(let c): return c.color
         }
@@ -145,8 +174,43 @@ struct ContentView: View {
         // Phase 2: swap data, then slide new name in
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             action()
+            displayStyleName = state.selectedStyle?.name ?? " "
             nameSlideOffset = slideIn
             withAnimation(.easeOut(duration: 0.18)) {
+                nameSlideOffset = 0
+                nameOpacity = 1
+            }
+        }
+    }
+
+    /// Channel swipe slides badge + style name together, same direction as the
+    /// carousel's horizontal scroll (forward = next channel, slides leftward out).
+    private func slideOnChannelChange(from old: Channel, to new: Channel) {
+        let channels = Channel.all
+        let oldIdx = channels.firstIndex(of: old) ?? 0
+        let newIdx = channels.firstIndex(of: new) ?? 0
+        let forward = newIdx >= oldIdx
+
+        let slideOut: CGFloat = forward ? -80 : 80
+        let slideIn: CGFloat = forward ? 80 : -80
+
+        // Phase 1: slide both texts out (old values still rendered via buffered display vars)
+        withAnimation(.easeIn(duration: 0.12)) {
+            channelSlideOffset = slideOut
+            channelOpacity = 0
+            nameSlideOffset = slideOut
+            nameOpacity = 0
+        }
+
+        // Phase 2: commit new values, then slide in from the opposite edge
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            displayChannel = new
+            displayStyleName = state.selectedStyle?.name ?? " "
+            channelSlideOffset = slideIn
+            nameSlideOffset = slideIn
+            withAnimation(.easeOut(duration: 0.18)) {
+                channelSlideOffset = 0
+                channelOpacity = 1
                 nameSlideOffset = 0
                 nameOpacity = 1
             }

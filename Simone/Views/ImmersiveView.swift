@@ -3,6 +3,14 @@ import SwiftUI
 struct ImmersiveView: View {
     @Bindable var state: AppState
 
+    // Slide-on-channel-swipe plumbing — mirrors ContentView's pattern so the
+    // immersive page overlay tracks the same horizontal gesture the carousel
+    // already animates.
+    @State private var nameSlideOffset: CGFloat = 0
+    @State private var nameOpacity: Double = 1.0
+    @State private var displayStyleName: String = ""
+    @State private var displayStyle: MoodStyle? = nil
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -17,17 +25,22 @@ struct ImmersiveView: View {
                 VStack(spacing: 0) {
                     Spacer()
 
-                    // Music DNA
-                    if let style = state.selectedStyle {
+                    // Music DNA — reads displayStyle so tags slide with the name
+                    if let style = displayStyle {
                         musicDNA(style: style)
+                            .offset(x: nameSlideOffset)
+                            .opacity(nameOpacity)
                         Spacer().frame(height: 10)
                     }
 
-                    // Style name
-                    Text(state.selectedStyle?.name ?? "")
+                    // Style name (effectively the channel name on immersive — it
+                    // flips to the new channel's first preset on swipe).
+                    Text(displayStyleName)
                         .font(.system(size: 22, weight: .light))
                         .tracking(1.5)
                         .foregroundStyle(.white.opacity(0.65))
+                        .offset(x: nameSlideOffset)
+                        .opacity(nameOpacity)
 
                     Spacer().frame(height: 100)
                 }
@@ -36,6 +49,45 @@ struct ImmersiveView: View {
         }
         .ignoresSafeArea()
         .statusBarHidden(true)
+        .onAppear {
+            displayStyleName = state.selectedStyle?.name ?? ""
+            displayStyle = state.selectedStyle
+        }
+        .onChange(of: state.currentChannel) { old, new in
+            slideOnChannelChange(from: old, to: new)
+        }
+        .onChange(of: state.selectedStyle?.id) { _, _ in
+            // Direct preset tap (DetailsView) — sync when not animating.
+            if nameSlideOffset == 0 && nameOpacity == 1.0 {
+                displayStyleName = state.selectedStyle?.name ?? ""
+                displayStyle = state.selectedStyle
+            }
+        }
+    }
+
+    private func slideOnChannelChange(from old: Channel, to new: Channel) {
+        let channels = Channel.all
+        let oldIdx = channels.firstIndex(of: old) ?? 0
+        let newIdx = channels.firstIndex(of: new) ?? 0
+        let forward = newIdx >= oldIdx
+
+        let slideOut: CGFloat = forward ? -80 : 80
+        let slideIn: CGFloat = forward ? 80 : -80
+
+        withAnimation(.easeIn(duration: 0.12)) {
+            nameSlideOffset = slideOut
+            nameOpacity = 0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            displayStyleName = state.selectedStyle?.name ?? ""
+            displayStyle = state.selectedStyle
+            nameSlideOffset = slideIn
+            withAnimation(.easeOut(duration: 0.18)) {
+                nameSlideOffset = 0
+                nameOpacity = 1
+            }
+        }
     }
 
     // MARK: - Music DNA
