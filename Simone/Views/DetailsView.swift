@@ -75,44 +75,51 @@ struct DetailsView: View {
     /// Top dial — free-scroll horizontal picker. No scrollTargetBehavior, so
     /// the user can flick and land wherever. scrollPosition(id:, anchor:.center)
     /// tracks whichever item is centered and pushes that into dialIdx.
+    /// Cells are content-hugging (uniform font, variable width per name) so
+    /// long names like "ELECTRONIC" / "DREAMSCAPE" never truncate.
     private var channelDial: some View {
         GeometryReader { geo in
+            let sideInset = geo.size.width / 2
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 0) {
+                    // Leading inset so the first cell can be centered.
+                    Color.clear.frame(width: sideInset)
+
                     ForEach(Array(channels.enumerated()), id: \.element) { index, channel in
-                        dialCell(channel: channel, index: index, containerWidth: geo.size.width)
+                        dialCell(channel: channel, index: index)
                             .id(index)
                     }
+
+                    // Trailing inset so the last cell can be centered.
+                    Color.clear.frame(width: sideInset)
                 }
                 .scrollTargetLayout()
             }
             .scrollPosition(id: $dialIdx, anchor: .center)
         }
-        .frame(height: 32)
+        .frame(height: 36)
     }
 
     @ViewBuilder
-    private func dialCell(channel: Channel, index: Int, containerWidth: CGFloat) -> some View {
+    private func dialCell(channel: Channel, index: Int) -> some View {
         let currentIdx = dialIdx ?? 0
         let distance = abs(index - currentIdx)
         let isCurrent = distance == 0
 
-        let fontSize: CGFloat = isCurrent ? 13 : (distance == 1 ? 10 : 9)
-        let tracking: CGFloat = isCurrent ? 1.8 : 1.2
-        let opacity: Double = isCurrent ? 0.85 : (distance == 1 ? 0.30 : 0.15)
-        let weight: Font.Weight = isCurrent ? .semibold : .regular
+        // Uniform font size / weight — layout stays stable as dial scrolls.
+        // Emphasis is done via color + opacity, not size jumps.
+        let opacity: Double = isCurrent
+            ? 0.90
+            : (distance == 1 ? 0.38 : (distance == 2 ? 0.22 : 0.12))
         let tint: Color = isCurrent ? headerTint : .white
 
-        // Fixed cell width = containerWidth / 5 → 5 cells visible at once.
-        let cellWidth = containerWidth / 5
-
         Text(channel.displayName.uppercased())
-            .font(.system(size: fontSize, weight: weight))
-            .tracking(tracking)
+            .font(.system(size: 13, weight: .medium))
+            .tracking(1.4)
             .foregroundStyle(tint.opacity(opacity))
             .lineLimit(1)
-            .truncationMode(.tail)
-            .frame(width: cellWidth)
+            .padding(.horizontal, 18)
     }
 
     private var pillIndicator: some View {
