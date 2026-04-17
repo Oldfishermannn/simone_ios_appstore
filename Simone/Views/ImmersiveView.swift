@@ -11,15 +11,43 @@ struct ImmersiveView: View {
     @State private var displayStyleName: String = ""
     @State private var displayStyle: MoodStyle? = nil
 
+    /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
+    /// Default is big; small mode shows a card-sized spectrum at top.
+    @State private var isSmall: Bool = false
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 Color(red: 0.165, green: 0.165, blue: 0.18)
                     .ignoresSafeArea()
 
-                // Full-screen spectrum (background)
-                SpectrumCarouselView(state: state, showDots: false, density: 2)
-                    .frame(width: geo.size.width, height: geo.size.height)
+                if isSmall {
+                    // Small mode — card-style spectrum near the top
+                    VStack(spacing: 0) {
+                        Spacer().frame(height: 110)
+
+                        let specSize = min(geo.size.width - 64, 300)
+                        SpectrumCarouselView(state: state, showDots: false, density: 1)
+                            .frame(width: specSize, height: specSize)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                            .shadow(color: .black.opacity(0.25), radius: 18, x: 0, y: 6)
+                            .contentShape(RoundedRectangle(cornerRadius: 16))
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.25)) { isSmall = false }
+                            }
+
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    // Big mode — full-screen spectrum
+                    SpectrumCarouselView(state: state, showDots: false, density: 2)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.25)) { isSmall = true }
+                        }
+                }
 
                 // Overlay UI
                 VStack(spacing: 0) {
@@ -44,6 +72,7 @@ struct ImmersiveView: View {
 
                     Spacer().frame(height: 100)
                 }
+                .allowsHitTesting(false)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

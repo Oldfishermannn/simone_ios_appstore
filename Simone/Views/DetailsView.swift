@@ -43,6 +43,11 @@ struct DetailsView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+
+            // v1.1.1: transport controls — ported from the old main page.
+            transportControls
+
+            Spacer().frame(height: 24)
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
@@ -135,6 +140,49 @@ struct DetailsView: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
+    }
+
+    // MARK: - Transport
+
+    /// Bottom transport — prev / play-pause / next. Same visual as the old
+    /// main page so muscle memory carries over.
+    private var transportControls: some View {
+        HStack(spacing: 40) {
+            Button {
+                state.previousStyle()
+            } label: {
+                Image(systemName: "backward.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                state.togglePlayPause()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 52, height: 52)
+                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                    Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .buttonStyle(.plain)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
+
+            Button {
+                state.nextStyle()
+            } label: {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 8)
     }
 
     private var headerTint: Color {
