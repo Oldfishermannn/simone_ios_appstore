@@ -236,38 +236,38 @@ final class AppState {
         }
     }
 
-    /// Next style — cycles within current category
+    /// Next style — cycles within the current channel (category preset pool, or pinned list for Favorites).
     func nextStyle() {
+        let channelStyles = stylesInCurrentChannel
+        guard !channelStyles.isEmpty else { return }  // Favorites empty → no-op
         if let current = selectedStyle {
             styleHistory.append(current)
         }
-        let categoryStyles = MoodStyle.presets(for: currentCategory)
-        guard !categoryStyles.isEmpty else { return }
 
         if let current = selectedStyle,
-           let idx = categoryStyles.firstIndex(where: { $0.id == current.id }) {
-            let nextIdx = (idx + 1) % categoryStyles.count
-            selectStyle(categoryStyles[nextIdx])
+           let idx = channelStyles.firstIndex(where: { $0.id == current.id }) {
+            let nextIdx = (idx + 1) % channelStyles.count
+            selectStyle(channelStyles[nextIdx])
         } else {
-            selectStyle(categoryStyles[0])
+            selectStyle(channelStyles[0])
         }
     }
 
-    /// Previous style — cycles within current category or pops history
+    /// Previous style — pops history first, then cycles within the current channel.
     func previousStyle() {
         if let prev = styleHistory.popLast() {
             selectStyle(prev)
             return
         }
-        let categoryStyles = MoodStyle.presets(for: currentCategory)
-        guard !categoryStyles.isEmpty else { return }
+        let channelStyles = stylesInCurrentChannel
+        guard !channelStyles.isEmpty else { return }
 
         if let current = selectedStyle,
-           let idx = categoryStyles.firstIndex(where: { $0.id == current.id }) {
-            let prevIdx = (idx - 1 + categoryStyles.count) % categoryStyles.count
-            selectStyle(categoryStyles[prevIdx])
+           let idx = channelStyles.firstIndex(where: { $0.id == current.id }) {
+            let prevIdx = (idx - 1 + channelStyles.count) % channelStyles.count
+            selectStyle(channelStyles[prevIdx])
         } else {
-            selectStyle(categoryStyles.last!)
+            selectStyle(channelStyles.last!)
         }
     }
 
