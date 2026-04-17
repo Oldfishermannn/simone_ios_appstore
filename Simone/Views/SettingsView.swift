@@ -68,7 +68,7 @@ struct SettingsView: View {
             }
 
             if showEvolveInfo {
-                Text("Music subtly shifts over time, like a DJ slowly changing the vibe. 10s = fast changes, 5m = slow drift, Lock = stay the same.")
+                Text("Music subtly shifts over time, like a DJ slowly changing the vibe. 30s = fast changes, 5m = slow drift, Lock = stay the same.")
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.35))
                     .padding(12)

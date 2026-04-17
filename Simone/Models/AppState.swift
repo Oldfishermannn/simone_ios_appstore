@@ -29,11 +29,13 @@ final class AppState {
     // Auto-Evolve
     enum EvolveMode: String, CaseIterable {
         case locked = "Lock"
-        case auto10s = "10 sec"
+        case auto30s = "30 sec"
         case auto1m = "1 min"
         case auto5m = "5 min"
     }
-    var evolveMode: EvolveMode = .auto10s {
+    // Default Lock: don't touch a landed soundscape unless the user opts in.
+    // 30s is the fastest tier — 10s felt twitchy on Lyria's settle time.
+    var evolveMode: EvolveMode = .locked {
         didSet { restartEvolveTimer() }
     }
     private var evolveTimer: Timer?
@@ -431,7 +433,7 @@ final class AppState {
         let interval: TimeInterval
         switch evolveMode {
         case .locked: return
-        case .auto10s: interval = 10
+        case .auto30s: interval = 30
         case .auto1m: interval = 60
         case .auto5m: interval = 300
         }
