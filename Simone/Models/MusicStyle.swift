@@ -17,18 +17,22 @@ struct MoodStyle: Identifiable, Equatable, Codable, Transferable {
         CodableRepresentation(contentType: .moodStyle)
     }
 
-    // MARK: - Preset Pool (10 categories × 6-8 styles)
+    // MARK: - Preset Pool (10 categories × ≥10 styles, 103 total)
 
     static let presets: [MoodStyle] = [
-        // Lo-fi
+        // MARK: Lo-fi (10)
         MoodStyle(id: "lofi-chill", name: "Lo-fi Chill", prompt: "Lo-fi hip hop with dusty vinyl crackle, mellow piano chords, and lazy drum patterns", category: .lofi),
         MoodStyle(id: "lofi-jazz", name: "Lo-fi Jazz", prompt: "Lo-fi jazz with warm Rhodes chords, vinyl hiss, tape-saturated bass, and brushed drums", category: .lofi),
         MoodStyle(id: "lofi-rain", name: "Lo-fi Rain", prompt: "Lo-fi beats with gentle rain ambience, soft piano melodies, and slow shuffling drums", category: .lofi),
         MoodStyle(id: "lofi-study", name: "Study Beats", prompt: "Calm lo-fi study music with soft piano loops, ambient pad textures, gentle vinyl hiss, and minimal percussion", category: .lofi),
         MoodStyle(id: "lofi-sunset", name: "Lo-fi Sunset", prompt: "Warm lo-fi with golden hour vibes, mellow guitar chords, soft Rhodes, and tape-warped beats", category: .lofi),
         MoodStyle(id: "lofi-anime", name: "Lo-fi Anime", prompt: "Japanese lo-fi with nostalgic piano melody, light chimes, warm bass, and cozy bedroom beats", category: .lofi),
+        MoodStyle(id: "bedroom-pop", name: "Bedroom Pop", prompt: "Bedroom pop with lo-fi guitar, soft vocal harmonies feel, warm synth pads, and intimate drum machine", category: .lofi),
+        MoodStyle(id: "chill-pop", name: "Chill Pop", prompt: "Chill pop with warm acoustic guitar, light electronic production, airy melodies, and soft beats", category: .lofi),
+        MoodStyle(id: "lofi-tokyo-night", name: "Tokyo Night", prompt: "Tokyo night lo-fi with dim neon atmosphere, mellow electric piano, tape-hissed bass, and quiet drum machine", category: .lofi),
+        MoodStyle(id: "lofi-morning-coffee", name: "Morning Coffee", prompt: "Morning lo-fi with warm acoustic guitar loops, soft Rhodes chords, cassette warmth, and slow lazy beats", category: .lofi),
 
-        // Jazz
+        // MARK: Jazz (10)
         MoodStyle(id: "night-jazz", name: "Night Jazz", prompt: "Late-night jazz trio with smoky tenor saxophone, walking upright bass, and brushed snare", category: .jazz),
         MoodStyle(id: "cafe-jazz", name: "Caf\u{00E9} Jazz", prompt: "Cozy caf\u{00E9} jazz with warm Rhodes piano, subtle acoustic guitar comping, and light bossa rhythm", category: .jazz),
         MoodStyle(id: "smooth-jazz", name: "Smooth Jazz", prompt: "Smooth jazz with silky soprano saxophone, warm electric piano chords, and gentle funk groove", category: .jazz),
@@ -36,72 +40,108 @@ struct MoodStyle: Identifiable, Equatable, Codable, Transferable {
         MoodStyle(id: "cool-jazz", name: "Cool Jazz", prompt: "Cool jazz with muted trumpet, soft vibraphone chords, gentle walking bass, and restrained brushwork", category: .jazz),
         MoodStyle(id: "modal-jazz", name: "Modal Jazz", prompt: "Modal jazz with open piano voicings, floating soprano sax melody, sparse bass, and contemplative drums", category: .jazz),
         MoodStyle(id: "jazz-waltz", name: "Jazz Waltz", prompt: "Elegant jazz waltz with flowing piano trio, gentle 3/4 swing, warm upright bass, and light cymbal ride", category: .jazz),
+        MoodStyle(id: "swing-jazz", name: "Swing", prompt: "Classic swing jazz with punchy big band horns, steady walking bass, snappy ride cymbal, and lively piano comping", category: .jazz),
+        MoodStyle(id: "jazz-ballad", name: "Jazz Ballad", prompt: "Slow jazz ballad with tender tenor saxophone, spacious piano voicings, warm upright bass, and soft brushes", category: .jazz),
+        MoodStyle(id: "hard-bop", name: "Hard Bop", prompt: "Hard bop quintet with urgent trumpet and sax unison lines, driving walking bass, and punchy ride-heavy drums", category: .jazz),
 
-        // Blues
-        MoodStyle(id: "slow-blues", name: "Slow Blues", prompt: "Slow blues with soulful electric guitar bends, warm organ chords, and shuffling brush drums", category: .blues),
-        MoodStyle(id: "delta-blues", name: "Delta Blues", prompt: "Raw delta blues with acoustic slide guitar, stomping foot percussion, and gravelly harmonica", category: .blues),
-        MoodStyle(id: "chicago-blues", name: "Chicago Blues", prompt: "Electric Chicago blues with overdriven guitar, walking bass, punchy horns, and driving shuffle beat", category: .blues),
-        MoodStyle(id: "texas-blues", name: "Texas Blues", prompt: "Texas blues with bright Stratocaster tone, warm shuffle groove, bold horn section, and swinging feel", category: .blues),
-        MoodStyle(id: "jazz-blues", name: "Jazz Blues", prompt: "Jazz-infused blues with sophisticated chord changes, warm guitar tone, walking bass, and swing rhythm", category: .blues),
-        MoodStyle(id: "acoustic-blues", name: "Acoustic Blues", prompt: "Intimate acoustic blues with fingerpicked guitar, gentle harmonica fills, foot tapping, and raw emotion", category: .blues),
-
-        // R&B
+        // MARK: R&B (10)
         MoodStyle(id: "smooth-rnb", name: "Smooth R&B", prompt: "Smooth R&B with silky synth pads, warm bass, gentle finger snaps, and lush vocal harmonies feel", category: .rnb),
         MoodStyle(id: "neo-soul", name: "Neo Soul", prompt: "Neo soul with warm Fender Rhodes, subtle wah guitar, deep bass groove, and organic drum patterns", category: .rnb),
         MoodStyle(id: "slow-jam", name: "Slow Jam", prompt: "Slow jam R&B with intimate piano chords, smooth bass, soft string pads, and gentle percussion", category: .rnb),
         MoodStyle(id: "motown", name: "Motown", prompt: "Classic Motown feel with punchy bass, bright piano comping, warm horn stabs, and driving tambourine", category: .rnb),
         MoodStyle(id: "gospel-soul", name: "Gospel Soul", prompt: "Gospel-influenced soul with rich organ chords, soaring piano runs, deep bass, and expressive drums", category: .rnb),
-        MoodStyle(id: "late-night-rnb", name: "Late Night R&B", prompt: "Late night R&B with airy synths, soft 808 bass, distant reverbed keys, and minimal crisp snare", category: .rnb),
+        MoodStyle(id: "quiet-storm", name: "Quiet Storm", prompt: "Quiet storm R&B with lush Rhodes chords, slow bass groove, silky sax fills, and mellow drum machine", category: .rnb),
+        MoodStyle(id: "90s-rnb", name: "90s R&B", prompt: "90s R&B with warm synth pads, smooth bass lines, snapping rim-shot drums, and subtle guitar licks", category: .rnb),
+        MoodStyle(id: "funky-soul", name: "Funky Soul", prompt: "Funky soul with punchy wah guitar, driving bass groove, crisp drums, and warm horn stabs", category: .rnb),
+        MoodStyle(id: "contemporary-rnb", name: "Contemporary R&B", prompt: "Contemporary R&B with glossy Rhodes keys, 808 sub bass, crisp snaps, and airy vocal pad textures", category: .rnb),
+        MoodStyle(id: "rnb-groove", name: "R&B Groove", prompt: "Mid-tempo R&B groove with thumping bass, tight drum pocket, warm guitar chords, and string pad washes", category: .rnb),
 
-        // Rock
+        // MARK: Rock (12 — includes 6 Blues migrated in)
         MoodStyle(id: "soft-rock", name: "Soft Rock", prompt: "Soft rock with clean electric guitar arpeggios, warm acoustic strumming, and steady drum groove", category: .rock),
         MoodStyle(id: "indie-rock", name: "Indie Rock", prompt: "Indie rock with jangly guitars, driving bass, energetic drums, and shimmering reverb textures", category: .rock),
         MoodStyle(id: "post-rock", name: "Post Rock", prompt: "Post rock with layered ambient guitars, crescendo dynamics, delay-heavy textures, and epic builds", category: .rock),
         MoodStyle(id: "shoegaze", name: "Shoegaze", prompt: "Shoegaze with heavily distorted dreamy guitars, dense reverb layers, buried melodies, and hypnotic rhythms", category: .rock),
         MoodStyle(id: "surf-rock", name: "Surf Rock", prompt: "Surf rock with twangy reverb guitar, driving drums, warm bass, and bright energetic California vibe", category: .rock),
         MoodStyle(id: "classic-rock", name: "Classic Rock", prompt: "Classic rock with powerful guitar riffs, solid bass groove, driving drums, and warm analog tone", category: .rock),
+        MoodStyle(id: "slow-blues", name: "Slow Blues", prompt: "Slow blues with soulful electric guitar bends, warm organ chords, and shuffling brush drums", category: .rock),
+        MoodStyle(id: "delta-blues", name: "Delta Blues", prompt: "Raw delta blues with acoustic slide guitar, stomping foot percussion, and gravelly harmonica", category: .rock),
+        MoodStyle(id: "chicago-blues", name: "Chicago Blues", prompt: "Electric Chicago blues with overdriven guitar, walking bass, punchy horns, and driving shuffle beat", category: .rock),
+        MoodStyle(id: "texas-blues", name: "Texas Blues", prompt: "Texas blues with bright Stratocaster tone, warm shuffle groove, bold horn section, and swinging feel", category: .rock),
+        MoodStyle(id: "jazz-blues", name: "Jazz Blues", prompt: "Jazz-infused blues with sophisticated chord changes, warm guitar tone, walking bass, and swing rhythm", category: .rock),
+        MoodStyle(id: "acoustic-blues", name: "Acoustic Blues", prompt: "Intimate acoustic blues with fingerpicked guitar, gentle harmonica fills, foot tapping, and raw emotion", category: .rock),
 
-        // Pop
-        MoodStyle(id: "dream-pop", name: "Dream Pop", prompt: "Dream pop with hazy reverbed guitars, ethereal synth layers, soft vocals feel, and gentle beats", category: .pop),
-        MoodStyle(id: "synth-pop", name: "Synth Pop", prompt: "Synth pop with bright analog synthesizers, catchy arpeggios, punchy drum machine, and warm pads", category: .pop),
-        MoodStyle(id: "chill-pop", name: "Chill Pop", prompt: "Chill pop with warm acoustic guitar, light electronic production, airy melodies, and soft beats", category: .pop),
-        MoodStyle(id: "indie-pop", name: "Indie Pop", prompt: "Indie pop with bouncy guitar strums, playful glockenspiel, light bass, and upbeat handclap rhythm", category: .pop),
-        MoodStyle(id: "bedroom-pop", name: "Bedroom Pop", prompt: "Bedroom pop with lo-fi guitar, soft vocal harmonies feel, warm synth pads, and intimate drum machine", category: .pop),
-        MoodStyle(id: "electro-pop", name: "Electro Pop", prompt: "Electro pop with bright plucky synths, four-on-the-floor kick, side-chain bass, and sparkling arpeggios", category: .pop),
-
-        // Electronic
+        // MARK: Electronic (10)
         MoodStyle(id: "synthwave", name: "Synthwave", prompt: "Synthwave with pulsing analog bass, shimmering arpeggiated synths, and driving electronic drums", category: .electronic),
         MoodStyle(id: "deep-house", name: "Deep House", prompt: "Deep house with rolling bassline, hypnotic hi-hat patterns, atmospheric vocal chops, and warm analog chords", category: .electronic),
         MoodStyle(id: "downtempo", name: "Downtempo", prompt: "Downtempo electronic with mellow beats, warm pad layers, subtle glitch textures, and deep bass", category: .electronic),
         MoodStyle(id: "chillwave", name: "Chillwave", prompt: "Chillwave with washed-out synth melodies, hazy tape effects, gentle beats, and nostalgic summer mood", category: .electronic),
         MoodStyle(id: "idm", name: "IDM", prompt: "Intelligent electronic music with intricate beat patterns, crystalline synth textures, and evolving atmospheres", category: .electronic),
         MoodStyle(id: "techno-minimal", name: "Minimal Techno", prompt: "Minimal techno with hypnotic kick drum, sparse hi-hats, subtle acid bassline, and slowly evolving filter sweeps", category: .electronic),
-        MoodStyle(id: "trip-hop", name: "Trip Hop", prompt: "Trip hop with heavy downtempo beats, dark bass, scratchy vinyl samples, and moody atmospheric pads", category: .electronic),
+        MoodStyle(id: "synth-pop", name: "Synth Pop", prompt: "Synth pop with bright analog synthesizers, catchy arpeggios, punchy drum machine, and warm pads", category: .electronic),
+        MoodStyle(id: "electro-pop", name: "Electro Pop", prompt: "Electro pop with bright plucky synths, four-on-the-floor kick, side-chain bass, and sparkling arpeggios", category: .electronic),
+        MoodStyle(id: "drum-and-bass", name: "Drum & Bass", prompt: "Rolling drum and bass with fast breakbeat drums, deep sub bass, atmospheric pads, and clean synth stabs", category: .electronic),
+        MoodStyle(id: "acid-techno", name: "Acid Techno", prompt: "Acid techno with squelchy 303 bassline, pulsing four-on-the-floor kick, crisp hi-hats, and evolving filter modulation", category: .electronic),
 
-        // Classical
-        MoodStyle(id: "solo-piano", name: "Solo Piano", prompt: "Gentle solo piano with soft sustain pedal, flowing arpeggios, and intimate dynamics", category: .classical),
-        MoodStyle(id: "string-quartet", name: "String Quartet", prompt: "Classical string quartet with rich cello melody, violin harmonies, and elegant chamber music dynamics", category: .classical),
-        MoodStyle(id: "orchestral", name: "Orchestral", prompt: "Orchestral music with sweeping strings, warm woodwinds, French horn melody, and cinematic grandeur", category: .classical),
-        MoodStyle(id: "baroque", name: "Baroque", prompt: "Baroque music with harpsichord arpeggios, elegant violin melody, cello continuo, and ornamental trills", category: .classical),
-        MoodStyle(id: "romantic-piano", name: "Romantic Piano", prompt: "Romantic era piano with dramatic dynamics, rich chord voicings, flowing rubato, and passionate expression", category: .classical),
-        MoodStyle(id: "minimalist", name: "Minimalist", prompt: "Minimalist classical with repeating piano patterns, slowly shifting harmonies, gentle strings, and meditative pulse", category: .classical),
+        // MARK: Midnight (10)
+        MoodStyle(id: "trip-hop", name: "Trip Hop", prompt: "Trip hop with heavy downtempo beats, dark bass, scratchy vinyl samples, and moody atmospheric pads", category: .midnight),
+        MoodStyle(id: "late-night-rnb", name: "Late Night R&B", prompt: "Late night R&B with airy synths, soft 808 bass, distant reverbed keys, and minimal crisp snare", category: .midnight),
+        MoodStyle(id: "space-drift", name: "Space Drift", prompt: "Cosmic ambient with slowly evolving granular textures, deep space reverb, and shimmering bell tones", category: .midnight),
+        MoodStyle(id: "ocean", name: "Ocean", prompt: "Oceanic ambient with deep swelling pads, gentle harp glissandos, and slow undulating rhythms", category: .midnight),
+        MoodStyle(id: "midnight", name: "Midnight", prompt: "Dark ambient with deep sub drones, sparse piano notes in vast reverb, distant metallic shimmer, and silence", category: .midnight),
+        MoodStyle(id: "noir-city", name: "Noir City", prompt: "Noir city jazz-ambient with distant muted trumpet, deep upright bass, reverb-soaked piano, and faint rain texture", category: .midnight),
+        MoodStyle(id: "neon-rain", name: "Neon Rain", prompt: "Neon-lit midnight with deep sub bass, smoky saxophone, reverb-washed electric piano, and wet pavement ambience", category: .midnight),
+        MoodStyle(id: "smoke-lounge", name: "Smoke Lounge", prompt: "Smoky after-hours lounge with muted trumpet, brushed drums, warm upright bass, and dim reverb piano", category: .midnight),
+        MoodStyle(id: "after-hours", name: "After Hours", prompt: "After-hours downtempo with slow bass groove, distant Rhodes, breathy saxophone, and soft tape hiss", category: .midnight),
+        MoodStyle(id: "urban-solitude", name: "Urban Solitude", prompt: "Urban midnight solitude with sparse piano chords, distant city ambience, slow sub bass, and faint reverb guitar", category: .midnight),
 
-        // Ambient
-        MoodStyle(id: "space-drift", name: "Space Drift", prompt: "Cosmic ambient with slowly evolving granular textures, deep space reverb, and shimmering bell tones", category: .ambient),
-        MoodStyle(id: "rain", name: "Rain", prompt: "Ambient soundscape with ethereal reverb-soaked pads, distant piano notes, and gentle rain texture", category: .ambient),
-        MoodStyle(id: "forest", name: "Forest", prompt: "Nature-inspired ambient with wooden flute melody, soft string drones, and organic rustling textures", category: .ambient),
-        MoodStyle(id: "ocean", name: "Ocean", prompt: "Oceanic ambient with deep swelling pads, gentle harp glissandos, and slow undulating rhythms", category: .ambient),
-        MoodStyle(id: "arctic", name: "Arctic", prompt: "Frozen ambient with crystalline bell tones, icy reverb tails, distant wind textures, and glacial pad movement", category: .ambient),
-        MoodStyle(id: "midnight", name: "Midnight", prompt: "Dark ambient with deep sub drones, sparse piano notes in vast reverb, distant metallic shimmer, and silence", category: .ambient),
-        MoodStyle(id: "dawn", name: "Dawn", prompt: "Warm ambient with soft golden pads, gentle birdsong textures, slow rising strings, and peaceful flute", category: .ambient),
+        // MARK: Cafe (11)
+        MoodStyle(id: "solo-piano", name: "Solo Piano", prompt: "Gentle solo piano with soft sustain pedal, flowing arpeggios, and intimate dynamics", category: .cafe),
+        MoodStyle(id: "romantic-piano", name: "Romantic Piano", prompt: "Romantic era piano with dramatic dynamics, rich chord voicings, flowing rubato, and passionate expression", category: .cafe),
+        MoodStyle(id: "baroque", name: "Baroque", prompt: "Baroque music with harpsichord arpeggios, elegant violin melody, cello continuo, and ornamental trills", category: .cafe),
+        MoodStyle(id: "acoustic-folk", name: "Acoustic Folk", prompt: "Warm acoustic folk with strummed steel-string guitar, gentle cello, and soft hand percussion", category: .cafe),
+        MoodStyle(id: "fingerstyle", name: "Fingerstyle", prompt: "Fingerstyle acoustic guitar with intricate picking patterns, warm resonance, and natural harmonics", category: .cafe),
+        MoodStyle(id: "americana", name: "Americana", prompt: "Americana with warm pedal steel guitar, strummed acoustic, gentle mandolin, and steady brushed drums", category: .cafe),
+        MoodStyle(id: "indie-folk", name: "Indie Folk", prompt: "Indie folk with fingerpicked guitar, soft banjo accents, warm cello, and gentle tambourine rhythm", category: .cafe),
+        MoodStyle(id: "parisian-cafe", name: "Parisian Caf\u{00E9}", prompt: "Parisian caf\u{00E9} with accordion melody, nylon guitar rhythm, light brushed drums, and warm upright bass", category: .cafe),
+        MoodStyle(id: "bookstore-afternoon", name: "Bookstore Afternoon", prompt: "Quiet bookstore afternoon with solo piano, warm cello, soft flute, and gentle acoustic guitar fingerpicking", category: .cafe),
+        MoodStyle(id: "sunday-brunch", name: "Sunday Brunch", prompt: "Sunday brunch with nylon guitar, light brushed drums, warm upright bass, and cheerful soprano sax", category: .cafe),
+        MoodStyle(id: "indie-pop", name: "Indie Pop", prompt: "Indie pop with bouncy guitar strums, playful glockenspiel, light bass, and upbeat handclap rhythm", category: .cafe),
 
-        // Folk
-        MoodStyle(id: "acoustic-folk", name: "Acoustic Folk", prompt: "Warm acoustic folk with strummed steel-string guitar, gentle cello, and soft hand percussion", category: .folk),
-        MoodStyle(id: "fingerstyle", name: "Fingerstyle", prompt: "Fingerstyle acoustic guitar with intricate picking patterns, warm resonance, and natural harmonics", category: .folk),
-        MoodStyle(id: "campfire", name: "Campfire", prompt: "Campfire folk with gentle strumming, harmonica melody, soft clapping rhythm, and warm woody tone", category: .folk),
-        MoodStyle(id: "celtic", name: "Celtic", prompt: "Celtic folk with tin whistle melody, gentle fiddle harmonies, bodhran rhythm, and flowing harp arpeggios", category: .folk),
-        MoodStyle(id: "americana", name: "Americana", prompt: "Americana with warm pedal steel guitar, strummed acoustic, gentle mandolin, and steady brushed drums", category: .folk),
-        MoodStyle(id: "indie-folk", name: "Indie Folk", prompt: "Indie folk with fingerpicked guitar, soft banjo accents, warm cello, and gentle tambourine rhythm", category: .folk),
+        // MARK: Rainy (10)
+        MoodStyle(id: "rain", name: "Rain", prompt: "Ambient soundscape with ethereal reverb-soaked pads, distant piano notes, and gentle rain texture", category: .rainy),
+        MoodStyle(id: "rainy-window", name: "Rainy Window", prompt: "Quiet rainy window with soft Rhodes chords, distant thunder, gentle piano melody, and steady rain pattering", category: .rainy),
+        MoodStyle(id: "monsoon", name: "Monsoon", prompt: "Monsoon meditation with deep ambient pads, heavy rain layers, distant thunder, and slow cello drones", category: .rainy),
+        MoodStyle(id: "drizzle-piano", name: "Drizzle Piano", prompt: "Gentle drizzle with intimate solo piano, soft sustain, light rain ambience, and minimal reverb", category: .rainy),
+        MoodStyle(id: "thunder-distant", name: "Distant Thunder", prompt: "Distant thunder with slow ambient pads, muffled low piano, soft rain, and occasional low rumble", category: .rainy),
+        MoodStyle(id: "petrichor", name: "Petrichor", prompt: "Post-rain earthiness with warm Rhodes, soft strings, gentle pattering texture, and breathy flute", category: .rainy),
+        MoodStyle(id: "rainy-commute", name: "Rainy Commute", prompt: "Rainy commute with mellow lo-fi beats, reverbed Rhodes, rain texture, and muted bass", category: .rainy),
+        MoodStyle(id: "after-the-storm", name: "After the Storm", prompt: "After the storm with airy pads, soft piano, receding rain, and gentle strings emerging", category: .rainy),
+        MoodStyle(id: "rainy-lounge", name: "Rainy Lounge", prompt: "Rainy lounge jazz with warm Rhodes, brushed drums, soft saxophone, and faint window rain", category: .rainy),
+        MoodStyle(id: "grey-morning", name: "Grey Morning", prompt: "Grey morning with slow piano, warm cello, soft ambient pads, and gentle drizzle texture", category: .rainy),
+
+        // MARK: Library (10)
+        MoodStyle(id: "string-quartet", name: "String Quartet", prompt: "Classical string quartet with rich cello melody, violin harmonies, and elegant chamber music dynamics", category: .library),
+        MoodStyle(id: "orchestral", name: "Orchestral", prompt: "Orchestral music with sweeping strings, warm woodwinds, French horn melody, and cinematic grandeur", category: .library),
+        MoodStyle(id: "minimalist", name: "Minimalist", prompt: "Minimalist classical with repeating piano patterns, slowly shifting harmonies, gentle strings, and meditative pulse", category: .library),
+        MoodStyle(id: "campfire", name: "Campfire", prompt: "Campfire folk with gentle strumming, harmonica melody, soft clapping rhythm, and warm woody tone", category: .library),
+        MoodStyle(id: "celtic", name: "Celtic", prompt: "Celtic folk with tin whistle melody, gentle fiddle harmonies, bodhran rhythm, and flowing harp arpeggios", category: .library),
+        MoodStyle(id: "forest", name: "Forest", prompt: "Nature-inspired ambient with wooden flute melody, soft string drones, and organic rustling textures", category: .library),
+        MoodStyle(id: "dawn", name: "Dawn", prompt: "Warm ambient with soft golden pads, gentle birdsong textures, slow rising strings, and peaceful flute", category: .library),
+        MoodStyle(id: "reading-nook", name: "Reading Nook", prompt: "Quiet reading nook with solo piano, soft cello, minimal string textures, and warm room tone", category: .library),
+        MoodStyle(id: "study-hall", name: "Study Hall", prompt: "Focused study hall with repeating piano figures, soft string pads, sparse woodwinds, and steady calm pulse", category: .library),
+        MoodStyle(id: "old-manuscripts", name: "Old Manuscripts", prompt: "Old manuscripts with harpsichord, warm cello, gentle recorder, and delicate chamber ensemble", category: .library),
+
+        // MARK: Dreamscape (10)
+        MoodStyle(id: "dream-pop", name: "Dream Pop", prompt: "Dream pop with hazy reverbed guitars, ethereal synth layers, soft vocals feel, and gentle beats", category: .dreamscape),
+        MoodStyle(id: "arctic", name: "Arctic", prompt: "Frozen ambient with crystalline bell tones, icy reverb tails, distant wind textures, and glacial pad movement", category: .dreamscape),
+        MoodStyle(id: "starry-night", name: "Starry Night", prompt: "Starry night with shimmering synth pads, soft bell tones, slow string swells, and distant chimes", category: .dreamscape),
+        MoodStyle(id: "lucid-dream", name: "Lucid Dream", prompt: "Lucid dream with floating granular textures, reverb guitar swells, soft bell harmonics, and slow breathing pulse", category: .dreamscape),
+        MoodStyle(id: "nebula-journey", name: "Nebula Journey", prompt: "Nebula journey with deep space pads, shimmering harp glissandos, soft piano, and slow evolving drones", category: .dreamscape),
+        MoodStyle(id: "cosmic-lullaby", name: "Cosmic Lullaby", prompt: "Cosmic lullaby with gentle celesta, warm synth pads, slow strings, and soft twinkling bells", category: .dreamscape),
+        MoodStyle(id: "weightless", name: "Weightless", prompt: "Weightless ambient with slow pad swells, delicate piano notes, distant chimes, and meditative stillness", category: .dreamscape),
+        MoodStyle(id: "aurora", name: "Aurora", prompt: "Aurora with shimmering bell synths, slow string pads, soft harp arpeggios, and ethereal wind textures", category: .dreamscape),
+        MoodStyle(id: "ethereal-drift", name: "Ethereal Drift", prompt: "Ethereal drift with granular pads, reverb piano, soft breathy flute, and slow bell resonance", category: .dreamscape),
+        MoodStyle(id: "crystal-cave", name: "Crystal Cave", prompt: "Crystal cave with glassy bell tones, soft reverb piano, slow strings, and gentle water droplet textures", category: .dreamscape),
     ]
 
     // MARK: - Random Selection
