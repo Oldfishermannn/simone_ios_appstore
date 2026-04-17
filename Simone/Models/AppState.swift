@@ -80,10 +80,25 @@ final class AppState {
     private let pinnedKey = "pinnedStyles"
 
     init() {
-        // Load pinned styles from UserDefaults
+        // v1.1.1 migration: clean up legacy key from v1.1.0's reverted session rotation.
+        UserDefaults.standard.removeObject(forKey: "sessionRotationEnabled")
+
+        // Load pinned styles from UserDefaults, re-tag any preset carried over from
+        // the old 10-genre taxonomy (blues/pop/classical/ambient/folk) by looking up
+        // the canonical definition in the new preset pool. User-generated presets
+        // (id prefix "gen-") keep their current category field.
         if let data = UserDefaults.standard.data(forKey: pinnedKey),
            let decoded = try? JSONDecoder().decode([MoodStyle].self, from: data) {
-            pinnedStyles = decoded
+            var needsRewrite = false
+            pinnedStyles = decoded.map { old in
+                if let canonical = MoodStyle.presets.first(where: { $0.id == old.id }),
+                   canonical.category != old.category {
+                    needsRewrite = true
+                    return canonical
+                }
+                return old
+            }
+            if needsRewrite { savePinnedStyles() }
         }
 
         lyriaClient.onAudioChunk = { [weak self] data in
@@ -301,18 +316,25 @@ final class AppState {
 
     #if os(iOS)
     /// 频道色→UIColor RGB 三元组（避免 UI 层依赖渗进 Audio 层）
+    /// 与 StyleCategory.color 保持一致，v1.1.1 新 10 调性 + legacy 兼容。
     private static func tintRGB(for category: StyleCategory) -> (CGFloat, CGFloat, CGFloat) {
         switch category {
-        case .lofi:       return (196/255, 166/255, 157/255)  // rose
-        case .jazz:       return (201/255, 178/255, 135/255)  // sand
-        case .blues:      return (146/255, 162/255, 181/255)  // blue
-        case .rnb:        return (181/255, 160/255, 181/255)  // mauve
-        case .rock:       return (180/255, 140/255, 140/255)
-        case .pop:        return (190/255, 175/255, 160/255)
-        case .electronic: return (146/255, 162/255, 181/255)
-        case .classical:  return (166/255, 178/255, 156/255)  // sage
-        case .ambient:    return (181/255, 160/255, 181/255)
-        case .folk:       return (166/255, 178/255, 156/255)
+        case .lofi:       return (196/255, 166/255, 157/255)  // 玉粉黛
+        case .jazz:       return (201/255, 178/255, 135/255)  // 沙金
+        case .rnb:        return (150/255, 108/255, 148/255)  // 茄紫
+        case .rock:       return (140/255,  78/255,  84/255)  // 深酒红
+        case .electronic: return (112/255, 182/255, 178/255)  // 霓虹青
+        case .midnight:   return ( 74/255, 102/255, 140/255)  // 深海蓝
+        case .cafe:       return (200/255, 146/255,  96/255)  // 琥珀橙
+        case .rainy:      return (146/255, 162/255, 181/255)  // 雾灰蓝
+        case .library:    return (178/255, 158/255, 132/255)  // 温棕米白
+        case .dreamscape: return (150/255, 130/255, 190/255)  // 星紫
+        // legacy fallbacks route to new category's color
+        case .blues:      return (140/255,  78/255,  84/255)
+        case .pop:        return (196/255, 166/255, 157/255)
+        case .classical:  return (200/255, 146/255,  96/255)
+        case .ambient:    return (146/255, 162/255, 181/255)
+        case .folk:       return (200/255, 146/255,  96/255)
         }
     }
     #endif
