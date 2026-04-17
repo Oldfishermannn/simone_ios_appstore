@@ -1,24 +1,25 @@
 import SwiftUI
 
 /// Single page of DetailsView — renders the styles for one channel.
-/// Favorites page shows the pinned list with an empty-state hint;
-/// category pages render the preset pool for that category.
+/// No vertical ScrollView: horizontal swipe is the only interaction axis.
+/// Tapping a preset routes through onSelect, which wires the caller's
+/// switchToChannel + selectStyle so the playing channel stays in sync.
 struct ChannelPageView: View {
     @Bindable var state: AppState
     let channel: Channel
+    let onSelect: (MoodStyle) -> Void
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 4) {
-                switch channel {
-                case .favorites:
-                    favoritesContent
-                case .category(let category):
-                    categoryContent(category)
-                }
+        VStack(spacing: 4) {
+            switch channel {
+            case .favorites:
+                favoritesContent
+            case .category(let category):
+                categoryContent(category)
             }
-            .padding(.horizontal, 16)
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, 16)
     }
 
     @ViewBuilder
@@ -41,7 +42,7 @@ struct ChannelPageView: View {
                     isPlaying: state.selectedStyle?.id == style.id,
                     isFavorite: true,
                     showFavoriteButton: true,
-                    onTap: { state.selectStyle(style) },
+                    onTap: { onSelect(style) },
                     onToggleFavorite: { state.unpinStyle(style) }
                 )
             }
@@ -57,10 +58,7 @@ struct ChannelPageView: View {
                 isPlaying: state.selectedStyle?.id == style.id,
                 isFavorite: state.isPinned(style),
                 showFavoriteButton: true,
-                onTap: {
-                    state.currentCategory = category
-                    state.selectStyle(style)
-                },
+                onTap: { onSelect(style) },
                 onToggleFavorite: {
                     if state.isPinned(style) {
                         state.unpinStyle(style)
