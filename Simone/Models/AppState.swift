@@ -10,6 +10,12 @@ final class AppState {
     // Category navigation
     var currentCategory: StyleCategory = .lofi
 
+    // v1.1.1 top-level nav unit (Favorites + 10 categories).
+    // currentCategory preserved as one-version fallback per reversibility policy.
+    var currentChannel: Channel = .category(.lofi) {
+        didSet { saveCurrentChannel() }
+    }
+
     // Style history (for previous/next navigation)
     var styleHistory: [MoodStyle] = []
 
@@ -78,6 +84,7 @@ final class AppState {
     let lyriaClient = LyriaClient()
 
     private let pinnedKey = "pinnedStyles"
+    private let currentChannelKey = "currentChannel"
 
     init() {
         // v1.1.1 migration: clean up legacy key from v1.1.0's reverted session rotation.
@@ -99,6 +106,16 @@ final class AppState {
                 return old
             }
             if needsRewrite { savePinnedStyles() }
+        }
+
+        // Restore last channel (no didSet side-effect during init)
+        if let raw = UserDefaults.standard.string(forKey: currentChannelKey),
+           let channel = Channel(rawKey: raw) {
+            currentChannel = channel
+            selectedVisualizer = channel.visualizer
+            if case .category(let c) = channel {
+                currentCategory = c
+            }
         }
 
         lyriaClient.onAudioChunk = { [weak self] data in
@@ -127,6 +144,31 @@ final class AppState {
         )
         #endif
 
+    }
+
+    // MARK: - Channel
+
+    /// Styles visible in the current channel (pinned for Favorites, preset pool for categories).
+    var stylesInCurrentChannel: [MoodStyle] {
+        switch currentChannel {
+        case .favorites:       return pinnedStyles
+        case .category(let c): return MoodStyle.presets(for: c)
+        }
+    }
+
+    /// Switch to a channel: persist, rebind visualizer, play the first preset.
+    /// No-op if the channel is already active.
+    func switchToChannel(_ channel: Channel) {
+        guard channel != currentChannel else { return }
+        currentChannel = channel
+        selectedVisualizer = channel.visualizer
+        if case .category(let c) = channel {
+            currentCategory = c
+        }
+        styleHistory.removeAll()
+        if let first = stylesInCurrentChannel.first {
+            selectStyle(first)
+        }
     }
 
     // MARK: - Actions
@@ -286,6 +328,10 @@ final class AppState {
         if let data = try? JSONEncoder().encode(pinnedStyles) {
             UserDefaults.standard.set(data, forKey: pinnedKey)
         }
+    }
+
+    private func saveCurrentChannel() {
+        UserDefaults.standard.set(currentChannel.rawKey, forKey: currentChannelKey)
     }
 
     private func applySelection() {
