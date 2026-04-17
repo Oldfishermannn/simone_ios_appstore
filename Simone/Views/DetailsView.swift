@@ -2,158 +2,71 @@ import SwiftUI
 
 struct DetailsView: View {
     @Bindable var state: AppState
-    @State private var selectedTab: ChannelTab = .favorites
 
-    enum ChannelTab: Hashable {
-        case favorites
-        case category(StyleCategory)
+    private let channels = Channel.all
+
+    private var channelBinding: Binding<Channel> {
+        Binding(
+            get: { state.currentChannel },
+            set: { state.switchToChannel($0) }
+        )
     }
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer().frame(height: 16)
 
-            // Mini Player
             MiniPlayerView(state: state)
-                .padding(.horizontal, 16)
-
-            Spacer().frame(height: 16)
-
-            // Tab Bar
-            tabBar
                 .padding(.horizontal, 16)
 
             Spacer().frame(height: 12)
 
-            // Style List
-            styleList
+            // Channel label + pill indicator
+            channelHeader
                 .padding(.horizontal, 16)
 
-            Spacer()
+            Spacer().frame(height: 8)
+
+            TabView(selection: channelBinding) {
+                ForEach(channels, id: \.self) { channel in
+                    ChannelPageView(state: state, channel: channel)
+                        .tag(channel)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Tab Bar
+    // MARK: - Header
 
-    private var tabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                // Favorites tab
-                tabButton(
-                    label: "♡ Favorites",
-                    isSelected: selectedTab == .favorites,
-                    color: MorandiPalette.rose
-                ) {
-                    selectedTab = .favorites
-                }
+    private var channelHeader: some View {
+        let selectedIndex = channels.firstIndex(of: state.currentChannel) ?? 0
+        return VStack(spacing: 10) {
+            Text(state.currentChannel.displayName.uppercased())
+                .font(.system(size: 11, weight: .medium))
+                .tracking(1.5)
+                .foregroundStyle(headerTint.opacity(0.6))
 
-                // Category tabs
-                ForEach(StyleCategory.allCases, id: \.rawValue) { category in
-                    tabButton(
-                        label: category.displayName,
-                        isSelected: selectedTab == .category(category),
-                        color: category.color
-                    ) {
-                        selectedTab = .category(category)
-                    }
+            HStack(spacing: 5) {
+                ForEach(Array(channels.enumerated()), id: \.element) { index, _ in
+                    Circle()
+                        .fill(index == selectedIndex
+                              ? headerTint
+                              : Color.white.opacity(0.15))
+                        .frame(width: index == selectedIndex ? 6 : 4,
+                               height: index == selectedIndex ? 6 : 4)
                 }
             }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: selectedIndex)
         }
     }
 
-    private func tabButton(label: String, isSelected: Bool, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(
-                    isSelected
-                        ? color.opacity(0.2)
-                        : Color.white.opacity(0.04)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .foregroundStyle(
-                    isSelected
-                        ? color
-                        : .white.opacity(0.4)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Style List
-
-    private var styleList: some View {
-        ScrollView {
-            LazyVStack(spacing: 4) {
-                switch selectedTab {
-                case .favorites:
-                    favoritesContent
-                case .category(let category):
-                    categoryContent(category)
-                }
-            }
+    private var headerTint: Color {
+        switch state.currentChannel {
+        case .favorites:       return MorandiPalette.rose
+        case .category(let c): return c.color
         }
     }
-
-    // MARK: - Favorites Content
-
-    @ViewBuilder
-    private var favoritesContent: some View {
-        if state.pinnedStyles.isEmpty {
-            VStack(spacing: 12) {
-                Spacer().frame(height: 40)
-                Image(systemName: "heart")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(0.15))
-                Text("Tap ♡ on any style to save it here")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.2))
-                Spacer()
-            }
-        } else {
-            ForEach(state.pinnedStyles) { style in
-                StyleRowView(
-                    style: style,
-                    isPlaying: state.selectedStyle?.id == style.id,
-                    isFavorite: true,
-                    showFavoriteButton: true,
-                    onTap: { state.selectStyle(style) },
-                    onToggleFavorite: { state.unpinStyle(style) }
-                )
-            }
-        }
-    }
-
-    // MARK: - Category Content
-
-    @ViewBuilder
-    private func categoryContent(_ category: StyleCategory) -> some View {
-        let styles = MoodStyle.presets(for: category)
-
-        ForEach(styles) { style in
-            StyleRowView(
-                style: style,
-                isPlaying: state.selectedStyle?.id == style.id,
-                isFavorite: state.isPinned(style),
-                showFavoriteButton: true,
-                onTap: {
-                    state.currentCategory = category
-                    state.selectStyle(style)
-                },
-                onToggleFavorite: {
-                    if state.isPinned(style) {
-                        state.unpinStyle(style)
-                    } else {
-                        state.pinStyle(style)
-                    }
-                }
-            )
-        }
-
-    }
-
 }

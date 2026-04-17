@@ -34,6 +34,7 @@
 		A2A5B643BA227229887CB35C /* FountainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A40BC1215B61DAEA12C8A4C /* FountainView.swift */; };
 		A40EAD33ADFE94381EF3DE3D /* AudioBufferQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B550C29D0C8CB6F21DFDAC /* AudioBufferQueue.swift */; };
 		AA11BB22CC33DD44EE55FF01 /* DetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF02 /* DetailsView.swift */; };
+		CP01CP02CP03CP04CP05CP01 /* ChannelPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CP01CP02CP03CP04CP05CP02 /* ChannelPageView.swift */; };
 		AA11BB22CC33DD44EE55FF03 /* ImmersiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF04 /* ImmersiveView.swift */; };
 		AA11BB22CC33DD44EE55FF05 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */; };
 		AA11BB22CC33DD44EE55FF07 /* StyleRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */; };
@@ -108,6 +109,7 @@
 		A1B2C3D4E5F6A7B8C9D0EAF2 /* HelixView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelixView.swift; sourceTree = "<group>"; };
 		A6546CD53C9DB2F3D1351561 /* HorizonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizonView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF02 /* DetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsView.swift; sourceTree = "<group>"; };
+		CP01CP02CP03CP04CP05CP02 /* ChannelPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelPageView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF04 /* ImmersiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF06 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF08 /* StyleRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleRowView.swift; sourceTree = "<group>"; };
@@ -171,6 +173,7 @@
 			children = (
 				C5691669D5AA081409BCD205 /* ContentView.swift */,
 				AA11BB22CC33DD44EE55FF02 /* DetailsView.swift */,
+				CP01CP02CP03CP04CP05CP02 /* ChannelPageView.swift */,
 				8B7344FC534046879E2BBDA0 /* APIKeySettingsView.swift */,
 				CC01CC02CC03CC04CC05CC02 /* SettingsView.swift */,
 				AA11BB22CC33DD44EE55FF04 /* ImmersiveView.swift */,
@@ -357,6 +360,7 @@
 				D4BCFD536CCF57555F6C8559 /* ConstellationView.swift in Sources */,
 				2F375703031EEAAD4848277B /* ContentView.swift in Sources */,
 				AA11BB22CC33DD44EE55FF01 /* DetailsView.swift in Sources */,
+				CP01CP02CP03CP04CP05CP01 /* ChannelPageView.swift in Sources */,
 				B4F3713539174E4CB99D9EA2 /* APIKeySettingsView.swift in Sources */,
 				CC01CC02CC03CC04CC05CC01 /* SettingsView.swift in Sources */,
 				AA11BB22CC33DD44EE55FF03 /* ImmersiveView.swift in Sources */,
