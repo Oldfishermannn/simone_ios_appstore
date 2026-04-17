@@ -16,6 +16,16 @@ enum Channel: Hashable {
         }
     }
 
+    /// Spectrum tonality is bound to the channel — no user self-select in v1.1.1.
+    /// Favorites is a mixed bag so it falls back to terrain; category channels
+    /// delegate to StyleCategory.defaultVisualizer.
+    var visualizer: VisualizerStyle {
+        switch self {
+        case .favorites: return .terrain
+        case .category(let c): return c.defaultVisualizer
+        }
+    }
+
     /// Stable string for UserDefaults persistence.
     var rawKey: String {
         switch self {
