@@ -125,9 +125,13 @@ final class AppState {
         if audioEngine.isPlaying {
             lyriaClient.sendCommand("pause")
             audioEngine.pause()
+            #if os(iOS)
+            audioEngine.setNowPlayingRate(0)
+            #endif
         } else if lyriaClient.connectionState == .connected {
             lyriaClient.sendCommand("play")
             audioEngine.resume()
+            pushNowPlaying()
         } else {
             // Auto-select Lo-fi Chill preset if nothing selected
             if selectedStyle == nil {
@@ -137,7 +141,20 @@ final class AppState {
             audioEngine.start()
             lyriaClient.connect()
             isGenerating = true
+            pushNowPlaying()
         }
+    }
+
+    /// 把当前风格同步到锁屏/控制中心，确保任意路径进入播放都有 NowPlaying
+    private func pushNowPlaying() {
+        #if os(iOS)
+        guard let style = selectedStyle else { return }
+        audioEngine.updateNowPlaying(
+            scene: currentCategory.displayName,
+            style: style.name,
+            tintRGB: Self.tintRGB(for: currentCategory)
+        )
+        #endif
     }
 
     func regenerate() {

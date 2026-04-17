@@ -420,6 +420,9 @@ extension AudioEngine {
         info[MPMediaItemPropertyTitle] = style ?? scene
         info[MPMediaItemPropertyArtist] = "Simone — AI Ambient Radio"
         info[MPNowPlayingInfoPropertyIsLiveStream] = true
+        // 没有 rate 的话锁屏有时不显示 artwork
+        info[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = 0.0
 
         let tint: UIColor = {
             if let rgb = tintRGB {
@@ -431,6 +434,13 @@ extension AudioEngine {
         if let artwork = Self.makeArtwork(tint: tint, title: style ?? scene) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: artwork.size) { _ in artwork }
         }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    /// 切换锁屏播放状态（不重设 artwork/title，只改 rate）
+    func setNowPlayingRate(_ rate: Double) {
+        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        info[MPNowPlayingInfoPropertyPlaybackRate] = rate
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
