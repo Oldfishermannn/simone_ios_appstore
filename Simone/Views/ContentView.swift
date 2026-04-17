@@ -45,21 +45,6 @@ struct ContentView: View {
                 }
                 .ignoresSafeArea()
             }
-            .onAppear {
-                displayChannel = state.currentChannel
-                displayStyleName = state.selectedStyle?.name ?? " "
-            }
-            .onChange(of: state.currentChannel) { old, new in
-                slideOnChannelChange(from: old, to: new)
-            }
-            .onChange(of: state.selectedStyle?.id) { _, _ in
-                // Direct preset tap (e.g. from DetailsView) updates selectedStyle
-                // without going through switchStyle/slideOnChannelChange — sync
-                // the buffered name when we're not currently animating.
-                if nameSlideOffset == 0 && nameOpacity == 1.0 {
-                    displayStyleName = state.selectedStyle?.name ?? " "
-                }
-            }
         }
     }
 
@@ -149,6 +134,19 @@ struct ContentView: View {
         }
         .frame(maxWidth: 400)
         .frame(maxWidth: .infinity)
+        .onAppear {
+            displayChannel = state.currentChannel
+            displayStyleName = state.selectedStyle?.name ?? " "
+        }
+        .onChange(of: state.currentChannel) { old, new in
+            slideOnChannelChange(from: old, to: new)
+        }
+        .onChange(of: state.selectedStyle?.id) { _, _ in
+            // Direct preset tap (DetailsView) — sync buffered name when idle.
+            if nameSlideOffset == 0 && nameOpacity == 1.0 {
+                displayStyleName = state.selectedStyle?.name ?? " "
+            }
+        }
     }
 
     private var channelBadgeTint: Color {

@@ -60,11 +60,34 @@ struct DetailsView: View {
 
     private var channelHeader: some View {
         let selectedIndex = channels.firstIndex(of: browseChannel) ?? 0
+        let prevChannel = selectedIndex > 0 ? channels[selectedIndex - 1] : nil
+        let nextChannel = selectedIndex < channels.count - 1 ? channels[selectedIndex + 1] : nil
+
         return VStack(spacing: 10) {
-            Text(browseChannel.displayName.uppercased())
-                .font(.system(size: 11, weight: .medium))
-                .tracking(1.5)
-                .foregroundStyle(headerTint.opacity(0.6))
+            // Three-up header: prev · current · next — gives the user a preview
+            // of where a horizontal swipe will land without having to scroll.
+            HStack(spacing: 0) {
+                Text(prevChannel?.displayName.uppercased() ?? "")
+                    .font(.system(size: 9, weight: .regular))
+                    .tracking(1)
+                    .foregroundStyle(.white.opacity(0.18))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+
+                Text(browseChannel.displayName.uppercased())
+                    .font(.system(size: 11, weight: .medium))
+                    .tracking(1.5)
+                    .foregroundStyle(headerTint.opacity(0.6))
+                    .padding(.horizontal, 14)
+                    .animation(.easeInOut(duration: 0.2), value: browseChannel)
+
+                Text(nextChannel?.displayName.uppercased() ?? "")
+                    .font(.system(size: 9, weight: .regular))
+                    .tracking(1)
+                    .foregroundStyle(.white.opacity(0.18))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             HStack(spacing: 5) {
                 ForEach(Array(channels.enumerated()), id: \.element) { index, _ in
