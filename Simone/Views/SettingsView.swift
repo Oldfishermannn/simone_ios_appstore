@@ -202,9 +202,11 @@ struct SettingsView: View {
 
     // MARK: - Visualizer
 
+    /// v1.1.1: spectrum tonality is bound to the channel — this section now
+    /// reports the currently bound visualizer instead of offering a self-select list.
     private var visualizerSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("VISUALIZERS")
+            Text("VISUALIZER")
                 .font(.system(size: 11, weight: .medium))
                 .tracking(1)
                 .foregroundStyle(.white.opacity(0.25))
@@ -214,16 +216,20 @@ struct SettingsView: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.white.opacity(0.3))
 
-                Text("11 built-in visualizers")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.4))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(state.currentChannel.visualizer.displayName)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text("Bound to \(state.currentChannel.displayName)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.25))
+                }
 
                 Spacer()
             }
             .padding(14)
             .background(Color.white.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 12))
-
         }
     }
 
