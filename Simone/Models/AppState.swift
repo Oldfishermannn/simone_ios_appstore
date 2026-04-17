@@ -38,6 +38,15 @@ final class AppState {
     }
     private var evolveTimer: Timer?
 
+    // Auto Tune — default OFF, fires nextStyle() every 25 min when playing.
+    var autoTuneEnabled: Bool = false {
+        didSet {
+            UserDefaults.standard.set(autoTuneEnabled, forKey: "autoTuneEnabled")
+            restartAutoTuneTimer()
+        }
+    }
+    private var autoTuneTimer: Timer?
+
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
         case thirty = 30
@@ -107,6 +116,9 @@ final class AppState {
             }
             if needsRewrite { savePinnedStyles() }
         }
+
+        // Restore Auto Tune preference
+        autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
 
         // Restore last channel (no didSet side-effect during init)
         if let raw = UserDefaults.standard.string(forKey: currentChannelKey),
@@ -427,6 +439,18 @@ final class AppState {
         evolveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             guard let self, self.audioEngine.isPlaying else { return }
             self.evolve()
+        }
+    }
+
+    // MARK: - Auto Tune
+
+    private func restartAutoTuneTimer() {
+        autoTuneTimer?.invalidate()
+        autoTuneTimer = nil
+        guard autoTuneEnabled else { return }
+        autoTuneTimer = Timer.scheduledTimer(withTimeInterval: 25 * 60, repeats: true) { [weak self] _ in
+            guard let self, self.audioEngine.isPlaying else { return }
+            self.nextStyle()
         }
     }
 

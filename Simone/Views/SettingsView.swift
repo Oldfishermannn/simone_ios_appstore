@@ -20,6 +20,11 @@ struct SettingsView: View {
 
             Spacer().frame(height: 20)
 
+            // Auto Tune
+            autoTuneSection
+
+            Spacer().frame(height: 20)
+
             // Sleep Timer
             sleepTimerSection
 
@@ -96,6 +101,32 @@ struct SettingsView: View {
                 }
                 Spacer()
             }
+        }
+    }
+
+    // MARK: - Auto Tune
+
+    private var autoTuneSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("AUTO TUNE")
+                .font(.system(size: 11, weight: .medium))
+                .tracking(1)
+                .foregroundStyle(.white.opacity(0.25))
+
+            Toggle(isOn: $state.autoTuneEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Auto tune within channel")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text("Moves to the next style every 25 min")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.25))
+                }
+            }
+            .tint(MorandiPalette.mauve)
+            .padding(14)
+            .background(Color.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
