@@ -9,7 +9,7 @@ struct SpectrumCarouselView: View {
     @State private var dotsVisible: Bool = true
     @State private var hideTask: Task<Void, Never>?
 
-    private let styles = VisualizerStyle.allCases
+    private let channels = Channel.all
 
     private var currentIndex: Int {
         scrollPosition ?? 0
@@ -22,8 +22,8 @@ struct SpectrumCarouselView: View {
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 0) {
-                        ForEach(Array(styles.enumerated()), id: \.element.id) { index, style in
-                            visualizerView(for: style, spectrumData: spectrumData)
+                        ForEach(Array(channels.enumerated()), id: \.element) { index, channel in
+                            visualizerView(for: channel.visualizer, spectrumData: spectrumData)
                                 .containerRelativeFrame(.horizontal)
                                 .id(index)
                         }
@@ -33,8 +33,8 @@ struct SpectrumCarouselView: View {
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $scrollPosition)
                 .onChange(of: scrollPosition) { _, newValue in
-                    if let idx = newValue, idx >= 0, idx < styles.count {
-                        state.selectedVisualizer = styles[idx]
+                    if let idx = newValue, idx >= 0, idx < channels.count {
+                        state.switchToChannel(channels[idx])
                     }
                 }
             }
@@ -42,7 +42,7 @@ struct SpectrumCarouselView: View {
 
             if showDots {
                 HStack(spacing: 4) {
-                    ForEach(Array(styles.enumerated()), id: \.element.id) { index, _ in
+                    ForEach(Array(channels.enumerated()), id: \.element) { index, _ in
                         Circle()
                             .fill(
                                 index == currentIndex
@@ -60,12 +60,12 @@ struct SpectrumCarouselView: View {
             }
         }
         .onAppear {
-            let idx = styles.firstIndex(of: state.selectedVisualizer) ?? 0
+            let idx = channels.firstIndex(of: state.currentChannel) ?? 0
             scrollPosition = idx
             scheduleDotsFade()
         }
-        .onChange(of: state.selectedVisualizer) { _, newValue in
-            let idx = styles.firstIndex(of: newValue) ?? 0
+        .onChange(of: state.currentChannel) { _, newValue in
+            let idx = channels.firstIndex(of: newValue) ?? 0
             if scrollPosition != idx {
                 scrollPosition = idx
             }
