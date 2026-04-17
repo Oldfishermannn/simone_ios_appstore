@@ -434,22 +434,23 @@ final class AppState {
         guard let style = selectedStyle,
               lyriaClient.connectionState == .connected else { return }
 
-        let newTemp = max(0.1, min(3.0, temperature + Float.random(in: -0.2...0.2)))
-        let newGuidance = max(0.0, min(6.0, guidance + Float.random(in: -0.5...0.5)))
+        // Prompt-level mutation: per-category vocab variant (primary signal).
+        let prompts = PromptBuilder.evolveVariant(style: style)
+        lyriaClient.sendPrompts(prompts)
+
+        // Config-level perturbation: reduced amplitude — prompt variant is the main lever.
+        let newTemp = max(0.1, min(3.0, temperature + Float.random(in: -0.1...0.1)))
+        let newGuidance = max(0.0, min(6.0, guidance + Float.random(in: -0.25...0.25)))
         temperature = newTemp
         guidance = newGuidance
 
         if density >= 0 {
-            density = max(0.0, min(1.0, density + Float.random(in: -0.15...0.15)))
+            density = max(0.0, min(1.0, density + Float.random(in: -0.08...0.08)))
         }
         if brightness >= 0 {
-            brightness = max(0.0, min(1.0, brightness + Float.random(in: -0.15...0.15)))
+            brightness = max(0.0, min(1.0, brightness + Float.random(in: -0.08...0.08)))
         }
 
-        let config = buildFullConfig()
-        lyriaClient.sendConfig(config)
-
-        let prompts = PromptBuilder.build(style: style)
-        lyriaClient.sendPrompts(prompts)
+        lyriaClient.sendConfig(buildFullConfig())
     }
 }

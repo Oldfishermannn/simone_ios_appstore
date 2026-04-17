@@ -55,6 +55,7 @@
 		DA91DA92DA93DA94DA95DA01 /* OscilloscopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA91DA92DA93DA94DA95DA02 /* OscilloscopeView.swift */; };
 		DAE5CF86B5CA492883893A15 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D003A6A62C894E7CBC2F83E1 /* KeychainHelper.swift */; };
 		DBD3BE9291ECB2F677458075 /* PromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF932CE07449AB9905863377 /* PromptBuilder.swift */; };
+		EV01EV02EV03EV04EV05EV01 /* EvolveVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = EV01EV02EV03EV04EV05EV02 /* EvolveVocabulary.swift */; };
 		DF817DF7EE2C1EBAF221285F /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46836E98AC135C30D0B9B460 /* AppState.swift */; };
 		E0F13FF812FB975DF1D3649F /* PlayControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DA43F0A0298D89DE9E3DDB /* PlayControlView.swift */; };
 		F646F9AC92231D9595C99AA8 /* SpectrumCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4631B1A8C6EC69450E2E97 /* SpectrumCarouselView.swift */; };
@@ -129,6 +130,7 @@
 		DA91DA92DA93DA94DA95DA02 /* OscilloscopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OscilloscopeView.swift; sourceTree = "<group>"; };
 		F4CD84A1A70E8AE6866CD124 /* ConstellationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConstellationView.swift; sourceTree = "<group>"; };
 		FF932CE07449AB9905863377 /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
+		EV01EV02EV03EV04EV05EV02 /* EvolveVocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvolveVocabulary.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -196,6 +198,7 @@
 			children = (
 				251E4193BD73FBA3F798227E /* LyriaClient.swift */,
 				FF932CE07449AB9905863377 /* PromptBuilder.swift */,
+				EV01EV02EV03EV04EV05EV02 /* EvolveVocabulary.swift */,
 				D003A6A62C894E7CBC2F83E1 /* KeychainHelper.swift */,
 				AB01AB02AB03AB04AB05AB02 /* APIKeyObfuscator.swift */,
 			);
@@ -368,6 +371,7 @@
 				6C9F4940746389E86063BAF0 /* ParticleFlowView.swift in Sources */,
 				E0F13FF812FB975DF1D3649F /* PlayControlView.swift in Sources */,
 				DBD3BE9291ECB2F677458075 /* PromptBuilder.swift in Sources */,
+				EV01EV02EV03EV04EV05EV01 /* EvolveVocabulary.swift in Sources */,
 				DAE5CF86B5CA492883893A15 /* KeychainHelper.swift in Sources */,
 				AB01AB02AB03AB04AB05AB01 /* APIKeyObfuscator.swift in Sources */,
 				453E552B8C92007029B47E34 /* RingPulseView.swift in Sources */,
