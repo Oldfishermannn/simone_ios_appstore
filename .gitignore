@@ -11,3 +11,8 @@ Simone/Network/APIKeyObfuscator.swift
 
 # Asset backups
 Simone/Assets.xcassets/AppIcon.appiconset/AppIcon_backup.png
+
+# Pipeline runtime artifacts
+scripts/pipeline/.pipeline_state
+scripts/pipeline/.preflight_report.json
+scripts/pipeline/.work/
