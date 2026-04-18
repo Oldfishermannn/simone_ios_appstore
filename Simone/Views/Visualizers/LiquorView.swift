@@ -59,17 +59,20 @@ struct LiquorView: View {
 
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
-        // 背景：桌面暖光 — 从右下一侧过来的 warm wash
-        context.fill(Path(CGRect(origin: .zero, size: size)),
-                     with: .radialGradient(
-                        Gradient(stops: [
-                            .init(color: bgWarm.opacity(0.65), location: 0),
-                            .init(color: bg, location: 0.7),
-                            .init(color: bg, location: 1)
-                        ]),
-                        center: CGPoint(x: w * 0.75, y: h * 0.92),
-                        startRadius: 0, endRadius: max(w, h) * 0.85
-                     ))
+        // 背景：只在大图画满格暖光。小图里让杯子直接漂在 immersive
+        // 底色上，signature 元素抠出来，不成框。
+        if isBig {
+            context.fill(Path(CGRect(origin: .zero, size: size)),
+                         with: .radialGradient(
+                            Gradient(stops: [
+                                .init(color: bgWarm.opacity(0.65), location: 0),
+                                .init(color: bg, location: 0.7),
+                                .init(color: bg, location: 1)
+                            ]),
+                            center: CGPoint(x: w * 0.75, y: h * 0.92),
+                            startRadius: 0, endRadius: max(w, h) * 0.85
+                         ))
+        }
 
         // 布置玻璃杯
         let glasses: [GlassSpec] = isBig ? [

@@ -57,17 +57,19 @@ struct EmberView: View {
 
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
-        // 背景：底部暗红余温 → 中部几乎黑 → 顶部偏冷（烟扩散的方向）
-        context.fill(Path(CGRect(origin: .zero, size: size)),
-                     with: .linearGradient(
-                        Gradient(stops: [
-                            .init(color: bgMid.opacity(0.85), location: 0),
-                            .init(color: bgDark, location: 0.35),
-                            .init(color: bgDark, location: 1)
-                        ]),
-                        startPoint: CGPoint(x: w * 0.5, y: h),
-                        endPoint: CGPoint(x: w * 0.5, y: 0)
-                     ))
+        // 背景：只在大图模式画。小图漂在 immersive 深灰底上，不做框。
+        if isBig {
+            context.fill(Path(CGRect(origin: .zero, size: size)),
+                         with: .linearGradient(
+                            Gradient(stops: [
+                                .init(color: bgMid.opacity(0.85), location: 0),
+                                .init(color: bgDark, location: 0.35),
+                                .init(color: bgDark, location: 1)
+                            ]),
+                            startPoint: CGPoint(x: w * 0.5, y: h),
+                            endPoint: CGPoint(x: w * 0.5, y: 0)
+                         ))
+        }
 
         // Embers 布局
         let embers: [EmberSpec] = isBig ? [
@@ -83,7 +85,8 @@ struct EmberView: View {
             drawSmoke(context: context, w: w, h: h, ember: e,
                      spectrumData: spectrumData, binCount: binCount,
                      mid: mid, treble: treble, idleBlend: idleBlend, t: t,
-                     smokeCool: smokeCool, smokeWarm: smokeWarm)
+                     smokeCool: smokeCool, smokeWarm: smokeWarm,
+                     drawTopFade: isBig)
         }
 
         // Ember（上层）
@@ -148,7 +151,8 @@ struct EmberView: View {
                           spectrumData: [Float], binCount: Int,
                           mid: Float, treble: Float,
                           idleBlend: Float, t: Float,
-                          smokeCool: Color, smokeWarm: Color) {
+                          smokeCool: Color, smokeWarm: Color,
+                          drawTopFade: Bool) {
         let cx = e.cx * w
         let cyBase = e.cyBase * h
         let smokeLen = e.lenFactor * h
@@ -212,16 +216,19 @@ struct EmberView: View {
                           lineWidth: strokeW)
         }
 
-        // 顶部淡出用一层黑色渐变盖一下
-        let fadeRect = CGRect(x: 0, y: topY - h * 0.02, width: w, height: h * 0.25)
-        context.fill(Path(fadeRect),
-                     with: .linearGradient(
-                        Gradient(colors: [
-                            Color.black.opacity(0.0),
-                            Color(red: 32/255, green: 26/255, blue: 22/255).opacity(0.9)
-                        ]),
-                        startPoint: CGPoint(x: w * 0.5, y: fadeRect.maxY),
-                        endPoint: CGPoint(x: w * 0.5, y: fadeRect.minY)
-                     ))
+        // 顶部淡出遮罩：只在大图模式画。小图直接靠 stroke alpha 衰减，
+        // 不再压一块深色矩形，避免小图顶部出现可见的方形色块。
+        if drawTopFade {
+            let fadeRect = CGRect(x: 0, y: topY - h * 0.02, width: w, height: h * 0.25)
+            context.fill(Path(fadeRect),
+                         with: .linearGradient(
+                            Gradient(colors: [
+                                Color.black.opacity(0.0),
+                                Color(red: 32/255, green: 26/255, blue: 22/255).opacity(0.9)
+                            ]),
+                            startPoint: CGPoint(x: w * 0.5, y: fadeRect.maxY),
+                            endPoint: CGPoint(x: w * 0.5, y: fadeRect.minY)
+                         ))
+        }
     }
 }
