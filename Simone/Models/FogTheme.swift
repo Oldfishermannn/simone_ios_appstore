@@ -25,25 +25,27 @@ enum FogTheme {
 
     // MARK: Typography roles
     //
-    // Phase 1 uses SF Pro with carefully chosen design/weight/tracking to approximate the
-    // Unbounded/Fraunces/Archivo pairing. Phase 5 will swap in the real OFL fonts.
+    // Phase 5 — real OFL variable fonts (bundled in Simone/Resources/Fonts/).
+    // Unbounded (cold grotesque) / Fraunces (warm serif italic) / Archivo (body).
+    // mono() intentionally stays on SF Mono so numeric values / timestamps stay
+    // column-aligned in Colophon and spectrum preview.
 
-    /// Display — cold, modern grotesque. Approximates Unbounded Light.
+    /// Display — cold, modern grotesque. Unbounded variable, wght axis.
     static func display(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        Font.custom("Unbounded", size: size).weight(weight)
     }
 
-    /// Serif italic — warmth counter-weight. Approximates Fraunces Italic.
+    /// Serif italic — warmth counter-weight. Fraunces variable, italic variant.
     static func serifItalic(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
-        .system(size: size, weight: weight, design: .serif).italic()
+        Font.custom("Fraunces", size: size).weight(weight).italic()
     }
 
-    /// Body — neutral, readable. Approximates Archivo.
+    /// Body — neutral, readable. Archivo variable, wdth+wght axes.
     static func body(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        Font.custom("Archivo", size: size).weight(weight)
     }
 
-    /// Mono — metadata, timestamps, values. Approximates Archivo Mono.
+    /// Mono — metadata, timestamps, values. SF Mono (not Archivo) for column alignment.
     static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
     }
