@@ -120,8 +120,8 @@ struct DetailsView: View {
         let tint: Color = isCurrent ? headerTint : .white
 
         Text(channel.displayName.uppercased())
-            .font(.system(size: 13, weight: .medium))
-            .tracking(1.4)
+            .font(FogTheme.mono(12, weight: .regular))
+            .tracking(FogTheme.trackLabel)
             .foregroundStyle(tint.opacity(opacity))
             .lineLimit(1)
             .padding(.horizontal, 18)
