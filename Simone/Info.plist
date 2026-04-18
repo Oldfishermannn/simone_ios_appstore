@@ -20,6 +20,14 @@
 	<string>$(GEMINI_API_KEY)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Unbounded[wght].ttf</string>
+		<string>Fraunces[SOFT,WONK,opsz,wght].ttf</string>
+		<string>Fraunces-Italic[SOFT,WONK,opsz,wght].ttf</string>
+		<string>Archivo[wdth,wght].ttf</string>
+		<string>Archivo-Italic[wdth,wght].ttf</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
