@@ -64,9 +64,9 @@ struct ImmersiveView: View {
                     // Style name (effectively the channel name on immersive — it
                     // flips to the new channel's first preset on swipe).
                     Text(displayStyleName)
-                        .font(.system(size: 22, weight: .light))
-                        .tracking(1.5)
-                        .foregroundStyle(.white.opacity(0.65))
+                        .font(FogTheme.display(24, weight: .light))
+                        .tracking(FogTheme.trackDisplay)
+                        .foregroundStyle(FogTheme.inkPrimary)
                         .offset(x: nameSlideOffset)
                         .opacity(nameOpacity)
 
@@ -127,12 +127,13 @@ struct ImmersiveView: View {
             ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
                 if index > 0 {
                     Text(" · ")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.12))
+                        .font(FogTheme.mono(11, weight: .regular))
+                        .foregroundStyle(FogTheme.inkQuiet)
                 }
                 Text(tag)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.2))
+                    .font(FogTheme.mono(11, weight: .regular))
+                    .tracking(FogTheme.trackMeta)
+                    .foregroundStyle(FogTheme.inkSecondary.opacity(0.65))
             }
         }
     }
