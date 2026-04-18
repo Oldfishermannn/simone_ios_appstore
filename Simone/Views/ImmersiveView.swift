@@ -34,7 +34,7 @@ struct ImmersiveView: View {
                         // 写在 TimelineView closure 里或套 AnyView，都会导致 Canvas 不渲染。
                         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
                             smallVisualizer(
-                                for: state.currentChannel.visualizer,
+                                for: state.selectedVisualizer,
                                 spectrumData: state.audioEngine.spectrumData
                             )
                         }
@@ -204,6 +204,8 @@ struct ImmersiveView: View {
         case .flora:        FloraView(spectrumData: spectrumData, density: 1)
         case .glitch:       GlitchView(spectrumData: spectrumData, density: 1)
         case .oscilloscope: OscilloscopeView(spectrumData: spectrumData, density: 1)
+        case .ember:        EmberView(spectrumData: spectrumData, density: 1)
+        case .liquor:       LiquorView(spectrumData: spectrumData, density: 1)
         }
     }
 

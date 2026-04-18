@@ -3,6 +3,8 @@ import Foundation
 enum VisualizerStyle: String, CaseIterable, Identifiable {
     case horizon, ringPulse, terrain, rainfall, helix, lattice, prism
     case matrix, flora, glitch, oscilloscope
+    // v1.2 Fog 新增：R&B→Liquor，Rock→Ember
+    case ember, liquor
 
     var id: String { rawValue }
 
@@ -21,6 +23,8 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
         case .flora: "Flora"
         case .glitch: "Glitch"
         case .oscilloscope: "Oscilloscope"
+        case .ember: "Ember"
+        case .liquor: "Liquor"
         }
     }
 

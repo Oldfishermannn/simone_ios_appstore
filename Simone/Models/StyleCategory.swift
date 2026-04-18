@@ -67,8 +67,8 @@ enum StyleCategory: String, CaseIterable, Codable {
         switch self {
         case .lofi:       return .horizon
         case .jazz:       return .oscilloscope
-        case .rnb:        return .flora
-        case .rock:       return .glitch
+        case .rnb:        return .liquor   // v1.2: 频谱威士忌 — 液面随频段起伏
+        case .rock:       return .ember    // v1.2: 频谱余烬 — 烟雾顶随频段弯折
         case .electronic: return .matrix
         case .midnight:   return .ringPulse
         case .cafe:       return .lattice

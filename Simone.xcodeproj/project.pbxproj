@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		02EFD611E85BB464212FF117 /* FloraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C427F742A90188BAED3B87EB /* FloraView.swift */; };
+		B3C4D5E6F7081920304151B7 /* EmberView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */; };
+		C4D5E6F708192A3B4C5D6E7F /* LiquorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */; };
 		08852DDB83F31A4AF4F3A875 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA9A410DEBEC3A63AE39244 /* WaveformView.swift */; };
 		0E43FBD54389D8586234B2FF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FB00288B34147AC47677E8 /* SettingsView.swift */; };
 		0E9D9C1EAF46E64C82DB51FD /* OscilloscopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BC765E6835D0DD6DA8C7D7 /* OscilloscopeView.swift */; };
@@ -133,6 +135,8 @@
 		BEEB2773C02855218BF54C5F /* CascadeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CascadeView.swift; sourceTree = "<group>"; };
 		C3FE0CF17074DAAB966F1795 /* HelixView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelixView.swift; sourceTree = "<group>"; };
 		C427F742A90188BAED3B87EB /* FloraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloraView.swift; sourceTree = "<group>"; };
+		C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberView.swift; sourceTree = "<group>"; };
+		D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquorView.swift; sourceTree = "<group>"; };
 		C5691669D5AA081409BCD205 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		C68F2E7CD5140703D789F6AB /* LatticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatticeView.swift; sourceTree = "<group>"; };
 		C6E1B6F55990C90B53BB9263 /* ParticleFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleFlowView.swift; sourceTree = "<group>"; };
@@ -233,6 +237,7 @@
 				D223C2B3DE67420499B46269 /* AuroraView.swift */,
 				BEEB2773C02855218BF54C5F /* CascadeView.swift */,
 				F4CD84A1A70E8AE6866CD124 /* ConstellationView.swift */,
+				C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */,
 				D69B790410D2F7FA9CD6F9B6 /* FireflyView.swift */,
 				C427F742A90188BAED3B87EB /* FloraView.swift */,
 				6A40BC1215B61DAEA12C8A4C /* FountainView.swift */,
@@ -241,6 +246,7 @@
 				011B1EEA4AE69FA3586496C2 /* HorizonView.swift */,
 				D1D790402405B648A16528DF /* ImmersiveCanvasView.swift */,
 				C68F2E7CD5140703D789F6AB /* LatticeView.swift */,
+				D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */,
 				3061FB61626FFB9C1FFB3FFF /* MatrixView.swift */,
 				3B1417CDE4E522FF495399CA /* NebulaView.swift */,
 				A051AB5DAB29F481270E3FF3 /* OrbitalView.swift */,
@@ -418,6 +424,7 @@
 				2F375703031EEAAD4848277B /* ContentView.swift in Sources */,
 				91F2FF5882950688BC4DF83F /* DetailsView.swift in Sources */,
 				15393F2A0233EA7B17141A5E /* EvolveVocabulary.swift in Sources */,
+				B3C4D5E6F7081920304151B7 /* EmberView.swift in Sources */,
 				D4EEAAF69B859D48A77D81AB /* FireflyView.swift in Sources */,
 				02EFD611E85BB464212FF117 /* FloraView.swift in Sources */,
 				778A93CA811F4FEEDE8E575F /* FogTheme.swift in Sources */,
@@ -429,6 +436,7 @@
 				271377595B29CF5822B918F6 /* ImmersiveView.swift in Sources */,
 				457310387726C5CCC68A8FC2 /* KeychainHelper.swift in Sources */,
 				1F1DEAB6D866E4658E94EB18 /* LatticeView.swift in Sources */,
+				C4D5E6F708192A3B4C5D6E7F /* LiquorView.swift in Sources */,
 				4BB2C421AA09A83D7187399C /* LyriaClient.swift in Sources */,
 				6A9468756F35B0B44BDB8FB6 /* MatrixView.swift in Sources */,
 				1D21D970A64103BC8C4C5A2C /* MiniPlayerView.swift in Sources */,

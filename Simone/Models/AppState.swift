@@ -194,6 +194,7 @@ final class AppState {
 
     func selectStyle(_ style: MoodStyle) {
         selectedStyle = style
+        selectedVisualizer = currentChannel.visualizer
         applySelection()
     }
 
