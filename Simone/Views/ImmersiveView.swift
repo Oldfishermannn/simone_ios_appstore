@@ -13,7 +13,7 @@ struct ImmersiveView: View {
 
     /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
     /// Default is big; small mode shows a card-sized spectrum at top.
-    @State private var isSmall: Bool = false
+    @State private var isSmall: Bool = true
 
     var body: some View {
         GeometryReader { geo in
@@ -22,57 +22,86 @@ struct ImmersiveView: View {
                     .ignoresSafeArea()
 
                 if isSmall {
-                    // Small mode — card-style spectrum near the top
+                    // Small mode — 三元素垂直居中，spectrum 不播放时显示静态帧。
                     VStack(spacing: 0) {
-                        Spacer().frame(height: 110)
+                        Spacer()
 
-                        let specSize = min(geo.size.width - 64, 300)
-                        SpectrumCarouselView(state: state, showDots: false, density: 1)
-                            .frame(width: specSize, height: specSize)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .shadow(color: .black.opacity(0.25), radius: 18, x: 0, y: 6)
-                            .contentShape(RoundedRectangle(cornerRadius: 16))
-                            .onTapGesture {
-                                withAnimation(.easeInOut(duration: 0.25)) { isSmall = false }
+                        let specSize: CGFloat = min(geo.size.width - 60, 300)
+
+                        // 小图模式：每个频道画自己的 visualizer（和大图一致）。
+                        // 模式：TimelineView 外层驱动帧，@ViewBuilder 函数内做 switch —
+                        // 这个组合 SpectrumCarouselView 已验证可行；之前试过把 switch 直接
+                        // 写在 TimelineView closure 里或套 AnyView，都会导致 Canvas 不渲染。
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
+                            smallVisualizer(
+                                for: state.currentChannel.visualizer,
+                                spectrumData: state.audioEngine.spectrumData
+                            )
+                        }
+                        .frame(width: specSize, height: specSize)
+                        .contentShape(Rectangle())
+                        .gesture(spectrumTapOrSwipe)
+
+                        Spacer().frame(height: 44)
+
+                        VStack(spacing: 8) {
+                            if let style = displayStyle {
+                                musicDNA(style: style)
+                                    .offset(x: nameSlideOffset)
+                                    .opacity(nameOpacity)
                             }
+
+                            Text(displayStyleName)
+                                .font(FogTheme.display(24, weight: .light))
+                                .tracking(FogTheme.trackDisplay)
+                                .foregroundStyle(FogTheme.inkPrimary)
+                                .offset(x: nameSlideOffset)
+                                .opacity(nameOpacity)
+                        }
+                        .allowsHitTesting(false)
+
+                        Spacer().frame(height: 28)
+
+                        transportControls
 
                         Spacer()
                     }
                     .frame(maxWidth: .infinity)
                 } else {
-                    // Big mode — full-screen spectrum
+                    // Big mode — full-screen spectrum + bottom overlay
                     SpectrumCarouselView(state: state, showDots: false, density: 2)
                         .frame(width: geo.size.width, height: geo.size.height)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.25)) { isSmall = true }
                         }
-                }
 
-                // Overlay UI
-                VStack(spacing: 0) {
-                    Spacer()
+                    VStack(spacing: 0) {
+                        Spacer()
 
-                    // Music DNA — reads displayStyle so tags slide with the name
-                    if let style = displayStyle {
-                        musicDNA(style: style)
-                            .offset(x: nameSlideOffset)
-                            .opacity(nameOpacity)
-                        Spacer().frame(height: 10)
+                        VStack(spacing: 10) {
+                            if let style = displayStyle {
+                                musicDNA(style: style)
+                                    .offset(x: nameSlideOffset)
+                                    .opacity(nameOpacity)
+                            }
+
+                            Text(displayStyleName)
+                                .font(FogTheme.display(24, weight: .light))
+                                .tracking(FogTheme.trackDisplay)
+                                .foregroundStyle(FogTheme.inkPrimary)
+                                .offset(x: nameSlideOffset)
+                                .opacity(nameOpacity)
+                        }
+                        .allowsHitTesting(false)
+
+                        Spacer().frame(height: 32)
+
+                        transportControls
+
+                        Spacer().frame(height: 48)
                     }
-
-                    // Style name (effectively the channel name on immersive — it
-                    // flips to the new channel's first preset on swipe).
-                    Text(displayStyleName)
-                        .font(FogTheme.display(24, weight: .light))
-                        .tracking(FogTheme.trackDisplay)
-                        .foregroundStyle(FogTheme.inkPrimary)
-                        .offset(x: nameSlideOffset)
-                        .opacity(nameOpacity)
-
-                    Spacer().frame(height: 100)
                 }
-                .allowsHitTesting(false)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -117,6 +146,100 @@ struct ImmersiveView: View {
                 nameOpacity = 1
             }
         }
+    }
+
+    // MARK: - Transport (ported from DetailsView)
+
+    private var transportControls: some View {
+        HStack(spacing: 40) {
+            Button {
+                state.previousStyle()
+            } label: {
+                Image(systemName: "backward.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                state.togglePlayPause()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 52, height: 52)
+                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                    Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .buttonStyle(.plain)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
+
+            Button {
+                state.nextStyle()
+            } label: {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Small-mode visualizer dispatch
+
+    @ViewBuilder
+    private func smallVisualizer(for style: VisualizerStyle, spectrumData: [Float]) -> some View {
+        switch style {
+        case .horizon:      HorizonView(spectrumData: spectrumData, density: 1)
+        case .ringPulse:    RingPulseView(spectrumData: spectrumData, density: 1)
+        case .terrain:      TerrainView(spectrumData: spectrumData, density: 1)
+        case .rainfall:     RainfallView(spectrumData: spectrumData, density: 1)
+        case .helix:        HelixView(spectrumData: spectrumData, density: 1)
+        case .lattice:      LatticeView(spectrumData: spectrumData, density: 1)
+        case .prism:        PrismView(spectrumData: spectrumData, density: 1)
+        case .matrix:       MatrixView(spectrumData: spectrumData, density: 1)
+        case .flora:        FloraView(spectrumData: spectrumData, density: 1)
+        case .glitch:       GlitchView(spectrumData: spectrumData, density: 1)
+        case .oscilloscope: OscilloscopeView(spectrumData: spectrumData, density: 1)
+        }
+    }
+
+    // MARK: - Channel swipe (小图模式左右滑动换频道)
+
+    /// 单一 DragGesture 统一处理 tap（位移 < 10pt, 切换 big/small）和
+    /// 横滑（位移 > 30pt 且横向 dominant, 换频道）。避免 onTapGesture 与
+    /// DragGesture 混用时两者同时识别导致"滑一下又换频道又切大图"的 bug。
+    private var spectrumTapOrSwipe: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onEnded { value in
+                let dx = value.translation.width
+                let dy = value.translation.height
+                let dist = hypot(dx, dy)
+
+                // Tap（几乎没位移）— 切换 big/small。
+                if dist < 10 {
+                    withAnimation(.easeInOut(duration: 0.25)) { isSmall = false }
+                    return
+                }
+
+                // 只响应横向 dominant 的滑动，避免和纵向 VerticalPageView 冲突。
+                guard abs(dx) > abs(dy) else { return }
+                guard abs(dx) > 30 else { return }
+
+                let channels = Channel.all
+                let currentIdx = channels.firstIndex(of: state.currentChannel) ?? 0
+                let newIdx: Int
+                if dx < 0 {
+                    newIdx = min(currentIdx + 1, channels.count - 1)
+                } else {
+                    newIdx = max(currentIdx - 1, 0)
+                }
+                guard newIdx != currentIdx else { return }
+                state.switchToChannel(channels[newIdx])
+            }
     }
 
     // MARK: - Music DNA

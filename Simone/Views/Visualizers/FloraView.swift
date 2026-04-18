@@ -13,10 +13,17 @@ struct FloraView: View {
 
             let flowerCount = density > 1 ? 7 : 5
 
+            // Idle baseline — 没音频时每朵花保持中等开度，不缩成干枝
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             for f in 0..<flowerCount {
                 let t = Float(f) / Float(flowerCount)
                 let bin = min(Int(t * Float(binCount - 1)), binCount - 1)
-                let value = CGFloat(spectrumData[bin])
+                let raw = CGFloat(spectrumData[bin])
+                // 每朵花设一个相对稳定的静态开度（高低错落）
+                let idleVal: CGFloat = 0.32 + 0.18 * CGFloat(sinf(t * .pi * 2 + Float(f) * 0.7))
+                let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                 // Position flowers across the bottom
                 let fx = w * (0.1 + CGFloat(t) * 0.8)

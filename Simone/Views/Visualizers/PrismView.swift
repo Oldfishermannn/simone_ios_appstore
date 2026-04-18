@@ -14,10 +14,16 @@ struct PrismView: View {
             let binCount = spectrumData.count
             guard binCount > 0 else { return }
 
+            // Idle baseline — 没音频时多边形有更显眼的填充/描边
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             for i in 0..<shapeCount {
                 let t = CGFloat(i) / CGFloat(shapeCount)
                 let bin = min(Int(Float(t) * Float(binCount - 1)), binCount - 1)
-                let value = CGFloat(spectrumData[bin])
+                let raw = CGFloat(spectrumData[bin])
+                let idleVal: CGFloat = 0.28 + 0.22 * (0.5 + 0.5 * sin(t * .pi * 3 + CGFloat(i) * 0.5))
+                let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                 let sides = 3 + (i % 4) // 3~6 sided polygons
                 let baseR = min(w, h) * (0.08 + t * 0.3)

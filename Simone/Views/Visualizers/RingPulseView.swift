@@ -23,9 +23,15 @@ struct RingPulseView: View {
                 MorandiPalette.blue,
             ]
 
+            // Idle baseline — 没音频时每圈呈花瓣状轻微起伏，不是空圆
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             for ring in 0..<ringCount {
                 let baseRadius = min(w, h) * (0.08 + 0.08 * CGFloat(ring))
                 let color = colors[ring % colors.count]
+                let idleLobes = CGFloat(3 + ring)
+                let idlePhase = CGFloat(ring) * 0.6
 
                 var path = Path()
                 for s in 0...segments {
@@ -35,7 +41,10 @@ struct RingPulseView: View {
                     let binF = Float(s) / Float(segments) * Float(binCount - 1)
                     let binOffset = Float(ring) * 4
                     let bin = Int(min(max(binF + binOffset, 0), Float(binCount - 1)))
-                    let value = CGFloat(spectrumData[bin])
+                    let raw = CGFloat(spectrumData[bin])
+                    // idle 时每圈是 3~9 瓣的柔和花形，保证没音频也有饱满轮廓
+                    let idleVal = 0.22 + 0.18 * (0.5 + 0.5 * sin(angle * idleLobes + idlePhase))
+                    let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                     let amplitude = baseRadius * 0.6 * value
                     let r = baseRadius + amplitude

@@ -132,6 +132,11 @@ final class AppState {
             }
         }
 
+        // 冷启动默认选 Lo-fi Chill 作为展示（直接赋值绕过 selectStyle 的播放副作用）
+        if selectedStyle == nil {
+            selectedStyle = MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
+        }
+
         lyriaClient.onAudioChunk = { [weak self] data in
             self?.audioEngine.handleAudioChunk(data)
         }

@@ -13,6 +13,10 @@ struct HelixView: View {
             let binCount = spectrumData.count
             guard binCount > 0 else { return }
 
+            // Idle baseline — 没音频时让 helix 振幅/节点仍有饱满尺寸
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             // Two intertwined strands
             for strand in 0..<2 {
                 let phaseOffset = Double(strand) * .pi
@@ -22,7 +26,9 @@ struct HelixView: View {
                 for i in 0..<nodeCount {
                     let t = CGFloat(i) / CGFloat(nodeCount - 1)
                     let bin = min(Int(Float(t) * Float(binCount - 1)), binCount - 1)
-                    let value = CGFloat(spectrumData[bin])
+                    let raw = CGFloat(spectrumData[bin])
+                    let idleVal: CGFloat = 0.35 + 0.25 * (0.5 + 0.5 * sin(t * .pi * 6 + CGFloat(strand) * .pi))
+                    let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                     let x = w * 0.05 + t * w * 0.9
                     let amplitude = h * 0.2 * (0.3 + value * 0.7)
@@ -45,8 +51,11 @@ struct HelixView: View {
 
                 // Draw nodes
                 for (i, pt) in points.enumerated() {
-                    let bin = min(Int(Float(i) / Float(nodeCount - 1) * Float(binCount - 1)), binCount - 1)
-                    let value = CGFloat(spectrumData[bin])
+                    let t = CGFloat(i) / CGFloat(nodeCount - 1)
+                    let bin = min(Int(Float(t) * Float(binCount - 1)), binCount - 1)
+                    let raw = CGFloat(spectrumData[bin])
+                    let idleVal: CGFloat = 0.35 + 0.25 * (0.5 + 0.5 * sin(t * .pi * 6 + CGFloat(strand) * .pi))
+                    let value = raw * (1 - idleBlend) + idleVal * idleBlend
                     let dotSize = 2 + value * 5
                     let rect = CGRect(x: pt.x - dotSize / 2, y: pt.y - dotSize / 2, width: dotSize, height: dotSize)
                     context.fill(Path(ellipseIn: rect), with: .color(color.opacity(0.2 + Double(value) * 0.5)))
@@ -58,7 +67,9 @@ struct HelixView: View {
             for i in 0..<linkCount {
                 let t = CGFloat(i) / CGFloat(linkCount - 1)
                 let bin = min(Int(Float(t) * Float(binCount - 1)), binCount - 1)
-                let value = CGFloat(spectrumData[bin])
+                let raw = CGFloat(spectrumData[bin])
+                let idleVal: CGFloat = 0.35 + 0.25 * (0.5 + 0.5 * sin(t * .pi * 6))
+                let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                 let x = w * 0.05 + t * w * 0.9
                 let amp = h * 0.2 * (0.3 + value * 0.7)
