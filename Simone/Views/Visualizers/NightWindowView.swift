@@ -1,23 +1,18 @@
 import SwiftUI
 
-// Favorites visualizer — Night Window (v2, impeccable-iterated).
+// Favorites visualizer — Night Window (v3, lone-lamp-in-city).
 //
 // 小图 (expansion=0): 单扇窗大特写，玻璃占画面 60%，雨滴凝结/下滑，烛焰映在玻璃里。
-// 大图 (expansion=1): 非对称三窗构图——主窗偏左下，左上一扇小远窗，右侧一扇被墙切半。
-//                     左上侧斜冷光束穿过画面，窗外 3 个暖橙街灯 bokeh 在雾里化开。
+// 大图 (expansion=1): 茫茫城市夜景，一座座高楼密密的窗格全是灭的，只有我们这一扇主窗亮着暖光。
+//                     远层天际线剪影 + 左右近层楼群，每栋楼密集熄灭窗格阵列。
+//                     极少数（~2%）窗里透着极暗冷反光或遥远邻居的暖光，强化"我们是唯一完全醒着的人"。
 //
 // Impeccable 原则落实：
-//   - 物件感：窗玻璃是一件真的物件——带污渍、积水、反射
-//   - 侧光：左上冷光束 + 室内右上暖灯 = 双向侧光，大半阴影
-//   - 动而非跳：雨滴 bezier + head drop + 部分静止，不是 bar 式跳动
-//   - 克制温度：冷雾蓝底 + 暖烛光点缀（单点、不重复）
-//   - 非对称构图：三窗不等大不对齐
-//
-// Spectrum mapping:
-//   - 低频 → 雨滴下落速度 + 窗内灯光呼吸
-//   - 中频 → 雾浓度 + 蜡烛火苗晃动 + 玻璃反射亮度
-//   - 高频 → 雨滴水平漂移 + 街灯 bokeh 闪烁
-//   - 每条雨痕长度 = 对应频谱 bin 的强度（签名式映射）
+//   - 物件感：窗玻璃是一件真的物件；楼是有体积的，上下渐变、层次错落
+//   - 侧光：左上冷月光束 + 室内右上暖灯 = 双向侧光
+//   - 动而非跳：雨滴 bezier + head drop + 部分静止
+//   - 60-30-10：60% 楼群死灰 / 30% 冷雾+夜空 / 10% 主窗唯一暖点
+//   - 非对称：楼高参差、错前错后、窗格行列数每栋不同，绝不网格 UI 感
 struct NightWindowView: View {
     let spectrumData: [Float]
     var density: Int = 1
@@ -41,16 +36,16 @@ struct NightWindowView: View {
         let nightDeep     = Color(red: 10/255,  green: 12/255,  blue: 20/255)
         let nightMid      = Color(red: 18/255,  green: 22/255,  blue: 34/255)
         let fogTint       = Color(red: 44/255,  green: 54/255,  blue: 76/255)
-        let wallDark      = Color(red: 24/255,  green: 22/255,  blue: 26/255)
-        let wallMid       = Color(red: 46/255,  green: 40/255,  blue: 42/255)
-        let wallSeam      = Color(red: 14/255,  green: 12/255,  blue: 14/255)
+        let cityFar       = Color(red: 18/255,  green: 22/255,  blue: 32/255)   // 远楼剪影 oklch(~0.12 0.012 250)
+        let cityNear      = Color(red: 30/255,  green: 36/255,  blue: 48/255)   // 近楼体 oklch(~0.17 0.015 252)
+        let windowDead    = Color(red: 24/255,  green: 28/255,  blue: 38/255)   // 死窗（比楼体略冷略亮）
+        let windowFaintC  = Color(red: 58/255,  green: 72/255,  blue: 92/255)   // 极少数冷玻璃反光
+        let windowFaintW  = Color(red: 78/255,  green: 60/255,  blue: 38/255)   // 极少数遥远邻居暖窗
         let mullion       = Color(red: 32/255,  green: 26/255,  blue: 22/255)
         let mullionHL     = Color(red: 78/255,  green: 62/255,  blue: 42/255)
         let glassCold     = Color(red: 36/255,  green: 48/255,  blue: 72/255)
         let glassCoolHL   = Color(red: 180/255, green: 196/255, blue: 220/255)
         let warmLamp      = Color(red: 232/255, green: 178/255, blue: 108/255)
-        let coolLamp      = Color(red: 142/255, green: 172/255, blue: 202/255)
-        let dimLamp       = Color(red: 156/255, green: 156/255, blue: 162/255)
         let candleFlame   = Color(red: 250/255, green: 200/255, blue: 122/255)
         let moonBeam      = Color(red: 196/255, green: 210/255, blue: 228/255)
         let streetAmber   = Color(red: 246/255, green: 158/255, blue: 82/255)
@@ -77,55 +72,29 @@ struct NightWindowView: View {
                         Gradient(stops: [
                             .init(color: nightDeep, location: 0),
                             .init(color: nightMid,  location: 0.5),
-                            .init(color: wallDark,  location: 1)
+                            .init(color: cityFar,   location: 1)
                         ]),
                         startPoint: CGPoint(x: 0, y: 0),
                         endPoint: CGPoint(x: 0, y: h)
                      ))
 
-        // ── 大图：潮湿深巷石墙（抽象纹理，不用砖块模板）
+        // ── 大图：城市夜景楼群 —— 一座座高楼全是灭灯的窗户
         if sceneAlpha > 0.01 {
             context.drawLayer { ctx in
                 ctx.opacity = sceneAlpha
-                drawWetAlleyWall(
-                    ctx: ctx, rect: CGRect(origin: .zero, size: size),
-                    wallDark: wallDark, wallMid: wallMid, wallSeam: wallSeam,
-                    t: t
+                drawCitySkyline(
+                    ctx: ctx, w: w, h: h,
+                    cityFar: cityFar, cityNear: cityNear,
+                    windowDead: windowDead,
+                    windowFaintC: windowFaintC,
+                    windowFaintW: windowFaintW
                 )
 
-                // 远处楼宇若隐（更低对比，藏在雾里）
-                var cityPath = Path()
-                let skyline: CGFloat = h * 0.62
-                cityPath.move(to: CGPoint(x: 0, y: skyline))
-                var cursor: CGFloat = 0
-                var step = 0
-                while cursor < w {
-                    let bw = CGFloat(42 + Int(sin(Double(cursor) * 0.015 + Double(step)) * 16 + 20))
-                    let bh = CGFloat(26 + Int(cos(Double(cursor) * 0.022) * 18 + 22))
-                    cityPath.addLine(to: CGPoint(x: cursor, y: skyline - bh))
-                    cityPath.addLine(to: CGPoint(x: cursor + bw, y: skyline - bh))
-                    cursor += bw
-                    step += 1
-                }
-                cityPath.addLine(to: CGPoint(x: w, y: skyline))
-                cityPath.closeSubpath()
-                ctx.fill(cityPath, with: .color(nightDeep.opacity(0.75)))
-
-                // 远楼零星窗灯（极稀疏）
-                for i in 0..<14 {
-                    let s = Double(i) * 7.13
-                    let lx = CGFloat(s.truncatingRemainder(dividingBy: 1.0)) * w
-                    let ly = h * 0.54 + CGFloat((cos(s * 1.3) * 0.5 + 0.5)) * h * 0.06
-                    let lr: CGFloat = 0.9
-                    ctx.fill(Path(ellipseIn: CGRect(x: lx, y: ly, width: lr * 2, height: lr * 2)),
-                             with: .color(warmLamp.opacity(0.45)))
-                }
-
-                // 雾气 band —— 水平主雾腰带 + 两层叠加
+                // 雾气 band —— 两层叠加，把楼顶没入雾里，柔化硬剪影
                 for band in 0..<2 {
-                    let bandY = h * (band == 0 ? 0.48 : 0.66)
-                    let bandH = h * 0.20
-                    let fogAlpha = (band == 0 ? 0.35 : 0.22) + Double(midCG) * 0.25
+                    let bandY = h * (band == 0 ? 0.38 : 0.60)
+                    let bandH = h * 0.22
+                    let fogAlpha = (band == 0 ? 0.30 : 0.22) + Double(midCG) * 0.22
                     ctx.fill(Path(CGRect(x: 0, y: bandY, width: w, height: bandH)),
                              with: .linearGradient(
                                 Gradient(colors: [
@@ -140,12 +109,11 @@ struct NightWindowView: View {
             }
         }
 
-        // ── 街灯 bokeh（大图才出现，雾中化开）
+        // ── 街灯 bokeh（大图才出现，穿过楼缝透出来的远处街灯）
         if sceneAlpha > 0.01 {
             let lamps: [(x: CGFloat, y: CGFloat, r: CGFloat, color: Color, alpha: Double)] = [
-                (w * 0.82, h * 0.38, 68, streetAmber, 0.38),   // 右上远街灯
-                (w * 0.14, h * 0.72, 78, streetAmber, 0.30),   // 左下近街灯
-                (w * 0.58, h * 0.50, 48, warmLamp,   0.28)     // 中间一盏（更远）
+                (w * 0.88, h * 0.42, 62, streetAmber, 0.32),   // 右侧楼缝间远街灯
+                (w * 0.06, h * 0.76, 68, streetAmber, 0.26)    // 左侧底部近街灯
             ]
             context.drawLayer { ctx in
                 ctx.opacity = sceneAlpha
@@ -195,22 +163,7 @@ struct NightWindowView: View {
         )
         windows.append(WindowFrame(rect: mainRect, lampColor: warmLamp,
                                     clipMask: nil, isMain: true))
-
-        // 左上小远窗（大图）—— 更冷光，更小
-        if sceneAlpha > 0.01 {
-            let farSmall = CGRect(x: w * 0.08, y: h * 0.18,
-                                    width: w * 0.20, height: h * 0.22)
-            windows.append(WindowFrame(rect: farSmall, lampColor: coolLamp,
-                                        clipMask: nil, isMain: false))
-
-            // 右侧被墙切半的窗 —— 只露左半扇（clipMask 模拟墙缘）
-            let splitFull = CGRect(x: w * 0.72, y: h * 0.30,
-                                     width: w * 0.34, height: h * 0.46)
-            let splitMask = CGRect(x: w * 0.72, y: h * 0.30,
-                                     width: w * 0.16, height: h * 0.46)
-            windows.append(WindowFrame(rect: splitFull, lampColor: dimLamp,
-                                        clipMask: splitMask, isMain: false))
-        }
+        // 大图下没有其他亮窗——"孤独一扇"是整个构图的核心叙事
 
         // ── 绘制所有窗
         for (idx, win) in windows.enumerated() {
@@ -361,70 +314,113 @@ struct NightWindowView: View {
         }
     }
 
-    // MARK: - Wet alley wall (抽象湿墙，不是砖块模板)
+    // MARK: - City skyline (楼群剪影 + 密集熄灯窗格)
 
-    private func drawWetAlleyWall(ctx: GraphicsContext, rect: CGRect,
-                                    wallDark: Color, wallMid: Color, wallSeam: Color,
-                                    t: Float) {
-        // 底色：整个画面的中下部铺一层偏暖灰的墙面感（被雾盖了一层）
-        let wallRect = CGRect(x: rect.minX, y: rect.minY + rect.height * 0.08,
-                               width: rect.width, height: rect.height * 0.92)
-        ctx.fill(Path(wallRect),
+    private func drawCitySkyline(ctx: GraphicsContext, w: CGFloat, h: CGFloat,
+                                   cityFar: Color, cityNear: Color,
+                                   windowDead: Color, windowFaintC: Color,
+                                   windowFaintW: Color) {
+        // ── 远层天际线：剪影式多栋楼，横穿整幅画面
+        //    楼高参差、楼宽不齐；窗格尺度最小；基线在 h*0.48
+        let farBaseY = h * 0.48
+        var cursor: CGFloat = -6
+        var step = 0
+        while cursor < w {
+            let s = Double(step)
+            let bw = CGFloat(30 + Int((sin(s * 1.71 + Double(cursor) * 0.019) * 0.5 + 0.5) * 44))
+            let bh = CGFloat(44 + Int((cos(s * 2.33 + Double(cursor) * 0.027) * 0.5 + 0.5) * 74))
+            let rect = CGRect(x: cursor, y: farBaseY - bh, width: bw, height: bh)
+            ctx.fill(Path(rect), with: .color(cityFar.opacity(0.90)))
+            drawWindowGrid(ctx: ctx, building: rect,
+                           cellW: 7, cellH: 9, wFrac: 0.54, hFrac: 0.58,
+                           dead: windowDead, faintC: windowFaintC, faintW: windowFaintW,
+                           seedBase: s * 11.3,
+                           deadOpacity: 0.80, faintOpacity: 0.40)
+            cursor += bw + CGFloat(1 + (step % 3))
+            step += 1
+        }
+
+        // ── 左侧近层：单栋楼撑到画面左边缘
+        let leftRect = CGRect(x: -3, y: h * 0.26,
+                               width: w * 0.16 + 3, height: h - h * 0.26)
+        ctx.fill(Path(leftRect),
                  with: .linearGradient(
-                    Gradient(stops: [
-                        .init(color: wallMid.opacity(0.48), location: 0),
-                        .init(color: wallDark.opacity(0.80), location: 0.6),
-                        .init(color: wallDark,                location: 1)
-                    ]),
-                    startPoint: CGPoint(x: 0, y: wallRect.minY),
-                    endPoint: CGPoint(x: 0, y: wallRect.maxY)
+                    Gradient(colors: [cityNear, cityFar]),
+                    startPoint: CGPoint(x: 0, y: leftRect.minY),
+                    endPoint: CGPoint(x: 0, y: leftRect.maxY)
                  ))
+        drawWindowGrid(ctx: ctx, building: leftRect,
+                       cellW: 10, cellH: 13, wFrac: 0.56, hFrac: 0.60,
+                       dead: windowDead, faintC: windowFaintC, faintW: windowFaintW,
+                       seedBase: 91.7,
+                       deadOpacity: 0.78, faintOpacity: 0.50)
 
-        // 不规则"石缝"水平短线（伪随机 seed，营造斑驳）
-        let seamCount = 16
-        for i in 0..<seamCount {
-            let s = Double(i) * 17.31
-            let y = wallRect.minY + CGFloat(s.truncatingRemainder(dividingBy: 1.0)) * wallRect.height
-            let x0 = CGFloat((s * 1.7).truncatingRemainder(dividingBy: 1.0)) * rect.width
-            let len = CGFloat(20 + Int((s * 2.3).truncatingRemainder(dividingBy: 1.0) * 60))
-            var line = Path()
-            line.move(to: CGPoint(x: x0, y: y))
-            line.addLine(to: CGPoint(x: x0 + len, y: y + CGFloat(sin(s * 1.1) * 1.2)))
-            ctx.stroke(line, with: .color(wallSeam.opacity(0.55)), lineWidth: 0.5)
-        }
-
-        // 潮湿污渍斑（椭圆 radial，更暗）
-        for i in 0..<8 {
-            let s = Double(i) * 23.19
-            let cx = CGFloat(s.truncatingRemainder(dividingBy: 1.0)) * rect.width
-            let cy = wallRect.minY + CGFloat((s * 2.7).truncatingRemainder(dividingBy: 1.0))
-                     * wallRect.height
-            let rw = CGFloat(40 + Int((s * 3.1).truncatingRemainder(dividingBy: 1.0) * 80))
-            let rh = rw * CGFloat(0.5 + (s * 0.5).truncatingRemainder(dividingBy: 1.0))
-            let stainRect = CGRect(x: cx - rw / 2, y: cy - rh / 2, width: rw, height: rh)
-            ctx.fill(Path(ellipseIn: stainRect),
-                     with: .radialGradient(
-                        Gradient(colors: [
-                            wallSeam.opacity(0.35),
-                            Color.clear
-                        ]),
-                        center: CGPoint(x: stainRect.midX, y: stainRect.midY),
-                        startRadius: 0, endRadius: rw / 2
+        // ── 右侧近层：3 栋楼参差，顶端高度各异
+        let rightTops: [CGFloat] = [h * 0.22, h * 0.32, h * 0.18]
+        let rightWidths: [CGFloat] = [w * 0.14, w * 0.12, w * 0.20]
+        var rc: CGFloat = w * 0.60
+        for (idx, bw) in rightWidths.enumerated() {
+            if rc >= w + 3 { break }
+            let topY = rightTops[idx % rightTops.count]
+            let actualW = min(bw, w + 4 - rc)
+            let r = CGRect(x: rc, y: topY, width: actualW, height: h - topY)
+            ctx.fill(Path(r),
+                     with: .linearGradient(
+                        Gradient(colors: [cityNear, cityFar]),
+                        startPoint: CGPoint(x: 0, y: r.minY),
+                        endPoint: CGPoint(x: 0, y: r.maxY)
                      ))
+            // 每栋楼窗格参数略不同，避免网格 UI 感
+            let cellW: CGFloat = idx == 0 ? 10 : (idx == 1 ? 12 : 9)
+            let cellH: CGFloat = idx == 0 ? 13 : (idx == 1 ? 15 : 12)
+            drawWindowGrid(ctx: ctx, building: r,
+                           cellW: cellW, cellH: cellH, wFrac: 0.56, hFrac: 0.60,
+                           dead: windowDead, faintC: windowFaintC, faintW: windowFaintW,
+                           seedBase: 50.3 + Double(idx) * 29.7,
+                           deadOpacity: 0.78, faintOpacity: 0.50)
+            rc += actualW + CGFloat(2 + idx)
         }
+    }
 
-        // 垂直湿痕（水从墙上流下的 streak）
-        let streakCount = 7
-        for i in 0..<streakCount {
-            let s = Double(i) * 13.7
-            let x = CGFloat(s.truncatingRemainder(dividingBy: 1.0)) * rect.width
-            let y0 = wallRect.minY + CGFloat((s * 1.3).truncatingRemainder(dividingBy: 1.0))
-                     * wallRect.height * 0.3
-            let y1 = y0 + CGFloat(60 + Int((s * 2.1).truncatingRemainder(dividingBy: 1.0) * 140))
-            var streak = Path()
-            streak.move(to: CGPoint(x: x, y: y0))
-            streak.addLine(to: CGPoint(x: x + CGFloat(sin(s) * 2), y: y1))
-            ctx.stroke(streak, with: .color(wallSeam.opacity(0.5)), lineWidth: 0.8)
+    // 楼立面的窗格阵列 —— 绝大多数死灰，极少数极暗冷/暖
+    private func drawWindowGrid(ctx: GraphicsContext, building: CGRect,
+                                  cellW: CGFloat, cellH: CGFloat,
+                                  wFrac: CGFloat, hFrac: CGFloat,
+                                  dead: Color, faintC: Color, faintW: Color,
+                                  seedBase: Double,
+                                  deadOpacity: Double, faintOpacity: Double) {
+        // 窗格从楼顶往下 6pt 处起，避免压楼顶
+        let topPad: CGFloat = 6
+        let bottomPad: CGFloat = 4
+        let usableH = building.height - topPad - bottomPad
+        guard building.width > cellW * 2, usableH > cellH * 2 else { return }
+
+        let cols = max(2, Int(building.width / cellW))
+        let rows = max(3, Int(usableH / cellH))
+        let cw = building.width / CGFloat(cols)
+        let ch = usableH / CGFloat(rows)
+        for ci in 0..<cols {
+            for ri in 0..<rows {
+                let wx = building.minX + CGFloat(ci) * cw + cw * (1 - wFrac) * 0.5
+                let wy = building.minY + topPad + CGFloat(ri) * ch
+                        + ch * (1 - hFrac) * 0.5
+                let ww = cw * wFrac
+                let wh = ch * hFrac
+
+                let seed = (Double(ci) * 7.31 + Double(ri) * 13.113 + seedBase)
+                    .truncatingRemainder(dividingBy: 1.0)
+                let cellRect = CGRect(x: wx, y: wy, width: ww, height: wh)
+                if seed > 0.996 {         // ~0.4% 极远邻居暖窗（打破 Matrix 齐整感）
+                    ctx.fill(Path(cellRect),
+                             with: .color(faintW.opacity(faintOpacity * 0.85)))
+                } else if seed > 0.982 {  // ~1.4% 冷玻璃反光
+                    ctx.fill(Path(cellRect),
+                             with: .color(faintC.opacity(faintOpacity)))
+                } else {                   // 98%+ 死灰窗
+                    ctx.fill(Path(cellRect),
+                             with: .color(dead.opacity(deadOpacity)))
+                }
+            }
         }
     }
 
