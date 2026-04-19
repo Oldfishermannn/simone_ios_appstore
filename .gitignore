@@ -16,3 +16,4 @@ Simone/Assets.xcassets/AppIcon.appiconset/AppIcon_backup.png
 scripts/pipeline/.pipeline_state
 scripts/pipeline/.preflight_report.json
 scripts/pipeline/.work/
+scripts/pipeline/.env
