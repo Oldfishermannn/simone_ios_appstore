@@ -5,6 +5,8 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
     case matrix, flora, glitch, oscilloscope
     // v1.2 Fog 新增：R&B→Liquor，Rock→Ember
     case ember, liquor
+    // v1.2 Lo-fi 三选一 — 老鱼评审中（tape / pad / blinds）
+    case lofiTape, lofiPad, lofiBlinds
 
     var id: String { rawValue }
 
@@ -25,6 +27,9 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
         case .oscilloscope: "Oscilloscope"
         case .ember: "Ember"
         case .liquor: "Liquor"
+        case .lofiTape: "Tape"
+        case .lofiPad: "Pad"
+        case .lofiBlinds: "Blinds"
         }
     }
 

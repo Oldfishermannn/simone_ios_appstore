@@ -206,6 +206,9 @@ struct ImmersiveView: View {
         case .oscilloscope: OscilloscopeView(spectrumData: spectrumData, density: 1)
         case .ember:        EmberView(spectrumData: spectrumData, density: 1)
         case .liquor:       LiquorView(spectrumData: spectrumData, density: 1)
+        case .lofiTape:     LofiTapeView(spectrumData: spectrumData, density: 1)
+        case .lofiPad:      LofiPadView(spectrumData: spectrumData, density: 1)
+        case .lofiBlinds:   LofiBlindsView(spectrumData: spectrumData, density: 1)
         }
     }
 

@@ -120,6 +120,12 @@ struct SpectrumCarouselView: View {
             EmberView(spectrumData: spectrumData, density: density)
         case .liquor:
             LiquorView(spectrumData: spectrumData, density: density)
+        case .lofiTape:
+            LofiTapeView(spectrumData: spectrumData, density: density)
+        case .lofiPad:
+            LofiPadView(spectrumData: spectrumData, density: density)
+        case .lofiBlinds:
+            LofiBlindsView(spectrumData: spectrumData, density: density)
         }
     }
 }

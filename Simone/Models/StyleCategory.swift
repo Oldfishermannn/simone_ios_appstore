@@ -65,7 +65,7 @@ enum StyleCategory: String, CaseIterable, Codable {
     /// Visualizer bound to this category — spectrum tonality follows channel.
     var defaultVisualizer: VisualizerStyle {
         switch self {
-        case .lofi:       return .horizon
+        case .lofi:       return .lofiTape  // v1.2 三选一评审中：tape / pad / blinds
         case .jazz:       return .oscilloscope
         case .rnb:        return .liquor   // v1.2: 频谱威士忌 — 液面随频段起伏
         case .rock:       return .ember    // v1.2: 频谱余烬 — 烟雾顶随频段弯折
