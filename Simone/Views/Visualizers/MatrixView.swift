@@ -1,16 +1,18 @@
 import SwiftUI
 
-// Electronic visualizer — City Skyline.
+// Electronic visualizer — City Window (single tower with street scene).
 //
 // 小图 (expansion=0): 单栋主楼居中、满高。
-// 大图 (expansion=1): 主楼右移缩窄成天际线中段，三栋辅楼淡入两侧。
+// 大图 (expansion=1): 主楼右移缩窄成画面主体，街道地面淡入画面下缘，
+// 左下一盏暖白路灯柱，右上一块玫红霓虹圆标（treble 脉动）。
 //
 // 主楼窗户网格 cols×rows 保持一致（6×16）让 morph 过程中不跳格子；
 // 仅几何 xRatio/wRatio/hRatio + bin 映射范围连续插值。
+// 其余场景物件（街道/路灯/霓虹）走 sceneAlpha smoothstep(0.30, 0.88) 淡入。
 struct MatrixView: View {
     let spectrumData: [Float]
     var density: Int = 1
-    /// 0 = small (单楼居中), 1 = big (天际线 4 楼)
+    /// 0 = small (单楼居中), 1 = big (主楼 + 街景场景)
     var expansion: CGFloat = 1.0
 
     private struct Building {
@@ -28,9 +30,9 @@ struct MatrixView: View {
     /// 主楼：几何随 expansion 从小图 pose 连续插到大图中段 pose。
     /// 窗户网格 cols=6 rows=16 固定。
     private func mainBuilding(e: CGFloat, binCount: Int) -> Building {
-        let xRatio  = 0.21 + (0.26 - 0.21) * e
-        let wRatio  = 0.58 + (0.26 - 0.58) * e
-        let hRatio  = 0.86 + (0.78 - 0.86) * e
+        let xRatio  = 0.21 + (0.37 - 0.21) * e
+        let wRatio  = 0.58 + (0.28 - 0.58) * e
+        let hRatio  = 0.86 + (0.80 - 0.86) * e
         // bin 映射：小图用全 spectrum，大图聚焦主楼频段
         let binStartF = 0 + (10 - 0) * Double(e)
         let binEndF = Double(binCount - 1) + (30 - Double(binCount - 1)) * Double(e)
@@ -42,21 +44,6 @@ struct MatrixView: View {
             opacity: 1.0,
             seedOffset: 0.0
         )
-    }
-
-    /// 辅楼（仅在大图淡入）
-    private func sideBuildings(binCount: Int) -> [Building] {
-        [
-            Building(xRatio: 0.03, wRatio: 0.20, hRatio: 0.52, cols: 6, rows: 14,
-                     binStart: min(0, binCount - 1), binEnd: min(12, binCount - 1),
-                     opacity: 0.6,  seedOffset: 7.0),
-            Building(xRatio: 0.54, wRatio: 0.22, hRatio: 0.64, cols: 7, rows: 16,
-                     binStart: min(26, binCount - 1), binEnd: min(44, binCount - 1),
-                     opacity: 0.85, seedOffset: 31.0),
-            Building(xRatio: 0.78, wRatio: 0.19, hRatio: 0.56, cols: 6, rows: 14,
-                     binStart: min(42, binCount - 1), binEnd: min(60, binCount - 1),
-                     opacity: 0.65, seedOffset: 43.0),
-        ]
     }
 
     var body: some View {
@@ -72,22 +59,84 @@ struct MatrixView: View {
             let maxValue = spectrumData.max() ?? 0
             let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
 
-            // 主楼（连续 morph）
-            drawBuilding(context: context, w: w, h: h, bldg: mainBuilding(e: e, binCount: binCount),
-                         binCount: binCount, idleBlend: idleBlend)
+            let thirds = binCount / 3
+            var treble: Float = 0
+            for i in (2 * thirds)..<binCount { treble += spectrumData[i] }
+            treble /= Float(binCount - 2 * thirds)
+            let trebleCG = CGFloat(treble) * (1 - idleBlend) + 0.14 * idleBlend
 
-            // 辅楼（淡入）
+            let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
+
+            // ─── 街道地面（大图淡入）─────────────────────────
+            // 画面下缘一条深色带，表示柏油路。中段一条细暖色 highlight 暗
+            // 示路面反光的接缝，和主楼楼脚视觉分隔。
             if sceneAlpha > 0.01 {
                 context.drawLayer { ctx in
                     ctx.opacity = sceneAlpha
-                    for side in sideBuildings(binCount: binCount) {
-                        drawBuilding(context: ctx, w: w, h: h, bldg: side,
-                                     binCount: binCount, idleBlend: idleBlend)
-                    }
+                    let streetY = h * 0.945
+                    let streetRect = CGRect(x: 0, y: streetY, width: w, height: h - streetY)
+                    let streetDark = Color(red: 0.07, green: 0.08, blue: 0.10)
+                    let streetMid  = Color(red: 0.11, green: 0.12, blue: 0.14)
+                    ctx.fill(Path(streetRect),
+                             with: .linearGradient(
+                                Gradient(colors: [streetMid, streetDark]),
+                                startPoint: CGPoint(x: w * 0.5, y: streetRect.minY),
+                                endPoint: CGPoint(x: w * 0.5, y: streetRect.maxY)
+                             ))
+                    // 路面一条暖色高光线（远处路灯的反光接缝）
+                    let hlRect = CGRect(x: 0, y: streetY + h * 0.012,
+                                        width: w, height: 0.8)
+                    let warm = Color(red: 1.0, green: 0.83, blue: 0.45)
+                    ctx.fill(Path(hlRect),
+                             with: .linearGradient(
+                                Gradient(colors: [
+                                    warm.opacity(0),
+                                    warm.opacity(0.18),
+                                    warm.opacity(0)
+                                ]),
+                                startPoint: CGPoint(x: 0, y: hlRect.midY),
+                                endPoint: CGPoint(x: w, y: hlRect.midY)
+                             ))
+                }
+            }
+
+            // ─── 主楼（连续 morph）────────────────────────────
+            drawBuilding(context: context, w: w, h: h,
+                         bldg: mainBuilding(e: e, binCount: binCount),
+                         binCount: binCount, idleBlend: idleBlend)
+
+            // ─── 左下路灯柱（大图淡入）──────────────────────
+            // 柱身深色 silhouette + 顶端暖白 halo，treble 驱动轻微呼吸。
+            // 位置在 0.10w，避开主楼范围。
+            if sceneAlpha > 0.01 {
+                context.drawLayer { ctx in
+                    ctx.opacity = sceneAlpha
+                    drawStreetLamp(
+                        ctx: ctx, w: w, h: h,
+                        baseX: w * 0.10, baseY: h * 0.96,
+                        poleHeight: h * 0.18,
+                        trebleCG: trebleCG, t: t
+                    )
+                }
+            }
+
+            // ─── 右上霓虹圆标（大图淡入）──────────────────────
+            // 玫红 neon：圆环 + 中心点，treble 驱动脉动 halo。位置避开主楼。
+            if sceneAlpha > 0.01 {
+                context.drawLayer { ctx in
+                    ctx.opacity = sceneAlpha
+                    drawNeonSign(
+                        ctx: ctx, w: w, h: h,
+                        center: CGPoint(x: w * 0.80, y: h * 0.22),
+                        radius: min(w, h) * 0.034,
+                        trebleCG: trebleCG, t: t
+                    )
                 }
             }
         }
     }
+
+    // MARK: - Building
 
     private func drawBuilding(context: GraphicsContext, w: CGFloat, h: CGFloat,
                               bldg: Building, binCount: Int, idleBlend: CGFloat) {
@@ -157,6 +206,112 @@ struct MatrixView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Street lamp
+
+    private func drawStreetLamp(
+        ctx: GraphicsContext, w: CGFloat, h: CGFloat,
+        baseX: CGFloat, baseY: CGFloat,
+        poleHeight: CGFloat,
+        trebleCG: CGFloat, t: Float
+    ) {
+        let pole = Color(red: 0.10, green: 0.11, blue: 0.13)
+        let warm = Color(red: 1.0, green: 0.83, blue: 0.52)
+
+        let topY = baseY - poleHeight
+        let poleW: CGFloat = 1.8
+
+        // 灯柱（深色垂直细条）
+        let poleRect = CGRect(x: baseX - poleW / 2, y: topY, width: poleW, height: poleHeight)
+        ctx.fill(Path(poleRect), with: .color(pole))
+
+        // 灯柱顶端水平臂（把灯挑出去）
+        let armLen: CGFloat = w * 0.035
+        let armRect = CGRect(x: baseX, y: topY - 0.6, width: armLen, height: 1.2)
+        ctx.fill(Path(armRect), with: .color(pole))
+
+        // 灯头（圆形）
+        let headCx = baseX + armLen
+        let headCy = topY + 2
+        let headR: CGFloat = 2.2
+
+        // 大 halo（暖光洒开）
+        let halo = headR * 14 * (1 + trebleCG * 0.25)
+        let pulse = 0.6 + 0.15 * sin(Double(t) * 0.8)
+        let haloRect = CGRect(
+            x: headCx - halo, y: headCy - halo,
+            width: halo * 2, height: halo * 2
+        )
+        ctx.fill(Path(ellipseIn: haloRect),
+                 with: .radialGradient(
+                    Gradient(colors: [warm.opacity(0.32 * pulse), warm.opacity(0)]),
+                    center: CGPoint(x: headCx, y: headCy),
+                    startRadius: 0, endRadius: halo
+                 ))
+
+        // 灯珠本体
+        let headRect = CGRect(
+            x: headCx - headR, y: headCy - headR,
+            width: headR * 2, height: headR * 2
+        )
+        ctx.fill(Path(ellipseIn: headRect),
+                 with: .radialGradient(
+                    Gradient(colors: [Color.white.opacity(0.95), warm]),
+                    center: CGPoint(x: headCx - 0.5, y: headCy - 0.5),
+                    startRadius: 0, endRadius: headR
+                 ))
+    }
+
+    // MARK: - Neon sign
+
+    private func drawNeonSign(
+        ctx: GraphicsContext, w: CGFloat, h: CGFloat,
+        center: CGPoint, radius: CGFloat,
+        trebleCG: CGFloat, t: Float
+    ) {
+        // 玫红 neon —— 暖底色的对立面，但避开 cyan/purple AI slop 禁区。
+        let rose = Color(red: 224/255, green: 96/255, blue: 112/255)
+
+        // 外 halo（treble 驱动 + 呼吸）
+        let breath = 0.75 + 0.20 * sin(Double(t) * 1.6) + Double(trebleCG) * 0.45
+        let haloR = radius * (3.6 + trebleCG * 0.8)
+        let haloRect = CGRect(
+            x: center.x - haloR, y: center.y - haloR,
+            width: haloR * 2, height: haloR * 2
+        )
+        ctx.fill(Path(ellipseIn: haloRect),
+                 with: .radialGradient(
+                    Gradient(colors: [
+                        rose.opacity(0.42 * breath),
+                        rose.opacity(0)
+                    ]),
+                    center: center,
+                    startRadius: 0, endRadius: haloR
+                 ))
+
+        // 玻管外圈（stroke）
+        let tubeRect = CGRect(
+            x: center.x - radius, y: center.y - radius,
+            width: radius * 2, height: radius * 2
+        )
+        ctx.stroke(Path(ellipseIn: tubeRect),
+                   with: .color(rose.opacity(0.92 * breath)),
+                   lineWidth: 1.8)
+        // 内层细高光（让玻管有厚度）
+        let innerRect = tubeRect.insetBy(dx: 1.8, dy: 1.8)
+        ctx.stroke(Path(ellipseIn: innerRect),
+                   with: .color(Color.white.opacity(0.45 * breath)),
+                   lineWidth: 0.6)
+
+        // 中心点
+        let dotR: CGFloat = radius * 0.18
+        let dotRect = CGRect(
+            x: center.x - dotR, y: center.y - dotR,
+            width: dotR * 2, height: dotR * 2
+        )
+        ctx.fill(Path(ellipseIn: dotRect),
+                 with: .color(rose.opacity(0.95 * breath)))
     }
 
     private func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
