@@ -90,11 +90,16 @@ struct NightWindowView: View {
                     windowFaintW: windowFaintW
                 )
 
-                // 雾气 band —— 两层叠加，把楼顶没入雾里，柔化硬剪影
+                // 楼群 flicker 窗 —— 偶发蓝白光（电视/屏幕光），随 treble 触发
+                drawCityFlickers(ctx: ctx, w: w, h: h,
+                                   glassCoolHL: glassCoolHL,
+                                   t: t, trebleCG: trebleCG, midCG: midCG)
+
+                // 雾气 band —— 浓度跟 mid 明显变化
                 for band in 0..<2 {
                     let bandY = h * (band == 0 ? 0.38 : 0.60)
                     let bandH = h * 0.22
-                    let fogAlpha = (band == 0 ? 0.30 : 0.22) + Double(midCG) * 0.22
+                    let fogAlpha = (band == 0 ? 0.26 : 0.18) + Double(midCG) * 0.38
                     ctx.fill(Path(CGRect(x: 0, y: bandY, width: w, height: bandH)),
                              with: .linearGradient(
                                 Gradient(colors: [
@@ -106,6 +111,11 @@ struct NightWindowView: View {
                                 endPoint: CGPoint(x: 0, y: bandY + bandH)
                              ))
                 }
+
+                // 全画面远处雨丝 —— 随 bass 加速、treble 加密
+                drawFarRain(ctx: ctx, w: w, h: h,
+                              glassCoolHL: glassCoolHL,
+                              t: t, bassCG: bassCG, trebleCG: trebleCG)
             }
         }
 
@@ -117,8 +127,11 @@ struct NightWindowView: View {
             ]
             context.drawLayer { ctx in
                 ctx.opacity = sceneAlpha
-                for lamp in lamps {
-                    let breathe = 1.0 + Double(bassCG) * 0.12
+                for (lampIdx, lamp) in lamps.enumerated() {
+                    // 呼吸 + treble 微闪（每盏相位不同）
+                    let breathe = 1.0 + Double(bassCG) * 0.22
+                                   + sin(Double(t) * 3.2 + Double(lampIdx) * 1.9)
+                                     * Double(trebleCG) * 0.18
                     let r = lamp.r * CGFloat(breathe)
                     let rect = CGRect(x: lamp.x - r, y: lamp.y - r,
                                         width: r * 2, height: r * 2)
@@ -221,10 +234,11 @@ struct NightWindowView: View {
                             endPoint: CGPoint(x: candleRect.maxX, y: candleRect.maxY)
                          ))
 
-            // 火焰
-            let flameJitter = CGFloat(sin(Double(t) * 6)) * (0.5 + midCG * 2.8)
-            let flameH: CGFloat = 9 + midCG * 7
-            let flameW: CGFloat = 4 + midCG * 1.6
+            // 火焰 —— 晃动幅度+尺寸跟 mid 明显放大
+            let flameJitter = CGFloat(sin(Double(t) * 7.5)) * (0.6 + midCG * 5.0)
+                              + CGFloat(sin(Double(t) * 17.3)) * midCG * 1.5
+            let flameH: CGFloat = 10 + midCG * 14
+            let flameW: CGFloat = 4 + midCG * 3.2
             let flameCX = candleX + flameJitter
             let flameCY = candleRect.minY - flameH / 2
             var flame = Path()
@@ -426,6 +440,77 @@ struct NightWindowView: View {
         }
     }
 
+    // MARK: - City flickers (TV/screen light in distant windows)
+
+    private func drawCityFlickers(ctx: GraphicsContext, w: CGFloat, h: CGFloat,
+                                   glassCoolHL: Color,
+                                   t: Float, trebleCG: CGFloat, midCG: CGFloat) {
+        // 16 hand-placed flicker positions across skyline; each with own period/phase
+        // 主窗在 (x≈0.765·w, y≈0.545·h) — 避开
+        let spots: [(nx: CGFloat, ny: CGFloat, period: Float, phase: Float)] = [
+            (0.08, 0.58, 3.7, 0.1),  (0.14, 0.62, 5.2, 0.4),
+            (0.19, 0.55, 2.9, 0.7),  (0.23, 0.66, 4.3, 0.2),
+            (0.32, 0.48, 6.1, 0.55), (0.38, 0.52, 3.3, 0.85),
+            (0.44, 0.57, 4.8, 0.15), (0.51, 0.50, 2.4, 0.95),
+            (0.57, 0.60, 5.6, 0.35), (0.62, 0.53, 3.9, 0.05),
+            (0.68, 0.61, 4.5, 0.75), (0.72, 0.49, 2.7, 0.25),
+            (0.83, 0.64, 5.0, 0.45), (0.88, 0.56, 3.5, 0.9),
+            (0.92, 0.60, 4.1, 0.3),  (0.96, 0.52, 6.3, 0.65)
+        ]
+        let threshold = 0.015 + Double(trebleCG) * 0.06 + Double(midCG) * 0.02
+
+        for spot in spots {
+            let phaseVal = (t / spot.period + spot.phase)
+                .truncatingRemainder(dividingBy: 1.0)
+            let normalized = phaseVal < 0 ? phaseVal + 1 : phaseVal
+            if Double(normalized) < threshold {
+                let x = spot.nx * w
+                let y = spot.ny * h
+                let sw: CGFloat = 2.2
+                let sh: CGFloat = 2.8
+                let rect = CGRect(x: x - sw/2, y: y - sh/2, width: sw, height: sh)
+                // 外层散光
+                ctx.fill(Path(ellipseIn: rect.insetBy(dx: -3, dy: -3)),
+                         with: .color(glassCoolHL.opacity(0.22)))
+                // 核心亮点
+                ctx.fill(Path(rect),
+                         with: .color(glassCoolHL.opacity(0.68)))
+            }
+        }
+    }
+
+    // MARK: - Far rain (full-canvas sparse rain threads)
+
+    private func drawFarRain(ctx: GraphicsContext, w: CGFloat, h: CGFloat,
+                              glassCoolHL: Color,
+                              t: Float, bassCG: CGFloat, trebleCG: CGFloat) {
+        // 稀疏远景雨丝，打满画面；密度跟 treble,速度跟 bass
+        let count = 18 + Int(trebleCG * 30)
+        let fallSpeed: Float = 0.55 + Float(bassCG) * 1.8
+        let baseY = t * fallSpeed
+        let angle: CGFloat = 0.18  // 轻微斜向
+
+        for i in 0..<count {
+            let s = Float(i) * 0.7131
+            let colFrac = (s * 1.618).truncatingRemainder(dividingBy: 1.0)
+            let x = CGFloat(colFrac) * w
+            let yFrac = (baseY + s * 2.37).truncatingRemainder(dividingBy: 1.6)
+            let yNorm = yFrac < 0 ? yFrac + 1.6 : yFrac
+            // yNorm 0..1.6 → y 覆盖画面并允许上方/下方溢出
+            let y = CGFloat(yNorm - 0.3) * h
+
+            let streakLen: CGFloat = 7 + CGFloat(i % 3) * 2
+            let alpha = 0.16 + Double(trebleCG) * 0.10
+
+            var path = Path()
+            path.move(to: CGPoint(x: x, y: y))
+            path.addLine(to: CGPoint(x: x - angle * streakLen, y: y + streakLen))
+            ctx.stroke(path,
+                       with: .color(glassCoolHL.opacity(alpha)),
+                       lineWidth: 0.5)
+        }
+    }
+
     // MARK: - Window
 
     private func drawWindow(ctx: GraphicsContext, frame: CGRect, lampColor: Color,
@@ -438,27 +523,30 @@ struct NightWindowView: View {
                              sceneAlpha: Double) {
         // ── 小像素窗分支：楼群里的一颗暖像素
         //    不画窗框/室内/雨水/反射——那些细节在 render() 外部按 mainRect.width 分级渲染
-        //    这里只负责：外圈暖辉光 + 暖矩形 + 随 bass 呼吸 + mini mullion
+        //    这里只负责：外圈暖辉光（随 bass 显著呼吸）+ 暖矩形 + mini mullion
         if frame.width < 40 {
-            // 外圈辉光（让它在楼海中显眼——关键"我们"识别信号）
-            let breathe = 1.0 + Double(bassCG) * 0.14
-                           + sin(Double(t) * 1.4) * 0.05
-            let glowR = max(frame.width, frame.height) * CGFloat(2.4 * breathe)
+            // 外圈辉光 —— 半径+亮度随 bass 大幅呼吸，让"活人"在楼海里一眼能看出
+            let breathe = 1.0 + Double(bassCG) * 0.55
+                           + sin(Double(t) * 1.8) * 0.08
+            let glowR = max(frame.width, frame.height) * CGFloat(3.0 * breathe)
+            let glowAlpha = 0.30 + Double(bassCG) * 0.40
             let cx = frame.midX, cy = frame.midY
             ctx.fill(Path(ellipseIn: CGRect(x: cx - glowR, y: cy - glowR,
                                                width: glowR * 2, height: glowR * 2)),
                      with: .radialGradient(
                         Gradient(stops: [
-                            .init(color: lampColor.opacity(0.48), location: 0),
-                            .init(color: lampColor.opacity(0.18), location: 0.35),
-                            .init(color: lampColor.opacity(0),    location: 1)
+                            .init(color: lampColor.opacity(glowAlpha * 1.4),  location: 0),
+                            .init(color: lampColor.opacity(glowAlpha * 0.45), location: 0.35),
+                            .init(color: lampColor.opacity(0),                 location: 1)
                         ]),
                         center: CGPoint(x: cx, y: cy),
                         startRadius: 0, endRadius: glowR
                      ))
 
-            // 窗格本体：暖光填充 + 极细深色外框
-            let lampIntensity = 0.88 + Double(bassCG) * 0.10
+            // 窗格本体：暖光随 mid 微闪，烛火存在感
+            let lampIntensity = 0.80 + Double(bassCG) * 0.18
+                                 + Double(midCG) * 0.08
+                                 + sin(Double(t) * 6.2) * Double(midCG) * 0.10
             ctx.fill(Path(frame), with: .color(lampColor.opacity(lampIntensity)))
 
             // 内部 mini mullion（一竖一横十字，极细）
@@ -488,52 +576,34 @@ struct NightWindowView: View {
                     endPoint: CGPoint(x: frameOuter.maxX, y: frameOuter.maxY)
                  ))
 
-        // 玻璃 + 室内暖光（从右上角透出，模拟室内光源在右侧）
-        let lampIntensity = 0.55 + Double(bassCG) * 0.38
-                             + Double(sin(Double(t) * 2.1)) * 0.04
-        let interiorCenterX = frame.minX + frame.width * 0.68
-        let interiorCenterY = frame.midY + frame.height * 0.05
+        // 玻璃 + 室内暖光 —— 随 bass 明显呼吸（范围加大到几乎覆盖整扇窗亮度）
+        let lampIntensity = 0.40 + Double(bassCG) * 0.75
+                             + Double(sin(Double(t) * 2.1)) * 0.05
+        let interiorCenterX = frame.minX + frame.width * 0.60
+        let interiorCenterY = frame.midY + frame.height * 0.10
         ctx.fill(Path(frame),
                  with: .radialGradient(
                     Gradient(stops: [
                         .init(color: lampColor.opacity(lampIntensity),        location: 0),
-                        .init(color: lampColor.opacity(lampIntensity * 0.42), location: 0.5),
+                        .init(color: lampColor.opacity(lampIntensity * 0.45), location: 0.55),
                         .init(color: glassCold.opacity(0.88),                  location: 1)
                     ]),
                     center: CGPoint(x: interiorCenterX, y: interiorCenterY),
                     startRadius: 0, endRadius: max(frame.width, frame.height) * 0.85
                  ))
 
-        // 玻璃斜冷反光（sheen，从左上）
-        var sheen = Path()
-        sheen.move(to: CGPoint(x: frame.minX, y: frame.minY + frame.height * 0.22))
-        sheen.addLine(to: CGPoint(x: frame.minX + frame.width * 0.38, y: frame.minY))
-        sheen.addLine(to: CGPoint(x: frame.minX + frame.width * 0.55, y: frame.minY))
-        sheen.addLine(to: CGPoint(x: frame.minX, y: frame.minY + frame.height * 0.52))
-        sheen.closeSubpath()
-        ctx.fill(sheen, with: .color(glassCoolHL.opacity(0.08)))
-
-        // 室内剪影（仅主窗）
-        if isMain {
-            drawInterior(ctx: ctx, frame: frame, bassCG: bassCG, warmLamp: warmLamp)
-        }
-
-        // 窗格 mullion（2 竖 × 2 横，取代原来均匀 3 横）
-        let mW: CGFloat = isMain ? 2.0 : 1.4
-        // 一竖中线
-        let mxC = frame.minX + frame.width * 0.48
+        // 窗格 mullion —— 简化：仅 1 竖 1 横（十字型）
+        let mW: CGFloat = isMain ? 1.8 : 1.2
+        let mxC = frame.minX + frame.width * 0.50
         ctx.fill(Path(CGRect(x: mxC - mW / 2, y: frame.minY,
                               width: mW, height: frame.height)),
                  with: .color(mullion))
-        // 两横（黄金比）
-        for r in 0..<2 {
-            let my = frame.minY + frame.height * (r == 0 ? 0.38 : 0.72)
-            ctx.fill(Path(CGRect(x: frame.minX, y: my - mW / 2,
-                                  width: frame.width, height: mW)),
-                     with: .color(mullion))
-        }
+        let myC = frame.minY + frame.height * 0.55
+        ctx.fill(Path(CGRect(x: frame.minX, y: myC - mW / 2,
+                              width: frame.width, height: mW)),
+                 with: .color(mullion))
 
-        // 雨水 —— bezier + head drop + 部分静止
+        // 雨水打在玻璃上
         drawRainOnGlass(
             ctx: ctx, frame: frame,
             spectrumData: spectrumData,
@@ -547,145 +617,63 @@ struct NightWindowView: View {
                    lineWidth: 1.0)
     }
 
-    // MARK: - Interior (简短但有暖意)
-
-    private func drawInterior(ctx: GraphicsContext, frame: CGRect,
-                                bassCG: CGFloat, warmLamp: Color) {
-        // 椅子剪影 + 台灯，右下 2/5 区域
-        // 椅背（圆角矩形暗面，带一丝暖色透光 —— 不是纯黑）
-        let chairBackRect = CGRect(x: frame.minX + frame.width * 0.56,
-                                     y: frame.minY + frame.height * 0.42,
-                                     width: frame.width * 0.18,
-                                     height: frame.height * 0.40)
-        ctx.fill(Path(roundedRect: chairBackRect, cornerRadius: 3),
-                 with: .linearGradient(
-                    Gradient(colors: [
-                        Color.black.opacity(0.65),
-                        warmLamp.opacity(0.12)
-                    ]),
-                    startPoint: CGPoint(x: chairBackRect.minX, y: chairBackRect.minY),
-                    endPoint: CGPoint(x: chairBackRect.maxX, y: chairBackRect.maxY)
-                 ))
-        // 椅子靠垫（小椭圆）
-        let cushionRect = CGRect(x: chairBackRect.minX + 2,
-                                   y: chairBackRect.minY + chairBackRect.height * 0.12,
-                                   width: chairBackRect.width - 4,
-                                   height: chairBackRect.height * 0.36)
-        ctx.fill(Path(roundedRect: cushionRect, cornerRadius: 4),
-                 with: .color(Color.black.opacity(0.5)))
-
-        // 台灯：杆 + 锥形灯罩 + 灯泡 + 光晕
-        let lampX = frame.minX + frame.width * 0.82
-        let lampBaseY = frame.minY + frame.height * 0.78
-        // 杆
-        var pole = Path()
-        pole.move(to: CGPoint(x: lampX, y: lampBaseY))
-        pole.addLine(to: CGPoint(x: lampX, y: lampBaseY - frame.height * 0.34))
-        ctx.stroke(pole, with: .color(Color.black.opacity(0.72)), lineWidth: 1.4)
-        // 灯罩
-        let shadeW: CGFloat = frame.width * 0.13
-        let shadeH: CGFloat = frame.height * 0.11
-        var shade = Path()
-        shade.move(to: CGPoint(x: lampX - shadeW / 2,
-                                y: lampBaseY - frame.height * 0.34))
-        shade.addLine(to: CGPoint(x: lampX + shadeW / 2,
-                                   y: lampBaseY - frame.height * 0.34))
-        shade.addLine(to: CGPoint(x: lampX + shadeW * 0.30,
-                                   y: lampBaseY - frame.height * 0.34 - shadeH))
-        shade.addLine(to: CGPoint(x: lampX - shadeW * 0.30,
-                                   y: lampBaseY - frame.height * 0.34 - shadeH))
-        shade.closeSubpath()
-        ctx.fill(shade, with: .color(Color.black.opacity(0.68)))
-        // 灯泡暖光
-        let bulbR: CGFloat = 3.5
-        let bulbY = lampBaseY - frame.height * 0.31
-        ctx.fill(Path(ellipseIn: CGRect(x: lampX - bulbR, y: bulbY - bulbR,
-                                         width: bulbR * 2, height: bulbR * 2)),
-                 with: .color(warmLamp.opacity(0.92)))
-        // 台灯暖光扩散（室内散射）
-        let hotR: CGFloat = 22 + bassCG * 10
-        ctx.fill(Path(ellipseIn: CGRect(x: lampX - hotR, y: bulbY - hotR,
-                                          width: hotR * 2, height: hotR * 2)),
-                 with: .radialGradient(
-                    Gradient(colors: [
-                        warmLamp.opacity(0.32),
-                        Color.clear
-                    ]),
-                    center: CGPoint(x: lampX, y: bulbY),
-                    startRadius: 0, endRadius: hotR
-                 ))
-    }
-
-    // MARK: - Rain on glass (bezier + head drop + partial dwell)
+    // MARK: - Rain on glass (bezier + head drop)
 
     private func drawRainOnGlass(ctx: GraphicsContext, frame: CGRect,
                                    spectrumData: [Float],
                                    bassCG: CGFloat, midCG: CGFloat, trebleCG: CGFloat,
                                    t: Float, isMain: Bool,
                                    glassCoolHL: Color) {
-        let rainCount = isMain ? min(28, spectrumData.count) : 10
+        // 雨水数量：静默 base + treble 激活——音乐高频高时雨变密
+        let baseRain = isMain ? 10 : 6
+        let trebleBoost = Int(trebleCG * 18)
+        let rainCount = min(spectrumData.count, baseRain + trebleBoost)
         let idle = idleBlend(spectrumData)
 
         for i in 0..<rainCount {
             let s = Double(i) * 9.71 + (isMain ? 0 : 37.2)
 
-            // 横向稳定位置（带极微漂移）
             let xRand = s.truncatingRemainder(dividingBy: 1.0)
             let x = frame.minX + (CGFloat(xRand) * 0.90 + 0.05) * frame.width
 
-            // bin 强度 → 长度签名
-            let binIdx = Int(Double(i) * Double(spectrumData.count) / Double(rainCount))
+            let binIdx = Int(Double(i) * Double(spectrumData.count) / Double(max(rainCount, 1)))
                 .clamped(to: 0...(spectrumData.count - 1))
             let bin = spectrumData[binIdx]
             let magnitude = CGFloat(bin) * (1 - CGFloat(idle))
                            + 0.08 * CGFloat(idle)
 
-            // 三状态：~20% 静止水珠；~55% 慢速下滑；~25% 快速下滑
-            let behaviorSeed = (s * 3.17).truncatingRemainder(dividingBy: 1.0)
-            let isDwell = behaviorSeed < 0.20
-            let isFast = behaviorSeed > 0.75
+            let maxLen = frame.height * (isMain ? 0.40 : 0.26)
+            let streakLen = 8 + magnitude * maxLen * 1.2
 
-            let maxLen = frame.height * (isMain ? 0.42 : 0.28)
-            let streakLen = isDwell
-                ? 3 + magnitude * maxLen * 0.15  // 静止水珠基本没 trail
-                : 6 + magnitude * maxLen
-
-            // 下落速度（静止的几乎不动，慢 0.10，快 2.0）
-            let fallSpeed: Double
-            if isDwell { fallSpeed = 0.04 + Double(bassCG) * 0.10 }
-            else if isFast { fallSpeed = 0.55 + Double(bassCG) * 2.5 }
-            else { fallSpeed = 0.18 + Double(bassCG) * 1.2 }
+            // 下落速度 —— 主要驱动：bass 明显放大（×2.5）
+            let fallSpeed = 0.30 + Double(bassCG) * 2.5 + Double(magnitude) * 0.4
 
             let yCycle = (Double(t) * fallSpeed + s * 3.3).truncatingRemainder(dividingBy: 1.0)
             let y0 = frame.minY + CGFloat(yCycle) * frame.height
 
-            // 横向漂移（treble —— 风）
-            let drift = CGFloat(sin(Double(t) * 1.3 + s)) * trebleCG * (isFast ? 8 : 4)
+            // 横向漂移 —— treble 风压，幅度放大
+            let drift = CGFloat(sin(Double(t) * 1.6 + s)) * trebleCG * 12
 
-            // bezier 曲线：head drop 在 y0；trail 向上弯一点（不是直线）
             let headX = x + drift
             let headY = y0
             let midY = y0 - streakLen * 0.5
-            let midX = x + drift + (isFast ? CGFloat(sin(s * 2.1)) * 2 : CGFloat(sin(s * 2.1)))
+            let midX = x + drift + CGFloat(sin(s * 2.1)) * 1.6
             let tailX = x + drift * 0.4 + CGFloat(sin(s * 0.7)) * 1.5
             let tailY = y0 - streakLen
 
-            // Trail —— 从 tail 到 head 渐粗
-            if streakLen > 4 {
-                var trail = Path()
-                trail.move(to: CGPoint(x: tailX, y: tailY))
-                trail.addQuadCurve(to: CGPoint(x: headX, y: headY),
-                                    control: CGPoint(x: midX, y: midY))
-                let trailAlpha = 0.20 + Double(magnitude) * 0.45
-                let trailWidth: CGFloat = isFast ? 0.9 : (isMain ? 0.8 : 0.55)
-                ctx.stroke(trail,
-                           with: .color(glassCoolHL.opacity(trailAlpha
-                                                              * (isMain ? 0.85 : 0.55))),
-                           lineWidth: trailWidth)
-            }
+            // Trail bezier
+            var trail = Path()
+            trail.move(to: CGPoint(x: tailX, y: tailY))
+            trail.addQuadCurve(to: CGPoint(x: headX, y: headY),
+                                control: CGPoint(x: midX, y: midY))
+            let trailAlpha = 0.24 + Double(magnitude) * 0.50
+            ctx.stroke(trail,
+                       with: .color(glassCoolHL.opacity(trailAlpha
+                                                          * (isMain ? 0.88 : 0.55))),
+                       lineWidth: isMain ? 0.85 : 0.55)
 
-            // Head drop —— 明显的小水珠（亮点 + 微反光）
-            let headR: CGFloat = isDwell ? 1.6 : (isFast ? 1.3 : 1.5)
+            // Head drop
+            let headR: CGFloat = 1.4 + magnitude * 1.0
             let headRect = CGRect(x: headX - headR, y: headY - headR,
                                     width: headR * 2, height: headR * 2)
             ctx.fill(Path(ellipseIn: headRect),
@@ -697,27 +685,6 @@ struct NightWindowView: View {
                         center: CGPoint(x: headX - headR * 0.3, y: headY - headR * 0.3),
                         startRadius: 0, endRadius: headR * 1.6
                      ))
-
-            // 静止水珠：画一个更小的静态 cluster（2-3 个小珠），主窗才加
-            if isDwell && isMain && magnitude > 0.05 {
-                for k in 1...2 {
-                    let kx = headX + CGFloat(k) * 2.5
-                    let ky = headY + CGFloat(sin(s + Double(k))) * 1.5
-                    let kr: CGFloat = 0.8
-                    ctx.fill(Path(ellipseIn: CGRect(x: kx - kr, y: ky - kr,
-                                                      width: kr * 2, height: kr * 2)),
-                             with: .color(glassCoolHL.opacity(0.55)))
-                }
-            }
-
-            // 底沿积水（水珠到达 0.94 以上 —— 主窗才有，细节）
-            if yCycle > 0.93 && isMain && !isDwell {
-                let puddleR: CGFloat = 2.8
-                ctx.fill(Path(ellipseIn: CGRect(x: headX - puddleR,
-                                                  y: y0 + streakLen * 0.3,
-                                                  width: puddleR * 2, height: puddleR * 1.2)),
-                         with: .color(glassCoolHL.opacity(0.75)))
-            }
         }
     }
 
