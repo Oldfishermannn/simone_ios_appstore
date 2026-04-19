@@ -28,14 +28,12 @@ enum Channel: Hashable {
     }
 
     static let favoritesVisualizerKey = "favoritesVisualizer"
-    static let favoritesVisualizerOptions: [VisualizerStyle] = [
-        .drawer, .firefly, .letters, .nightWindow, .vinylBooth
-    ]
+    static let favoritesVisualizerOptions: [VisualizerStyle] = [.nightWindow]
 
     static var favoritesVisualizerPreference: VisualizerStyle {
-        let raw = UserDefaults.standard.string(forKey: favoritesVisualizerKey) ?? VisualizerStyle.drawer.rawValue
-        let resolved = VisualizerStyle(rawValue: raw) ?? .drawer
-        return favoritesVisualizerOptions.contains(resolved) ? resolved : .drawer
+        let raw = UserDefaults.standard.string(forKey: favoritesVisualizerKey) ?? VisualizerStyle.nightWindow.rawValue
+        let resolved = VisualizerStyle(rawValue: raw) ?? .nightWindow
+        return favoritesVisualizerOptions.contains(resolved) ? resolved : .nightWindow
     }
 
     /// Stable string for UserDefaults persistence.

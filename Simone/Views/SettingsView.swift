@@ -55,10 +55,10 @@ struct SettingsView: View {
 
             settingRow(
                 title: "Favorites Style",
-                subtitle: "five objects, pick your mood",
+                subtitle: "ambient city window",
                 value: state.favoritesVisualizer.displayName.uppercased(),
-                tappable: true,
-                action: cycleFavoritesStyle
+                tappable: false,
+                action: {}
             )
 
             spectrumPreview
