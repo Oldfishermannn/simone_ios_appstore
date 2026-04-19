@@ -197,7 +197,10 @@ struct ImmersiveView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
-            .gesture(spectrumTapOrSwipe)
+            // 全屏 morph 画布上用 simultaneousGesture：纵向翻页要让给外层
+            // VerticalPageView（进 Details/Settings），本 gesture 只在
+            // onEnded 里处理 tap 和横向 dominant 的频道切换。
+            .simultaneousGesture(spectrumTapOrSwipe)
 
             VStack(spacing: 0) {
                 Spacer()
