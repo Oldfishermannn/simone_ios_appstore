@@ -132,7 +132,8 @@ struct ImmersiveView: View {
                 }
                 .frame(width: specSize, height: specSize)
                 .contentShape(Rectangle())
-                .gesture(spectrumTapOrSwipe)
+                .onTapGesture { toggleMode() }
+                .gesture(channelSwipe)
 
                 Spacer().frame(height: 44)
 
@@ -197,10 +198,8 @@ struct ImmersiveView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
-            // 全屏 morph 画布上用 simultaneousGesture：纵向翻页要让给外层
-            // VerticalPageView（进 Details/Settings），本 gesture 只在
-            // onEnded 里处理 tap 和横向 dominant 的频道切换。
-            .simultaneousGesture(spectrumTapOrSwipe)
+            .onTapGesture { toggleMode() }
+            .gesture(channelSwipe)
 
             VStack(spacing: 0) {
                 Spacer()
@@ -331,23 +330,17 @@ struct ImmersiveView: View {
 
     // MARK: - Channel swipe (小图模式左右滑动换频道)
 
-    /// 单一 DragGesture 统一处理 tap（位移 < 10pt, 切换 big/small）和
-    /// 横滑（位移 > 30pt 且横向 dominant, 换频道）。避免 onTapGesture 与
-    /// DragGesture 混用时两者同时识别导致"滑一下又换频道又切大图"的 bug。
-    private var spectrumTapOrSwipe: some Gesture {
-        DragGesture(minimumDistance: 0)
+    /// 横滑换频道：只在横向 dominant 且 > 30pt 时触发。
+    /// minimumDistance: 20 是关键 —— 低于这个阈值 SwiftUI 不认领 touch，
+    /// VerticalPageView 的纵向 pan 可以抢先。tap 用独立的 onTapGesture
+    /// 承载，tap 和 drag 因阈值差（20pt）天然互斥，不会重复触发。
+    private var channelSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
             .onEnded { value in
                 let dx = value.translation.width
                 let dy = value.translation.height
-                let dist = hypot(dx, dy)
 
-                // Tap（几乎没位移）— 切换 big/small。
-                if dist < 10 {
-                    toggleMode()
-                    return
-                }
-
-                // 只响应横向 dominant 的滑动，避免和纵向 VerticalPageView 冲突。
+                // 只响应横向 dominant 的滑动。
                 guard abs(dx) > abs(dy) else { return }
                 guard abs(dx) > 30 else { return }
 
