@@ -46,7 +46,7 @@ struct SettingsView: View {
 
             settingRow(
                 title: "Spectrum",
-                subtitle: "eleven shapes, bound to channel",
+                subtitle: "one shape per channel",
                 value: state.currentChannel.visualizer.displayName.uppercased(),
                 tappable: false,
                 action: {}
