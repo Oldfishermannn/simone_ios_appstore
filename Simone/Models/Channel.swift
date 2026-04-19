@@ -17,7 +17,8 @@ enum Channel: Hashable {
     }
 
     /// Spectrum tonality is bound to the channel — no user self-select in v1.1.1.
-    /// v1.2 Favorites 评审期：三种"物件感"可视化（firefly / letters / drawer）
+    /// v1.2 Favorites 评审期：五种"物件感"可视化
+    /// （drawer / firefly / letters / nightWindow / vinylBooth）
     /// 由 UserDefaults 支持，用户可在设置里切换；category 频道仍走默认。
     var visualizer: VisualizerStyle {
         switch self {
@@ -27,12 +28,14 @@ enum Channel: Hashable {
     }
 
     static let favoritesVisualizerKey = "favoritesVisualizer"
-    static let favoritesVisualizerOptions: [VisualizerStyle] = [.firefly, .letters, .drawer]
+    static let favoritesVisualizerOptions: [VisualizerStyle] = [
+        .drawer, .firefly, .letters, .nightWindow, .vinylBooth
+    ]
 
     static var favoritesVisualizerPreference: VisualizerStyle {
-        let raw = UserDefaults.standard.string(forKey: favoritesVisualizerKey) ?? VisualizerStyle.firefly.rawValue
-        let resolved = VisualizerStyle(rawValue: raw) ?? .firefly
-        return favoritesVisualizerOptions.contains(resolved) ? resolved : .firefly
+        let raw = UserDefaults.standard.string(forKey: favoritesVisualizerKey) ?? VisualizerStyle.drawer.rawValue
+        let resolved = VisualizerStyle(rawValue: raw) ?? .drawer
+        return favoritesVisualizerOptions.contains(resolved) ? resolved : .drawer
     }
 
     /// Stable string for UserDefaults persistence.

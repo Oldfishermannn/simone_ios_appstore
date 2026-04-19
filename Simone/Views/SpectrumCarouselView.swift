@@ -132,6 +132,10 @@ struct SpectrumCarouselView: View {
             LetterRackView(spectrumData: spectrumData, density: density)
         case .drawer:
             DrawerView(spectrumData: spectrumData, density: density)
+        case .nightWindow:
+            NightWindowView(spectrumData: spectrumData, density: density)
+        case .vinylBooth:
+            VinylBoothView(spectrumData: spectrumData, density: density)
         }
     }
 }

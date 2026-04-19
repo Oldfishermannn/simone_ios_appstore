@@ -179,7 +179,7 @@ struct ImmersiveView: View {
     private func supportsMorph(_ style: VisualizerStyle) -> Bool {
         switch style {
         case .lofiTape, .oscilloscope, .liquor, .ember, .matrix,
-             .firefly, .letters, .drawer:
+             .firefly, .letters, .drawer, .nightWindow, .vinylBooth:
             return true
         default:
             return false
@@ -235,6 +235,10 @@ struct ImmersiveView: View {
             LetterRackView(spectrumData: spectrumData, density: 2, expansion: expansion)
         case .drawer:
             DrawerView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .nightWindow:
+            NightWindowView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .vinylBooth:
+            VinylBoothView(spectrumData: spectrumData, density: 2, expansion: expansion)
         default:
             // 不走 morph 路径的 visualizer 已在上层被 supportsMorph 过滤掉
             EmptyView()
@@ -325,6 +329,8 @@ struct ImmersiveView: View {
         case .firefly:      FireflyJarView(spectrumData: spectrumData, density: 1)
         case .letters:      LetterRackView(spectrumData: spectrumData, density: 1)
         case .drawer:       DrawerView(spectrumData: spectrumData, density: 1)
+        case .nightWindow:  NightWindowView(spectrumData: spectrumData, density: 1)
+        case .vinylBooth:   VinylBoothView(spectrumData: spectrumData, density: 1)
         }
     }
 

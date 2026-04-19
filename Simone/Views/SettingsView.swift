@@ -55,7 +55,7 @@ struct SettingsView: View {
 
             settingRow(
                 title: "Favorites Style",
-                subtitle: "three objects, pick your mood",
+                subtitle: "five objects, pick your mood",
                 value: state.favoritesVisualizer.displayName.uppercased(),
                 tappable: true,
                 action: cycleFavoritesStyle

@@ -7,8 +7,8 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
     case ember, liquor
     // v1.2 Lo-fi 三选一 — 老鱼评审中（tape / pad / blinds）
     case lofiTape, lofiPad, lofiBlinds
-    // v1.2 Favorites 三选一 — 老鱼评审中（firefly / letters / drawer）
-    case firefly, letters, drawer
+    // v1.2 Favorites 五选一 — 老鱼评审中（firefly / letters / drawer / nightWindow / vinylBooth）
+    case firefly, letters, drawer, nightWindow, vinylBooth
 
     var id: String { rawValue }
 
@@ -35,6 +35,8 @@ enum VisualizerStyle: String, CaseIterable, Identifiable {
         case .firefly: "Firefly"
         case .letters: "Letters"
         case .drawer: "Drawer"
+        case .nightWindow: "Night Window"
+        case .vinylBooth: "Vinyl"
         }
     }
 
