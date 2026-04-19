@@ -49,12 +49,21 @@ struct ImmersiveView: View {
     /// (which drives non-lofi crossfade modifiers) and the morph tween state
     /// (which drives the lofi expansion interpolation).
     private func toggleMode() {
+        setMode(toSmall: !isSmall)
+    }
+
+    /// Drive mode transition to an absolute target. No-op if already there so
+    /// we can safely call this from audio-state change observers without
+    /// fighting the user's in-flight tap. Preserves mid-flight expansion so
+    /// rapid play/pause stays smooth.
+    private func setMode(toSmall: Bool) {
+        guard isSmall != toSmall else { return }
         let now = Date()
         let current = currentExpansion(now: now)
         morphFrom = current
-        morphTo = isSmall ? 1.0 : 0.0
+        morphTo = toSmall ? 0.0 : 1.0
         morphStart = now
-        withAnimation(toggleAnim) { isSmall.toggle() }
+        withAnimation(toggleAnim) { isSmall = toSmall }
     }
 
     var body: some View {
@@ -88,6 +97,12 @@ struct ImmersiveView: View {
                 displayStyleName = state.selectedStyle?.name ?? ""
                 displayStyle = state.selectedStyle
             }
+        }
+        .onChange(of: state.audioEngine.isPlaying) { _, playing in
+            // Auto: play → big pose, pause → small pose.
+            // Reuses the morph tween so transition is continuous even if the
+            // user toggled mid-flight via tap.
+            setMode(toSmall: !playing)
         }
     }
 
