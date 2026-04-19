@@ -177,7 +177,8 @@ struct ImmersiveView: View {
 
     private func supportsMorph(_ style: VisualizerStyle) -> Bool {
         switch style {
-        case .lofiTape, .oscilloscope, .liquor, .ember, .matrix:
+        case .lofiTape, .oscilloscope, .liquor, .ember, .matrix,
+             .firefly, .letters, .drawer:
             return true
         default:
             return false
@@ -226,6 +227,12 @@ struct ImmersiveView: View {
             EmberView(spectrumData: spectrumData, density: 2, expansion: expansion)
         case .matrix:
             MatrixView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .firefly:
+            FireflyJarView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .letters:
+            LetterRackView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .drawer:
+            DrawerView(spectrumData: spectrumData, density: 2, expansion: expansion)
         default:
             // 不走 morph 路径的 visualizer 已在上层被 supportsMorph 过滤掉
             EmptyView()
@@ -313,6 +320,9 @@ struct ImmersiveView: View {
         case .lofiTape:     LofiTapeView(spectrumData: spectrumData, density: 1)
         case .lofiPad:      LofiPadView(spectrumData: spectrumData, density: 1)
         case .lofiBlinds:   LofiBlindsView(spectrumData: spectrumData, density: 1)
+        case .firefly:      FireflyJarView(spectrumData: spectrumData, density: 1)
+        case .letters:      LetterRackView(spectrumData: spectrumData, density: 1)
+        case .drawer:       DrawerView(spectrumData: spectrumData, density: 1)
         }
     }
 

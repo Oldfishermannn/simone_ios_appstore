@@ -126,6 +126,12 @@ struct SpectrumCarouselView: View {
             LofiPadView(spectrumData: spectrumData, density: density)
         case .lofiBlinds:
             LofiBlindsView(spectrumData: spectrumData, density: density)
+        case .firefly:
+            FireflyJarView(spectrumData: spectrumData, density: density)
+        case .letters:
+            LetterRackView(spectrumData: spectrumData, density: density)
+        case .drawer:
+            DrawerView(spectrumData: spectrumData, density: density)
         }
     }
 }

@@ -49,6 +49,16 @@ final class AppState {
     }
     private var autoTuneTimer: Timer?
 
+    // v1.2 Favorites 评审期：三选一可视化（firefly / letters / drawer）
+    var favoritesVisualizer: VisualizerStyle = Channel.favoritesVisualizerPreference {
+        didSet {
+            UserDefaults.standard.set(favoritesVisualizer.rawValue, forKey: Channel.favoritesVisualizerKey)
+            if currentChannel == .favorites {
+                selectedVisualizer = favoritesVisualizer
+            }
+        }
+    }
+
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
         case thirty = 30

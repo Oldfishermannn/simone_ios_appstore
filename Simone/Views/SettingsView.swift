@@ -51,6 +51,15 @@ struct SettingsView: View {
                 tappable: false,
                 action: {}
             )
+            fogDivider
+
+            settingRow(
+                title: "Favorites Style",
+                subtitle: "three objects, pick your mood",
+                value: state.favoritesVisualizer.displayName.uppercased(),
+                tappable: true,
+                action: cycleFavoritesStyle
+            )
 
             spectrumPreview
                 .padding(.top, FogTheme.spaceMD)
@@ -194,6 +203,15 @@ struct SettingsView: View {
         let modes = AppState.EvolveMode.allCases
         guard let idx = modes.firstIndex(of: state.evolveMode) else { return }
         state.evolveMode = modes[(idx + 1) % modes.count]
+    }
+
+    private func cycleFavoritesStyle() {
+        let options = Channel.favoritesVisualizerOptions
+        guard let idx = options.firstIndex(of: state.favoritesVisualizer) else {
+            state.favoritesVisualizer = options.first ?? .firefly
+            return
+        }
+        state.favoritesVisualizer = options[(idx + 1) % options.count]
     }
 
     private func cycleSleep() {
