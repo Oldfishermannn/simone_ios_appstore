@@ -1,16 +1,17 @@
 import SwiftUI
 
-// Rock visualizer — Ember & Smoke.
+// Rock visualizer — Ember on Charred Logs.
 //
 // 小图 (expansion=0): 单枚余烬居中、略大。
-// 大图 (expansion=1): 主余烬右移缩小、两侧余烬淡入、背景深灰渐变 + 顶部 fade 淡入。
+// 大图 (expansion=1): 主余烬落在两根交叠炭木上，地面淡出灰烬层，背景
+// 深灰垂直渐变 + 顶部 fade 遮罩。场景叙事：壁炉底的最后一点余烬。
 //
-// Object: 炭灰房间里的余烬火星，一缕烟升起散开。低频让火星脉冲（吸气时亮起），
-// 中频驱动烟丝弯曲，高频让烟尾分叉。
+// 物体连续 morph：余烬本身 radius/cx/cyBase 线性插值；炭木 / 地板 /
+// 背景走 sceneAlpha smoothstep(0.30, 0.88) 淡入。
 struct EmberView: View {
     let spectrumData: [Float]
     var density: Int = 1
-    /// 0 = small (单余烬居中), 1 = big (三余烬 + 背景场景)
+    /// 0 = small (单余烬居中), 1 = big (余烬 + 炭木 + 灰烬层场景)
     var expansion: CGFloat = 1.0
 
     var body: some View {
@@ -41,6 +42,9 @@ struct EmberView: View {
         let emberEdge = Color(red: 120/255, green: 54/255,  blue: 42/255)
         let smokeCool = Color(red: 140/255, green: 148/255, blue: 162/255)
         let smokeWarm = Color(red: 120/255, green: 102/255, blue: 88/255)
+        let charcoal     = Color(red:  22/255, green:  18/255, blue:  16/255)
+        let charcoalHi   = Color(red:  46/255, green:  36/255, blue:  30/255)
+        let ashWarm      = Color(red:  72/255, green:  58/255, blue:  48/255)
 
         let maxValue = spectrumData.max() ?? 0
         let idleBlend = max(Float(0), 1 - maxValue * 4)
@@ -54,7 +58,7 @@ struct EmberView: View {
 
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
-        // 背景深灰渐变（淡入）
+        // ─── 背景深灰渐变（淡入）────────────────────────────
         if sceneAlpha > 0.01 {
             context.drawLayer { ctx in
                 ctx.opacity = sceneAlpha
@@ -71,17 +75,58 @@ struct EmberView: View {
             }
         }
 
+        // ─── 地板灰烬层（大图淡入）──────────────────────────
+        // 下缘一条暖灰 gradient，暗示炉膛底的灰堆。
+        if sceneAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                let floorRect = CGRect(x: 0, y: h * 0.90, width: w, height: h * 0.10)
+                ctx.fill(Path(floorRect),
+                         with: .linearGradient(
+                            Gradient(stops: [
+                                .init(color: ashWarm.opacity(0), location: 0),
+                                .init(color: ashWarm.opacity(0.55), location: 1)
+                            ]),
+                            startPoint: CGPoint(x: w * 0.5, y: floorRect.minY),
+                            endPoint: CGPoint(x: w * 0.5, y: floorRect.maxY)
+                         ))
+            }
+        }
+
+        // ─── 炭木堆（大图淡入）──────────────────────────────
+        // 后方斜柴 + 前方横柴两根交叠，主余烬坐在顶上。
+        // 高频让橙色裂缝脉动——木头里还剩一点活火。
+        if sceneAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                drawCharLog(
+                    ctx: ctx,
+                    centerX: w * 0.46, centerY: h * 0.845,
+                    length: w * 0.46, thickness: h * 0.026, angle: -0.20,
+                    charcoal: charcoal, light: charcoalHi,
+                    emberCore: emberCore, treble: treble, seed: 0.3
+                )
+                drawCharLog(
+                    ctx: ctx,
+                    centerX: w * 0.52, centerY: h * 0.882,
+                    length: w * 0.56, thickness: h * 0.036, angle: 0.04,
+                    charcoal: charcoal, light: charcoalHi,
+                    emberCore: emberCore, treble: treble, seed: 1.1
+                )
+            }
+        }
+
         // 主余烬 —— 连续 morph 物体
+        // big pose 调到 0.83h，让余烬正好坐在前方横柴顶面上方。
         let mainEmber = EmberSpec(
-            cx: 0.48 + (0.55 - 0.48) * e,
-            cyBase: 0.80 + (0.87 - 0.80) * e,
-            radius: 0.040 + (0.026 - 0.040) * e,
+            cx: 0.48 + (0.52 - 0.48) * e,
+            cyBase: 0.80 + (0.83 - 0.80) * e,
+            radius: 0.040 + (0.028 - 0.040) * e,
             seed: 0.0,
-            lenFactor: 0.75 + (0.85 - 0.75) * e
+            lenFactor: 0.75 + (0.82 - 0.75) * e
         )
 
         // 小图的 smoke 自己的顶部 fade 由 stroke alpha 衰减处理
-        // 大图需要画额外的顶部遮罩（sceneAlpha 淡入）
         drawSmoke(context: context, w: w, h: h, ember: mainEmber,
                   spectrumData: spectrumData, binCount: binCount,
                   mid: mid, treble: treble, idleBlend: idleBlend, t: t,
@@ -90,28 +135,6 @@ struct EmberView: View {
         drawEmber(context: context, w: w, h: h, ember: mainEmber,
                   bass: bass, idleBlend: idleBlend, t: t,
                   core: emberCore, midColor: emberMid, edge: emberEdge)
-
-        // 辅余烬（淡入）
-        if sceneAlpha > 0.01 {
-            let sideEmbers = [
-                EmberSpec(cx: 0.22, cyBase: 0.82, radius: 0.022, seed: 1.7,  lenFactor: 0.78),
-                EmberSpec(cx: 0.81, cyBase: 0.79, radius: 0.019, seed: 3.4,  lenFactor: 0.72)
-            ]
-            context.drawLayer { ctx in
-                ctx.opacity = sceneAlpha
-                for se in sideEmbers {
-                    drawSmoke(context: ctx, w: w, h: h, ember: se,
-                              spectrumData: spectrumData, binCount: binCount,
-                              mid: mid, treble: treble, idleBlend: idleBlend, t: t,
-                              smokeCool: smokeCool, smokeWarm: smokeWarm)
-                }
-                for se in sideEmbers {
-                    drawEmber(context: ctx, w: w, h: h, ember: se,
-                              bass: bass, idleBlend: idleBlend, t: t,
-                              core: emberCore, midColor: emberMid, edge: emberEdge)
-                }
-            }
-        }
 
         // 顶部淡出遮罩 —— 仅在大图 pose 显示
         if sceneAlpha > 0.01 {
@@ -131,6 +154,67 @@ struct EmberView: View {
             }
         }
     }
+
+    // MARK: - Charred log
+
+    private func drawCharLog(
+        ctx: GraphicsContext, centerX: CGFloat, centerY: CGFloat,
+        length: CGFloat, thickness: CGFloat, angle: CGFloat,
+        charcoal: Color, light: Color, emberCore: Color,
+        treble: Float, seed: Double
+    ) {
+        let transform = CGAffineTransform(translationX: centerX, y: centerY)
+            .rotated(by: angle)
+
+        // 地面阴影（柔长椭圆，在柴下方）
+        let shadowRect = CGRect(
+            x: -length * 0.5 - 2,
+            y: thickness * 0.35,
+            width: length + 4,
+            height: thickness * 1.2
+        )
+        let shadowPath = Path(ellipseIn: shadowRect).applying(transform)
+        ctx.fill(shadowPath, with: .color(Color.black.opacity(0.38)))
+
+        // 木柴本体（炭黑渐变）
+        let logRect = CGRect(
+            x: -length * 0.5, y: -thickness * 0.5,
+            width: length, height: thickness
+        )
+        let logPath = Path(roundedRect: logRect, cornerRadius: thickness * 0.38)
+            .applying(transform)
+
+        ctx.fill(logPath,
+                 with: .linearGradient(
+                    Gradient(colors: [light, charcoal]),
+                    startPoint: CGPoint(x: centerX, y: centerY - thickness * 0.5),
+                    endPoint: CGPoint(x: centerX, y: centerY + thickness * 0.5)
+                 ))
+
+        // 顶部一线暗高光（侧光从上打）
+        var topHL = Path()
+        let hlInset: CGFloat = thickness * 0.45
+        topHL.move(to: CGPoint(x: -length * 0.5 + hlInset, y: -thickness * 0.28))
+        topHL.addLine(to: CGPoint(x: length * 0.5 - hlInset, y: -thickness * 0.28))
+        let topHLPath = topHL.applying(transform)
+        ctx.stroke(topHLPath, with: .color(light.opacity(0.50)), lineWidth: 0.6)
+
+        // 橙色裂缝 —— 3 条，高频驱动亮度（还剩一点活火）
+        for i in 0..<3 {
+            let u: CGFloat = 0.22 + CGFloat(i) * 0.26
+            let cx: CGFloat = -length * 0.5 + length * u
+            let jitter: CGFloat = CGFloat(sin(seed * 3.5 + Double(i))) * 0.25 + 1
+            let crackLen: CGFloat = length * 0.08 * jitter
+            var crack = Path()
+            crack.move(to: CGPoint(x: cx - crackLen * 0.5, y: 0))
+            crack.addLine(to: CGPoint(x: cx + crackLen * 0.5, y: 0))
+            let crackPath = crack.applying(transform)
+            let tPulse = 0.40 + Double(treble) * 0.45
+            ctx.stroke(crackPath, with: .color(emberCore.opacity(tPulse)), lineWidth: 1.1)
+        }
+    }
+
+    // MARK: - Ember
 
     private func drawEmber(context: GraphicsContext, w: CGFloat, h: CGFloat,
                            ember e: EmberSpec, bass: Float, idleBlend: Float, t: Float,
