@@ -2,25 +2,29 @@ import SwiftUI
 
 // Lo-fi visualizer — Cassette Tape "90 Minutes".
 //
-// Object: 一盒 TDK 风格卡带，微微倾斜放在桌上，盖板透出两只磁芯。
-// 磁带本身是 spectrum waveform（cassette literally stores waveforms——
-// 叙事一致），hub 外缘绑 8 bins 做圆形频谱环，label 分 3 频段撒 hiss。
-// 大图加完整场景：桌面木纹 + 侧光束 + 长影 + 背景唱片沟纹 + 飘尘。
+// 小图：一盒卡带 tilt=-0.04 随意放着，漂在 immersive 底上。
+// 大图：卡带正插在 hi-fi cassette deck 里播放——deck 占下半屏，bay 凹
+// 陷咬住卡带底部 34%，两侧有 capstan 转轮同步旋转，红色 PLAY LED 随
+// bass 脉动。Cassette 端无缝衔接小图一致的频谱耦合。
 //
-// Palette（OKLCH → sRGB 近似）:
-//   shell       oklch(0.88 0.05 85) → rgb(246, 232, 200)
-//   label       oklch(0.93 0.04 85) → rgb(252, 240, 214)
-//   labelLine   oklch(0.65 0.06 70) → rgb(186, 162, 120)
-//   window      oklch(0.22 0.03 55) → rgb( 58,  42,  32)
-//   hub         oklch(0.35 0.04 55) → rgb( 98,  76,  58)
-//   hubRing     oklch(0.50 0.08 60) → rgb(148, 108,  72)
-//   tape        oklch(0.18 0.02 55) → rgb( 36,  28,  22)
-//   accent      oklch(0.65 0.11 55) → rgb(188, 126,  72)  铜色
-//   woodLit     oklch(0.32 0.04 55) → rgb( 78,  50,  34)  桌面亮色
-//   woodDark    oklch(0.18 0.02 50) → rgb( 38,  26,  20)  桌面暗色
+// Spectrum coupling (both modes):
+// - 磁带本身=18 bins waveform（磁带存的就是声波）
+// - 每个 hub 外缘 8 颗铜 LED=8 bins（左 hub 低频 / 右 hub 高频）
+// - Label hiss 分 3 频段（低点大/中点中/高点细）
+// - Big mode only: PLAY LED 随 bass 脉冲，capstan 旋转速度随 bass
+//
+// Palette (OKLCH → sRGB)：
+//   shell     (246, 232, 200)  label     (252, 240, 214)  labelLine (186, 162, 120)
+//   window    ( 58,  42,  32)  hub       ( 98,  76,  58)  hubRing   (148, 108,  72)
+//   tape      ( 36,  28,  22)  accent    (188, 126,  72)
+//   deckMetal ( 62,  66,  74)  deckDark  ( 28,  30,  36)  deckDarker( 12,  14,  18)
+//   playLed   (230, 100,  70)  powerLed  ( 90, 180, 230)
 struct LofiTapeView: View {
     let spectrumData: [Float]
     var density: Int = 1
+    /// 0 = small pose (single cassette), 1 = big pose (cassette in deck).
+    /// Smoothly interpolated for the body-to-body morph ImmersiveView drives.
+    var expansion: CGFloat = 1.0
 
     var body: some View {
         Canvas { context, size in
@@ -32,7 +36,10 @@ struct LofiTapeView: View {
 
     private func renderTape(context: GraphicsContext, size: CGSize, binCount: Int) {
         let w = size.width, h = size.height
-        let isBig = density > 1
+        let e: CGFloat = max(0, min(1, expansion))
+        // Deck scene stays hidden until 30% morph; fully opaque by 88%.
+        // Smoothstep gives C1 continuity at both ends so the fade-in never pops.
+        let deckAlpha: Double = smoothstep(0.30, 0.88, Double(e))
 
         let shell     = Color(red: 246/255, green: 232/255, blue: 200/255)
         let label     = Color(red: 252/255, green: 240/255, blue: 214/255)
@@ -42,10 +49,12 @@ struct LofiTapeView: View {
         let hubRing   = Color(red: 148/255, green: 108/255, blue:  72/255)
         let tape      = Color(red:  36/255, green:  28/255, blue:  22/255)
         let accent    = Color(red: 188/255, green: 126/255, blue:  72/255)
-        let woodLit   = Color(red:  78/255, green:  50/255, blue:  34/255)
-        let woodDark  = Color(red:  38/255, green:  26/255, blue:  20/255)
+        let deckMetal = Color(red:  62/255, green:  66/255, blue:  74/255)
+        let deckDark  = Color(red:  28/255, green:  30/255, blue:  36/255)
+        let deckDarker = Color(red: 12/255, green:  14/255, blue:  18/255)
+        let playLed   = Color(red: 230/255, green: 100/255, blue:  70/255)
+        let powerLed  = Color(red:  90/255, green: 180/255, blue: 230/255)
 
-        // Frequency bands
         let maxValue = spectrumData.max() ?? 0
         let idleBlend = max(Float(0), 1 - maxValue * 4)
         let thirds = binCount / 3
@@ -61,122 +70,180 @@ struct LofiTapeView: View {
 
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
-        // ─── Big-mode scene (beneath the tape) ──────────────────────────
-        if isBig {
-            // 1. 暖色 vignette 底
-            context.fill(Path(CGRect(origin: .zero, size: size)),
-                         with: .radialGradient(
-                            Gradient(stops: [
-                                .init(color: Color(red: 58/255, green: 42/255, blue: 32/255).opacity(0.55), location: 0),
-                                .init(color: Color(red: 24/255, green: 18/255, blue: 14/255), location: 0.7),
-                                .init(color: Color(red: 16/255, green: 12/255, blue: 10/255), location: 1)
-                            ]),
-                            center: CGPoint(x: w * 0.82, y: h * 0.18),
-                            startRadius: 0, endRadius: max(w, h) * 0.98
-                         ))
-
-            // 2. 背景唱片沟纹（左上，mid 推着微扩）
-            let grooveCenter = CGPoint(x: w * 0.08, y: h * 0.12)
-            let grooveBase: CGFloat = min(w, h) * 0.38 + midCG * 6
-            for i in 0..<5 {
-                let r = grooveBase + CGFloat(i) * 10
-                let gr = CGRect(x: grooveCenter.x - r, y: grooveCenter.y - r,
-                                width: r * 2, height: r * 2)
-                context.stroke(Path(ellipseIn: gr),
-                               with: .color(accent.opacity(0.09 - Double(i) * 0.015)),
-                               lineWidth: 0.5)
-            }
-
-            // 3. 桌面木纹（下半）
-            let deskY: CGFloat = h * 0.62
-            let deskRect = CGRect(x: 0, y: deskY, width: w, height: h - deskY)
-            context.fill(Path(deskRect),
-                         with: .linearGradient(
-                            Gradient(stops: [
-                                .init(color: woodLit.opacity(0.92), location: 0),
-                                .init(color: woodDark, location: 1)
-                            ]),
-                            startPoint: CGPoint(x: w * 0.5, y: deskY),
-                            endPoint: CGPoint(x: w * 0.5, y: h)
-                         ))
-            // 桌面横纹（木理）
-            for i in 0..<8 {
-                let ty = deskY + CGFloat(i) * ((h - deskY) / 8) + CGFloat(sinf(Float(i) * 2.3)) * 1.2
-                var line = Path()
-                line.move(to: CGPoint(x: 0, y: ty))
-                line.addLine(to: CGPoint(x: w, y: ty))
-                context.stroke(line, with: .color(woodDark.opacity(0.45)), lineWidth: 0.4)
-            }
-
-            // 4. 侧光束（从右上斜切，低 alpha）
-            var beam = Path()
-            let beamTR = CGPoint(x: w * 1.02, y: h * 0.02)
-            let beamTL = CGPoint(x: w * 0.70, y: h * -0.04)
-            let beamBL = CGPoint(x: w * 0.10, y: h * 0.78)
-            let beamBR = CGPoint(x: w * 0.42, y: h * 0.86)
-            beam.move(to: beamTL)
-            beam.addLine(to: beamTR)
-            beam.addLine(to: beamBR)
-            beam.addLine(to: beamBL)
-            beam.closeSubpath()
-            context.fill(beam,
-                         with: .linearGradient(
-                            Gradient(stops: [
-                                .init(color: accent.opacity(0.00), location: 0),
-                                .init(color: accent.opacity(0.16), location: 0.5),
-                                .init(color: accent.opacity(0.00), location: 1)
-                            ]),
-                            startPoint: CGPoint(x: w * 0.80, y: 0),
-                            endPoint: CGPoint(x: w * 0.26, y: h * 0.82)
-                         ))
-
-            // 5. 飘尘（12 颗，随 t 慢漂）
-            for i in 0..<12 {
-                let sx = sin(Double(i) * 11.3 + Double(t) * 0.06)
-                let sy = sin(Double(i) * 7.7 + 3.1 + Double(t) * 0.04)
-                let fx = (sx + 1) * 0.5
-                let fy = (sy + 1) * 0.5
-                let dx = CGFloat(fx) * w
-                let dy = CGFloat(fy) * h * 0.60
-                let ds: CGFloat = 0.7 + CGFloat(abs(sin(Double(i) * 5.1))) * 0.6
-                let dustRect = CGRect(x: dx, y: dy, width: ds, height: ds)
-                context.fill(Path(ellipseIn: dustRect),
-                             with: .color(Color.white.opacity(0.30)))
-            }
-        }
-
-        let bodyW: CGFloat = w * (isBig ? 0.64 : 0.78)
+        // 卡带尺寸/位置 — 连续插值：
+        // - bodyW: 0.60*w → 0.46*w（小盒子略收紧给 deck 让位）
+        // - cy: h*0.50 → h*0.40（上移进 deck bay 位）
+        // - tilt: -0.04 → 0（摆正准备插入）
+        // 目的：expansion 0→1 时用户看到的是**同一盒卡带**在连续变形，
+        // 而不是两个 canvas 的 crossfade。
+        let bodyW: CGFloat = w * (0.60 - 0.14 * e)
         let bodyH: CGFloat = bodyW * 0.60
         let cx: CGFloat = w * 0.5
-        let cy: CGFloat = h * (isBig ? 0.48 : 0.5)
-        let tilt: CGFloat = -0.04
+        let cy: CGFloat = h * (0.50 - 0.10 * e)
+        let tilt: CGFloat = -0.04 * (1 - e)
 
-        // 卡带长影（大图 only，向左下倾斜）
-        if isBig {
-            var shadow = Path()
-            let shTopY = cy + bodyH * 0.45
-            let shBotY = cy + bodyH * 0.48 + bodyH * 0.28
-            let shTopXL = cx - bodyW * 0.54
-            let shTopXR = cx + bodyW * 0.54
-            let shBotXL = shTopXL - bodyW * 0.22  // skew 向左
-            let shBotXR = shTopXR - bodyW * 0.22
-            shadow.move(to: CGPoint(x: shTopXL, y: shTopY))
-            shadow.addLine(to: CGPoint(x: shTopXR, y: shTopY))
-            shadow.addLine(to: CGPoint(x: shBotXR, y: shBotY))
-            shadow.addLine(to: CGPoint(x: shBotXL, y: shBotY))
-            shadow.closeSubpath()
-            context.fill(shadow,
-                         with: .linearGradient(
-                            Gradient(stops: [
-                                .init(color: Color.black.opacity(0.55), location: 0),
-                                .init(color: Color.black.opacity(0.05), location: 1)
-                            ]),
-                            startPoint: CGPoint(x: cx, y: shTopY),
-                            endPoint: CGPoint(x: cx - bodyW * 0.22, y: shBotY)
-                         ))
+        // ─── DECK（按 deckAlpha 连续 fade-in；e=0 完全不画）───────
+        let deckTopY: CGFloat = h * 0.42
+
+        if deckAlpha > 0.01 {
+            // Wrapping the entire deck scene in a drawLayer lets us apply a
+            // single opacity multiplier — all gradients, strokes, radial
+            // halos, and sub-draws (capstans) fade in lockstep.
+            context.drawLayer { ctx in
+                ctx.opacity = deckAlpha
+
+                // 顶部暖色 vignette — 模拟桌面灯从上方打
+                ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                             with: .radialGradient(
+                                Gradient(stops: [
+                                    .init(color: Color(red: 52/255, green: 38/255, blue: 28/255).opacity(0.45), location: 0),
+                                    .init(color: Color(red: 16/255, green: 14/255, blue: 12/255), location: 0.65),
+                                    .init(color: Color(red: 10/255, green: 10/255, blue: 12/255), location: 1)
+                                ]),
+                                center: CGPoint(x: w * 0.82, y: h * 0.08),
+                                startRadius: 0, endRadius: max(w, h) * 1.05
+                             ))
+
+                // Deck 主体
+                let deckRect = CGRect(x: 0, y: deckTopY, width: w, height: h - deckTopY)
+                ctx.fill(Path(deckRect),
+                             with: .linearGradient(
+                                Gradient(stops: [
+                                    .init(color: deckMetal, location: 0),
+                                    .init(color: deckDark, location: 0.55),
+                                    .init(color: deckDarker, location: 1)
+                                ]),
+                                startPoint: CGPoint(x: w * 0.5, y: deckTopY),
+                                endPoint: CGPoint(x: w * 0.5, y: h)
+                             ))
+
+                // 拉丝纹理
+                for i in 0..<28 {
+                    let ly = deckTopY + 4 + CGFloat(i) * ((h - deckTopY - 8) / 28)
+                    var ll = Path()
+                    ll.move(to: CGPoint(x: 0, y: ly))
+                    ll.addLine(to: CGPoint(x: w, y: ly))
+                    ctx.stroke(ll, with: .color(Color.black.opacity(0.10)), lineWidth: 0.3)
+                }
+
+                // Deck 顶边高光（白色极细一条）
+                var topEdge = Path()
+                topEdge.move(to: CGPoint(x: 0, y: deckTopY))
+                topEdge.addLine(to: CGPoint(x: w, y: deckTopY))
+                ctx.stroke(topEdge, with: .color(Color.white.opacity(0.18)), lineWidth: 0.6)
+
+                // Cassette bay — deck 顶上的凹陷 slot
+                let bayW = bodyW * 1.08
+                let bayH: CGFloat = h * 0.054
+                let bayRect = CGRect(x: cx - bayW / 2, y: deckTopY, width: bayW, height: bayH)
+                ctx.fill(Path(roundedRect: bayRect, cornerRadius: 2),
+                             with: .color(deckDarker))
+                // bay 顶部内阴影
+                var bayRim = Path()
+                bayRim.move(to: CGPoint(x: bayRect.minX, y: bayRect.minY))
+                bayRim.addLine(to: CGPoint(x: bayRect.maxX, y: bayRect.minY))
+                ctx.stroke(bayRim, with: .color(Color.black.opacity(0.85)), lineWidth: 1.2)
+
+                // Capstan 转轮（bay 两侧，跟 hub 同步转）
+                let omega: Float = 0.35 + Float(bassCG) * 1.1
+                let capstanY: CGFloat = bayRect.midY
+                let capstanR: CGFloat = bayH * 0.32
+                let capstanLeftX: CGFloat = bayRect.minX - capstanR * 1.4
+                let capstanRightX: CGFloat = bayRect.maxX + capstanR * 1.4
+                drawCapstan(on: ctx, center: CGPoint(x: capstanLeftX, y: capstanY),
+                            radius: capstanR, angle: CGFloat(t * omega),
+                            metal: deckMetal, dark: deckDark)
+                drawCapstan(on: ctx, center: CGPoint(x: capstanRightX, y: capstanY),
+                            radius: capstanR, angle: -CGFloat(t * omega),
+                            metal: deckMetal, dark: deckDark)
+
+                // PLAY LED（红，bass 脉动）
+                let ledRowY: CGFloat = deckTopY + h * 0.11
+                let playX: CGFloat = w * 0.18
+                let playPulse: Double = 0.45 + Double(bassCG) * 0.55
+                let playHalo: CGFloat = 16 + bassCG * 8
+                ctx.fill(Path(ellipseIn: CGRect(
+                    x: playX - playHalo, y: ledRowY - playHalo,
+                    width: playHalo * 2, height: playHalo * 2
+                )), with: .radialGradient(
+                    Gradient(colors: [playLed.opacity(playPulse * 0.55), Color.clear]),
+                    center: CGPoint(x: playX, y: ledRowY),
+                    startRadius: 0, endRadius: playHalo
+                ))
+                ctx.fill(Path(ellipseIn: CGRect(
+                    x: playX - 3.2, y: ledRowY - 3.2, width: 6.4, height: 6.4
+                )), with: .color(playLed.opacity(0.92)))
+
+                // Power LED（蓝，恒亮小点）
+                let powerX: CGFloat = playX + 18
+                ctx.fill(Path(ellipseIn: CGRect(
+                    x: powerX - 9, y: ledRowY - 9, width: 18, height: 18
+                )), with: .radialGradient(
+                    Gradient(colors: [powerLed.opacity(0.30), Color.clear]),
+                    center: CGPoint(x: powerX, y: ledRowY),
+                    startRadius: 0, endRadius: 9
+                ))
+                ctx.fill(Path(ellipseIn: CGRect(
+                    x: powerX - 2.2, y: ledRowY - 2.2, width: 4.4, height: 4.4
+                )), with: .color(powerLed.opacity(0.88)))
+
+                // 右侧：3 个机械按键（PLAY / FF / STOP 圆钮）
+                let btnY: CGFloat = ledRowY
+                let btnR: CGFloat = 7.5
+                let btnGap: CGFloat = 24
+                let btnStartX: CGFloat = w - w * 0.16 - btnGap * 2
+                for i in 0..<3 {
+                    let bx = btnStartX + CGFloat(i) * btnGap
+                    let outerR: CGFloat = btnR + 2
+                    ctx.fill(Path(ellipseIn: CGRect(
+                        x: bx - outerR, y: btnY - outerR,
+                        width: outerR * 2, height: outerR * 2
+                    )), with: .color(deckDarker))
+                    ctx.fill(Path(ellipseIn: CGRect(
+                        x: bx - btnR, y: btnY - btnR,
+                        width: btnR * 2, height: btnR * 2
+                    )), with: .radialGradient(
+                        Gradient(colors: [deckMetal.opacity(0.95), deckDark]),
+                        center: CGPoint(x: bx - 1.5, y: btnY - 2),
+                        startRadius: 0, endRadius: btnR
+                    ))
+                    var hl = Path()
+                    hl.addArc(center: CGPoint(x: bx, y: btnY), radius: btnR - 1,
+                              startAngle: .radians(.pi * 1.15),
+                              endAngle: .radians(.pi * 1.85),
+                              clockwise: false)
+                    ctx.stroke(hl, with: .color(Color.white.opacity(0.22)), lineWidth: 0.6)
+                }
+
+                // Tape counter window
+                let counterW: CGFloat = bayW * 0.18
+                let counterH: CGFloat = h * 0.022
+                let counterRect = CGRect(
+                    x: cx - counterW / 2,
+                    y: deckTopY + bayH + h * 0.025,
+                    width: counterW, height: counterH
+                )
+                ctx.fill(Path(roundedRect: counterRect, cornerRadius: 1.5),
+                             with: .color(deckDarker))
+                ctx.stroke(Path(roundedRect: counterRect, cornerRadius: 1.5),
+                               with: .color(Color.black.opacity(0.5)), lineWidth: 0.5)
+                for i in 1..<4 {
+                    let sx = counterRect.minX + counterRect.width * CGFloat(i) / 4
+                    var sep = Path()
+                    sep.move(to: CGPoint(x: sx, y: counterRect.minY + 2))
+                    sep.addLine(to: CGPoint(x: sx, y: counterRect.maxY - 2))
+                    ctx.stroke(sep, with: .color(Color.white.opacity(0.10)), lineWidth: 0.4)
+                }
+                ctx.draw(
+                    Text("0000")
+                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .foregroundColor(Color.white.opacity(0.32)),
+                    at: CGPoint(x: counterRect.midX, y: counterRect.midY)
+                )
+            }
         }
 
-        // 卡带本体
+        // ─── CASSETTE（两种模式都画；大图会自然"插"进 deck bay）─────
         context.drawLayer { layer in
             layer.translateBy(x: cx, y: cy)
             layer.rotate(by: .radians(tilt))
@@ -188,13 +255,13 @@ struct LofiTapeView: View {
             // Shell
             layer.fill(Path(roundedRect: bodyRect, cornerRadius: bodyW * 0.025),
                        with: .color(shell))
-            // Shell top edge highlight
+            // Shell 顶沿高光
             var topHL = Path()
             topHL.move(to: CGPoint(x: -halfW + bodyW * 0.06, y: -halfH + 3))
             topHL.addLine(to: CGPoint(x: halfW - bodyW * 0.06, y: -halfH + 3))
             layer.stroke(topHL, with: .color(Color.white.opacity(0.28)), lineWidth: 0.8)
 
-            // Label panel
+            // Label
             let labelTop = -halfH + bodyH * 0.08
             let labelH = bodyH * 0.34
             let labelRect = CGRect(x: -halfW + bodyW * 0.05, y: labelTop,
@@ -213,7 +280,7 @@ struct LofiTapeView: View {
             )
             layer.fill(Path(accentRect), with: .color(accent.opacity(0.85)))
 
-            // Writing lines (3)
+            // 写字线
             for i in 0..<3 {
                 let lineY = labelRect.minY + labelH * (0.42 + CGFloat(i) * 0.18)
                 var line = Path()
@@ -222,10 +289,10 @@ struct LofiTapeView: View {
                 layer.stroke(line, with: .color(labelLine.opacity(0.40)), lineWidth: 0.5)
             }
 
-            // Hiss — 3 horizontal bands (low/mid/high), dot size & density per band
+            // 3 频段 hiss
             let zoneH = labelH / 3
             let bandsEnergy: [CGFloat] = [bassCG, midCG, trebCG]
-            let bandDotSize: [CGFloat] = [1.4, 0.9, 0.55]  // 低频大点 → 高频细颗粒
+            let bandDotSize: [CGFloat] = [1.4, 0.9, 0.55]
             for zone in 0..<3 {
                 let energy = bandsEnergy[zone]
                 guard energy > 0.015 else { continue }
@@ -245,7 +312,7 @@ struct LofiTapeView: View {
                 }
             }
 
-            // Window
+            // 磁芯窗口
             let winW = bodyW * 0.74
             let winH = bodyH * 0.30
             let winY = bodyH * 0.08
@@ -255,7 +322,7 @@ struct LofiTapeView: View {
             layer.stroke(Path(roundedRect: winRect, cornerRadius: 3),
                          with: .color(Color.black.opacity(0.4)), lineWidth: 0.6)
 
-            // === Tape as spectrum waveform ===
+            // 磁带 as spectrum waveform
             let hubR: CGFloat = bodyH * 0.12
             let hubSep: CGFloat = winW * 0.30
             let hubYCoord: CGFloat = winY + winH / 2
@@ -266,7 +333,6 @@ struct LofiTapeView: View {
             let sagSpec: CGFloat = winH * 0.14 * midCG
             let sag: CGFloat = sagBase + sagSpec + CGFloat(sinf(t * 0.7)) * winH * 0.015
 
-            // Sample N bins along the visible tape span
             let N = 18
             let tapeStart = CGPoint(x: leftHubX + hubR * 0.55, y: hubYCoord - 0.5)
             let tapeEnd = CGPoint(x: rightHubX - hubR * 0.55, y: hubYCoord - 0.5)
@@ -276,19 +342,17 @@ struct LofiTapeView: View {
             var pts: [CGPoint] = []
             for i in 0..<N {
                 let u: CGFloat = CGFloat(i) / CGFloat(N - 1)
-                let parab = 4 * u * (1 - u)           // 0 at ends, 1 at middle
+                let parab = 4 * u * (1 - u)
                 let baseY = hubYCoord + sag * parab
                 let binF = Float(i) / Float(N - 1) * Float(binCount - 1)
                 let binIdx = min(binCount - 1, max(0, Int(binF)))
                 let binVal = CGFloat(spectrumData[binIdx])
                 let sign: CGFloat = (i % 2 == 0) ? 1 : -1
-                let env = sin(CGFloat.pi * u)         // endpoints snap to hub
-                let yOff = sign * binVal * waveAmp * env
-                let x = tapeStart.x + u * tapeLen
-                pts.append(CGPoint(x: x, y: baseY + yOff))
+                let env = sin(CGFloat.pi * u)
+                pts.append(CGPoint(x: tapeStart.x + u * tapeLen,
+                                   y: baseY + sign * binVal * waveAmp * env))
             }
 
-            // Smooth path via midpoint-quad
             var tapePath = Path()
             tapePath.move(to: tapeStart)
             for i in 0..<(pts.count - 1) {
@@ -300,21 +364,17 @@ struct LofiTapeView: View {
             layer.stroke(tapePath, with: .color(tape), lineWidth: 2.4)
             layer.stroke(tapePath, with: .color(accent.opacity(0.28)), lineWidth: 0.7)
 
-            // Hubs — spin + bin-bound rim dots
+            // Hubs + rim bins
             let omega: Float = 0.35 + Float(bassCG) * 1.1
             let angleLeft = CGFloat(t * omega)
             let angleRight = -CGFloat(t * omega * 1.03)
-
-            // 左 hub: 前 8 bins（低频）
             let leftBins: [CGFloat] = (0..<8).map { i in
                 CGFloat(spectrumData[min(i, binCount - 1)])
             }
-            // 右 hub: 后 8 bins（高频）
             let rightBins: [CGFloat] = (0..<8).map { i in
                 let idx = max(0, binCount - 8 + i)
                 return CGFloat(spectrumData[min(idx, binCount - 1)])
             }
-
             drawHub(on: layer, center: CGPoint(x: leftHubX, y: hubYCoord),
                     radius: hubR, angle: angleLeft, hub: hub, ring: hubRing,
                     accent: accent, rimBins: leftBins)
@@ -332,35 +392,64 @@ struct LofiTapeView: View {
                            with: .color(window.opacity(0.75)))
             }
 
-            // A/B cap (big only)
-            if isBig {
-                let capRect = CGRect(
-                    x: halfW - bodyW * 0.06,
-                    y: halfH - bodyH * 0.12,
-                    width: bodyW * 0.035,
-                    height: bodyH * 0.06
-                )
-                layer.fill(Path(roundedRect: capRect, cornerRadius: 1),
-                           with: .color(labelLine.opacity(0.45)))
+            // A/B cap — only shows in big pose; rides the deckAlpha fade so
+            // its arrival is synced with the deck scene.
+            if deckAlpha > 0.01 {
+                layer.drawLayer { sub in
+                    sub.opacity = deckAlpha
+                    let capRect = CGRect(
+                        x: halfW - bodyW * 0.06,
+                        y: halfH - bodyH * 0.12,
+                        width: bodyW * 0.035,
+                        height: bodyH * 0.06
+                    )
+                    sub.fill(Path(roundedRect: capRect, cornerRadius: 1),
+                             with: .color(labelLine.opacity(0.45)))
+                }
+            }
+        }
+
+        // Bay 前嘴唇阴影 — 压在 cassette 底部强化"插入"感，跟 deck 一起淡入
+        if deckAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = deckAlpha
+                let lipY: CGFloat = cy + bodyH * 0.35
+                let lipRect = CGRect(x: cx - bodyW * 0.52, y: lipY,
+                                     width: bodyW * 1.04, height: bodyH * 0.12)
+                ctx.fill(Path(lipRect),
+                             with: .linearGradient(
+                                Gradient(stops: [
+                                    .init(color: Color.black.opacity(0.00), location: 0),
+                                    .init(color: Color.black.opacity(0.75), location: 1)
+                                ]),
+                                startPoint: CGPoint(x: cx, y: lipRect.minY),
+                                endPoint: CGPoint(x: cx, y: lipRect.maxY)
+                             ))
             }
         }
     }
 
+    // MARK: - Math helpers
+
+    private func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
+        let t = max(0, min(1, (x - a) / (b - a)))
+        return t * t * (3 - 2 * t)
+    }
+
+    // MARK: - Hub
+
     private func drawHub(on ctx: GraphicsContext, center: CGPoint, radius: CGFloat,
                          angle: CGFloat, hub: Color, ring: Color, accent: Color,
                          rimBins: [CGFloat]) {
-        // 外圈
         let ringRect = CGRect(x: center.x - radius, y: center.y - radius,
                               width: radius * 2, height: radius * 2)
         ctx.fill(Path(ellipseIn: ringRect), with: .color(ring))
 
-        // 内盘
         let innerR = radius * 0.76
         let innerRect = CGRect(x: center.x - innerR, y: center.y - innerR,
                                width: innerR * 2, height: innerR * 2)
         ctx.fill(Path(ellipseIn: innerRect), with: .color(hub))
 
-        // 6 根辐条
         let spokeOuter = innerR * 0.90
         let spokeInner = innerR * 0.28
         for i in 0..<6 {
@@ -374,14 +463,12 @@ struct LofiTapeView: View {
             ctx.stroke(spoke, with: .color(hub.opacity(0.45)), lineWidth: 1.0)
         }
 
-        // Rim bins — 8 radial dots on the outer rim, each bin a copper LED
         let rimR: CGFloat = radius * 1.05
         let rimCount = rimBins.count
         for i in 0..<rimCount {
             let a = angle + CGFloat(i) * (.pi * 2 / CGFloat(rimCount))
             let cosA = cos(a), sinA = sin(a)
             let binVal = rimBins[i]
-            // dot pushed further out by binVal → visible "frequency petal"
             let distance = rimR + binVal * radius * 0.80
             let dx = center.x + distance * cosA
             let dy = center.y + distance * sinA
@@ -392,10 +479,39 @@ struct LofiTapeView: View {
                      with: .color(accent.opacity(0.45 + Double(binVal) * 0.55)))
         }
 
-        // 中心轴
         let pinR = innerR * 0.14
         let pinRect = CGRect(x: center.x - pinR, y: center.y - pinR,
                              width: pinR * 2, height: pinR * 2)
         ctx.fill(Path(ellipseIn: pinRect), with: .color(ring.opacity(0.95)))
+    }
+
+    // MARK: - Capstan (deck 上的金属旋轮，6 齿铜圈 + 深灰中心)
+
+    private func drawCapstan(on ctx: GraphicsContext, center: CGPoint, radius: CGFloat,
+                             angle: CGFloat, metal: Color, dark: Color) {
+        let ringRect = CGRect(x: center.x - radius, y: center.y - radius,
+                              width: radius * 2, height: radius * 2)
+        ctx.fill(Path(ellipseIn: ringRect), with: .color(metal))
+
+        let innerR = radius * 0.68
+        let innerRect = CGRect(x: center.x - innerR, y: center.y - innerR,
+                               width: innerR * 2, height: innerR * 2)
+        ctx.fill(Path(ellipseIn: innerRect), with: .color(dark))
+
+        for i in 0..<6 {
+            let a = angle + CGFloat(i) * .pi / 3
+            let cosA = cos(a), sinA = sin(a)
+            var spoke = Path()
+            spoke.move(to: CGPoint(x: center.x + innerR * 0.3 * cosA,
+                                   y: center.y + innerR * 0.3 * sinA))
+            spoke.addLine(to: CGPoint(x: center.x + innerR * 0.82 * cosA,
+                                      y: center.y + innerR * 0.82 * sinA))
+            ctx.stroke(spoke, with: .color(metal.opacity(0.5)), lineWidth: 0.8)
+        }
+
+        let pinR = radius * 0.12
+        let pinRect = CGRect(x: center.x - pinR, y: center.y - pinR,
+                             width: pinR * 2, height: pinR * 2)
+        ctx.fill(Path(ellipseIn: pinRect), with: .color(metal))
     }
 }

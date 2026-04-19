@@ -15,92 +15,60 @@ struct ImmersiveView: View {
     /// Default is big; small mode shows a card-sized spectrum at top.
     @State private var isSmall: Bool = true
 
+    // MARK: - Lofi morph tween state
+    //
+    // Visualizers that expose an `expansion` parameter (currently only LofiTape)
+    // render as a single full-screen canvas — geometry morphs continuously from
+    // the bare-object pose (expansion=0) to the scene pose (expansion=1).
+    // SwiftUI's withAnimation does not interpolate plain @State Doubles into a
+    // Canvas draw closure, so we drive expansion ourselves off a timestamp and
+    // sample it every TimelineView frame.
+    @State private var morphStart: Date = .distantPast
+    @State private var morphFrom: CGFloat = 0
+    @State private var morphTo: CGFloat = 0
+    private let morphDuration: Double = 0.55
+
+    /// Exponential ease-out curve — strong deceleration, physical-feeling settle.
+    /// Used for the dual-layer crossfade on non-lofi channels; the lofi path
+    /// uses a matching pow-based ease so both feel identical.
+    private var toggleAnim: Animation {
+        .timingCurve(0.22, 1.0, 0.36, 1.0, duration: 0.52)
+    }
+
+    private func currentExpansion(now: Date) -> CGFloat {
+        let elapsed = now.timeIntervalSince(morphStart)
+        if elapsed <= 0 { return morphFrom }
+        if elapsed >= morphDuration { return morphTo }
+        let t = elapsed / morphDuration
+        // ease-out expo — matches the timingCurve used for non-lofi modifiers.
+        let eased = 1.0 - pow(2.0, -10.0 * t)
+        return morphFrom + (morphTo - morphFrom) * CGFloat(eased)
+    }
+
+    /// Begin a big↔small transition. Updates both the logical `isSmall` flag
+    /// (which drives non-lofi crossfade modifiers) and the morph tween state
+    /// (which drives the lofi expansion interpolation).
+    private func toggleMode() {
+        let now = Date()
+        let current = currentExpansion(now: now)
+        morphFrom = current
+        morphTo = isSmall ? 1.0 : 0.0
+        morphStart = now
+        withAnimation(toggleAnim) { isSmall.toggle() }
+    }
+
     var body: some View {
         GeometryReader { geo in
+            let specSize: CGFloat = min(geo.size.width - 60, 300)
+
             ZStack {
                 Color(red: 0.165, green: 0.165, blue: 0.18)
                     .ignoresSafeArea()
 
-                if isSmall {
-                    // Small mode — 三元素垂直居中，spectrum 不播放时显示静态帧。
-                    VStack(spacing: 0) {
-                        Spacer()
-
-                        let specSize: CGFloat = min(geo.size.width - 60, 300)
-
-                        // 小图模式：每个频道画自己的 visualizer（和大图一致）。
-                        // 模式：TimelineView 外层驱动帧，@ViewBuilder 函数内做 switch —
-                        // 这个组合 SpectrumCarouselView 已验证可行；之前试过把 switch 直接
-                        // 写在 TimelineView closure 里或套 AnyView，都会导致 Canvas 不渲染。
-                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-                            smallVisualizer(
-                                for: state.selectedVisualizer,
-                                spectrumData: state.audioEngine.spectrumData
-                            )
-                        }
-                        .frame(width: specSize, height: specSize)
-                        .contentShape(Rectangle())
-                        .gesture(spectrumTapOrSwipe)
-
-                        Spacer().frame(height: 44)
-
-                        VStack(spacing: 8) {
-                            if let style = displayStyle {
-                                musicDNA(style: style)
-                                    .offset(x: nameSlideOffset)
-                                    .opacity(nameOpacity)
-                            }
-
-                            Text(displayStyleName)
-                                .font(FogTheme.display(24, weight: .light))
-                                .tracking(FogTheme.trackDisplay)
-                                .foregroundStyle(FogTheme.inkPrimary)
-                                .offset(x: nameSlideOffset)
-                                .opacity(nameOpacity)
-                        }
-                        .allowsHitTesting(false)
-
-                        Spacer().frame(height: 28)
-
-                        transportControls
-
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity)
+                if state.selectedVisualizer == .lofiTape {
+                    lofiMorphContent(geo: geo)
                 } else {
-                    // Big mode — full-screen spectrum + bottom overlay
-                    SpectrumCarouselView(state: state, showDots: false, density: 2)
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.25)) { isSmall = true }
-                        }
-
-                    VStack(spacing: 0) {
-                        Spacer()
-
-                        VStack(spacing: 10) {
-                            if let style = displayStyle {
-                                musicDNA(style: style)
-                                    .offset(x: nameSlideOffset)
-                                    .opacity(nameOpacity)
-                            }
-
-                            Text(displayStyleName)
-                                .font(FogTheme.display(24, weight: .light))
-                                .tracking(FogTheme.trackDisplay)
-                                .foregroundStyle(FogTheme.inkPrimary)
-                                .offset(x: nameSlideOffset)
-                                .opacity(nameOpacity)
-                        }
-                        .allowsHitTesting(false)
-
-                        Spacer().frame(height: 32)
-
-                        transportControls
-
-                        Spacer().frame(height: 48)
-                    }
+                    crossfadeContent(geo: geo, specSize: specSize)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -146,6 +114,110 @@ struct ImmersiveView: View {
                 nameOpacity = 1
             }
         }
+    }
+
+    // MARK: - Crossfade content (non-lofi channels)
+
+    @ViewBuilder
+    private func crossfadeContent(geo: GeometryProxy, specSize: CGFloat) -> some View {
+        if isSmall {
+            VStack(spacing: 0) {
+                Spacer()
+
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
+                    smallVisualizer(
+                        for: state.selectedVisualizer,
+                        spectrumData: state.audioEngine.spectrumData
+                    )
+                }
+                .frame(width: specSize, height: specSize)
+                .contentShape(Rectangle())
+                .gesture(spectrumTapOrSwipe)
+
+                Spacer().frame(height: 44)
+
+                bottomOverlay
+
+                Spacer().frame(height: 0)
+
+                transportControls
+
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .transition(.opacity)
+        } else {
+            ZStack {
+                SpectrumCarouselView(state: state, showDots: false, density: 2)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .contentShape(Rectangle())
+                    .onTapGesture { toggleMode() }
+
+                VStack(spacing: 0) {
+                    Spacer()
+
+                    bottomOverlay
+
+                    Spacer().frame(height: 32)
+
+                    transportControls
+
+                    Spacer().frame(height: 48)
+                }
+            }
+            .transition(.opacity)
+        }
+    }
+
+    // MARK: - Lofi morph content (single full-screen canvas, body-to-body morph)
+
+    @ViewBuilder
+    private func lofiMorphContent(geo: GeometryProxy) -> some View {
+        ZStack {
+            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
+                LofiTapeView(
+                    spectrumData: state.audioEngine.spectrumData,
+                    density: 2,
+                    expansion: currentExpansion(now: ctx.date)
+                )
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .contentShape(Rectangle())
+            .gesture(spectrumTapOrSwipe)
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                bottomOverlay
+
+                Spacer().frame(height: isSmall ? 28 : 32)
+
+                transportControls
+
+                Spacer().frame(height: isSmall ? 80 : 48)
+            }
+            .allowsHitTesting(true)
+        }
+    }
+
+    // MARK: - Shared bottom overlay (name + DNA)
+
+    private var bottomOverlay: some View {
+        VStack(spacing: 10) {
+            if let style = displayStyle {
+                musicDNA(style: style)
+                    .offset(x: nameSlideOffset)
+                    .opacity(nameOpacity)
+            }
+
+            Text(displayStyleName)
+                .font(FogTheme.display(24, weight: .light))
+                .tracking(FogTheme.trackDisplay)
+                .foregroundStyle(FogTheme.inkPrimary)
+                .offset(x: nameSlideOffset)
+                .opacity(nameOpacity)
+        }
+        .allowsHitTesting(false)
     }
 
     // MARK: - Transport (ported from DetailsView)
@@ -226,7 +298,7 @@ struct ImmersiveView: View {
 
                 // Tap（几乎没位移）— 切换 big/small。
                 if dist < 10 {
-                    withAnimation(.easeInOut(duration: 0.25)) { isSmall = false }
+                    toggleMode()
                     return
                 }
 
