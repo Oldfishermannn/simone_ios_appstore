@@ -84,10 +84,10 @@ struct NightWindowView: View {
         }
 
         // ── 主窗矩形（小图→大图平滑插值）
-        //   小图 0.64w × 0.68h 居中
-        //   大图 0.52w × 0.36h 中上偏方（"家窗"比例，不是狭长办公窗）
-        let mainSmall = CGRect(x: w * 0.18, y: h * 0.16,
-                                width: w * 0.64, height: h * 0.68)
+        //   小图 0.72w × 0.52h 居中（横向家窗，和大图同一家族比）
+        //   大图 0.52w × 0.36h 中上偏方
+        let mainSmall = CGRect(x: w * 0.14, y: h * 0.24,
+                                width: w * 0.72, height: h * 0.52)
         let mainTarget = CGRect(x: w * 0.24, y: h * 0.14,
                                  width: w * 0.52, height: h * 0.36)
         let mainRect = CGRect(
@@ -200,62 +200,110 @@ struct NightWindowView: View {
                  ))
     }
 
-    // MARK: - Street FG — 地面窗光倒影（无雨无涟漪）
+    // MARK: - Street FG — 地面窗光倒影（梯形透视，无雨无涟漪）
+    //
+    // 物理对应：光柱从窗正下方地面延伸出去，远端（窗下）窄、近端（画面底）宽。
+    // - 倒影两列是**梯形**而非矩形（透视 1.0 → 1.25）
+    // - 中央 mullion 黑缝宽度和窗内 mullion 匹配（halfW × 0.03）
+    // - 水平 mullion 横切 refH × 0.45（= 1 - 0.55 镜像）
+    // - 近端（refY0）接地粗横线：代表窗框下缘在地面的强反光
+    // - refY1 = 0.88h，不拖到画面最底
 
     private func drawStreetFG(ctx: GraphicsContext, w: CGFloat, h: CGFloat,
                                 windowRect: CGRect,
                                 warmLamp: Color,
                                 t: Float, bassCG: CGFloat, midCG: CGFloat) {
-        // 倒影从地面顶部开始，向画面底部柔渐弱
         let groundY = h * 0.62
         let refY0 = groundY
-        let refY1 = h * 0.95
+        let refY1 = h * 0.88
         let refH = refY1 - refY0
         let halfW = windowRect.width * 0.5
-        let leftX = windowRect.midX - halfW
-        let midGap: CGFloat = halfW * 0.05
+        let midGap: CGFloat = halfW * 0.03
+        let colW = halfW - midGap / 2
+        let perspective: CGFloat = 1.25   // 近端相对远端的横向扩张
 
-        // mid 驱动的轻微水膜风纹 —— 倒影列整体横向 ±2pt sin 扰动
+        // mid 驱动的轻微水膜风纹 —— 整体倒影横向 ±2pt sin 扰动
         let windDrift = CGFloat(sin(Double(t) * 0.8) * Double(midCG) * 2.4)
 
-        // 左列 + 右列 2 个暖光矩形
-        let col1Rect = CGRect(x: leftX + windDrift, y: refY0,
-                               width: halfW * 0.95, height: refH)
-        let col2Rect = CGRect(x: windowRect.midX + midGap + windDrift * 0.6,
-                               y: refY0,
-                               width: halfW * 0.95, height: refH)
+        let midX = windowRect.midX + windDrift
+        // 远端（refY0）: 列内缘 = midX ± midGap/2，列外缘 = midX ± halfW
+        let leftFarOuter  = midX - halfW
+        let leftFarInner  = midX - midGap / 2
+        let rightFarInner = midX + midGap / 2
+        let rightFarOuter = midX + halfW
+        // 近端（refY1）: 横向扩大 perspective 倍
+        let leftNearOuter  = midX - halfW * perspective
+        let leftNearInner  = midX - (midGap / 2) * perspective
+        let rightNearInner = midX + (midGap / 2) * perspective
+        let rightNearOuter = midX + halfW * perspective
 
-        let reflBreath = 0.38 + Double(bassCG) * 0.30
-        for colRect in [col1Rect, col2Rect] {
-            ctx.fill(Path(colRect),
+        let reflBreath = 0.42 + Double(bassCG) * 0.28
+
+        // 左列梯形
+        var leftTrap = Path()
+        leftTrap.move(to: CGPoint(x: leftFarOuter,  y: refY0))
+        leftTrap.addLine(to: CGPoint(x: leftFarInner,  y: refY0))
+        leftTrap.addLine(to: CGPoint(x: leftNearInner, y: refY1))
+        leftTrap.addLine(to: CGPoint(x: leftNearOuter, y: refY1))
+        leftTrap.closeSubpath()
+
+        // 右列梯形
+        var rightTrap = Path()
+        rightTrap.move(to: CGPoint(x: rightFarInner,  y: refY0))
+        rightTrap.addLine(to: CGPoint(x: rightFarOuter,  y: refY0))
+        rightTrap.addLine(to: CGPoint(x: rightNearOuter, y: refY1))
+        rightTrap.addLine(to: CGPoint(x: rightNearInner, y: refY1))
+        rightTrap.closeSubpath()
+
+        let trapGradient = Gradient(stops: [
+            .init(color: warmLamp.opacity(reflBreath * 0.95), location: 0),
+            .init(color: warmLamp.opacity(reflBreath * 0.55), location: 0.25),
+            .init(color: warmLamp.opacity(reflBreath * 0.18), location: 0.70),
+            .init(color: warmLamp.opacity(0),                 location: 1)
+        ])
+        for trap in [leftTrap, rightTrap] {
+            ctx.fill(trap,
                      with: .linearGradient(
-                        Gradient(stops: [
-                            .init(color: warmLamp.opacity(reflBreath),       location: 0),
-                            .init(color: warmLamp.opacity(reflBreath * 0.3), location: 0.7),
-                            .init(color: warmLamp.opacity(0),                location: 1)
-                        ]),
-                        startPoint: CGPoint(x: 0, y: colRect.minY),
-                        endPoint: CGPoint(x: 0, y: colRect.maxY)
+                        trapGradient,
+                        startPoint: CGPoint(x: 0, y: refY0),
+                        endPoint:   CGPoint(x: 0, y: refY1)
                      ))
         }
 
-        // 中央 mullion 倒影（垂直黑缝，顶部实底淡）
-        ctx.fill(Path(CGRect(x: windowRect.midX - midGap/2 + windDrift * 0.8,
-                               y: refY0, width: midGap, height: refH * 0.6)),
+        // 中央 mullion 倒影（梯形黑缝，顶窄底宽，同透视）
+        var midSlit = Path()
+        midSlit.move(to: CGPoint(x: leftFarInner,   y: refY0))
+        midSlit.addLine(to: CGPoint(x: rightFarInner,  y: refY0))
+        midSlit.addLine(to: CGPoint(x: rightNearInner, y: refY1))
+        midSlit.addLine(to: CGPoint(x: leftNearInner,  y: refY1))
+        midSlit.closeSubpath()
+        ctx.fill(midSlit,
                  with: .linearGradient(
-                    Gradient(colors: [
-                        Color.black.opacity(0.6),
-                        Color.black.opacity(0)
+                    Gradient(stops: [
+                        .init(color: Color.black.opacity(0.70), location: 0),
+                        .init(color: Color.black.opacity(0.25), location: 0.55),
+                        .init(color: Color.black.opacity(0),    location: 1)
                     ]),
                     startPoint: CGPoint(x: 0, y: refY0),
-                    endPoint: CGPoint(x: 0, y: refY0 + refH * 0.6)
+                    endPoint:   CGPoint(x: 0, y: refY1)
                  ))
 
-        // 横向 mullion 倒影（淡一道）
-        ctx.fill(Path(CGRect(x: leftX + windDrift,
-                               y: refY0 + refH * 0.35,
-                               width: halfW * 2, height: 2)),
-                 with: .color(Color.black.opacity(0.35)))
+        // 水平 mullion 横切：refH × 0.45 —— 窗内水平 mullion 在 frame 高 0.55 处，
+        // 倒影镜像后距窗底 = 0.45。透视下横切宽度在该 y 处内插。
+        let hMullionT: CGFloat = 0.45
+        let hy = refY0 + refH * hMullionT
+        let scaleAtHy = 1 + (perspective - 1) * hMullionT
+        let hLeft  = midX - halfW * scaleAtHy
+        let hRight = midX + halfW * scaleAtHy
+        ctx.fill(Path(CGRect(x: hLeft, y: hy - 1,
+                              width: hRight - hLeft, height: 2)),
+                 with: .color(Color.black.opacity(0.32)))
+
+        // 接地粗横线：窗框下缘在地面的强反光 —— 倒影顶端的硬边
+        let baseLine = CGRect(x: leftFarOuter, y: refY0 - 0.5,
+                               width: rightFarOuter - leftFarOuter, height: 1.5)
+        ctx.fill(Path(baseLine),
+                 with: .color(warmLamp.opacity(0.55 + Double(bassCG) * 0.20)))
     }
 
     // MARK: - Window
