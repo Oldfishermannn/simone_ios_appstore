@@ -59,6 +59,14 @@ final class AppState {
         }
     }
 
+    // v1.2 Night Window 评审期：大图三选一（glass / room / street）
+    var nightWindowBigStyle: NightWindowBigStyle = NightWindowBigStyle.preference {
+        didSet {
+            UserDefaults.standard.set(nightWindowBigStyle.rawValue,
+                                      forKey: NightWindowBigStyle.userDefaultsKey)
+        }
+    }
+
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
         case thirty = 30

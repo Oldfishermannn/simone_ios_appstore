@@ -133,7 +133,7 @@ struct SpectrumCarouselView: View {
         case .drawer:
             DrawerView(spectrumData: spectrumData, density: density)
         case .nightWindow:
-            NightWindowView(spectrumData: spectrumData, density: density)
+            NightWindowView(spectrumData: spectrumData, density: density, bigStyle: state.nightWindowBigStyle)
         case .vinylBooth:
             VinylBoothView(spectrumData: spectrumData, density: density)
         }

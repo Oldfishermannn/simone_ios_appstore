@@ -236,7 +236,7 @@ struct ImmersiveView: View {
         case .drawer:
             DrawerView(spectrumData: spectrumData, density: 2, expansion: expansion)
         case .nightWindow:
-            NightWindowView(spectrumData: spectrumData, density: 2, expansion: expansion)
+            NightWindowView(spectrumData: spectrumData, density: 2, expansion: expansion, bigStyle: state.nightWindowBigStyle)
         case .vinylBooth:
             VinylBoothView(spectrumData: spectrumData, density: 2, expansion: expansion)
         default:
@@ -329,7 +329,7 @@ struct ImmersiveView: View {
         case .firefly:      FireflyJarView(spectrumData: spectrumData, density: 1)
         case .letters:      LetterRackView(spectrumData: spectrumData, density: 1)
         case .drawer:       DrawerView(spectrumData: spectrumData, density: 1)
-        case .nightWindow:  NightWindowView(spectrumData: spectrumData, density: 1)
+        case .nightWindow:  NightWindowView(spectrumData: spectrumData, density: 1, bigStyle: state.nightWindowBigStyle)
         case .vinylBooth:   VinylBoothView(spectrumData: spectrumData, density: 1)
         }
     }
