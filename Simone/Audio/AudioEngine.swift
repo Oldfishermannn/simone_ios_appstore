@@ -398,8 +398,16 @@ final class AudioEngine {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             var newData = self.spectrumData
+            // 不对称 IIR：attack 慢（视觉 fade-in，解决 play 恢复瞬间的割裂），
+            // release 保留原速（暂停衰减动画已合适）。
             for i in 0..<self.displayBins {
-                newData[i] = newData[i] * 0.4 + smoothed[i] * 0.6
+                let old = newData[i]
+                let next = smoothed[i]
+                if next >= old {
+                    newData[i] = old * 0.72 + next * 0.28
+                } else {
+                    newData[i] = old * 0.4 + next * 0.6
+                }
             }
             self.spectrumData = newData
         }

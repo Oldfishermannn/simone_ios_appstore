@@ -49,6 +49,16 @@ final class AppState {
     }
     private var autoTuneTimer: Timer?
 
+    // v1.2 Favorites 评审期：三选一可视化（firefly / letters / drawer）
+    var favoritesVisualizer: VisualizerStyle = Channel.favoritesVisualizerPreference {
+        didSet {
+            UserDefaults.standard.set(favoritesVisualizer.rawValue, forKey: Channel.favoritesVisualizerKey)
+            if currentChannel == .favorites {
+                selectedVisualizer = favoritesVisualizer
+            }
+        }
+    }
+
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
         case thirty = 30
@@ -123,13 +133,20 @@ final class AppState {
         autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
 
         // Restore last channel (no didSet side-effect during init)
+        // v1.2: 频道收缩到 5 个，落在旧 channel 上则 fallback 到 lofi。
         if let raw = UserDefaults.standard.string(forKey: currentChannelKey),
-           let channel = Channel(rawKey: raw) {
+           let channel = Channel(rawKey: raw),
+           Channel.all.contains(channel) {
             currentChannel = channel
             selectedVisualizer = channel.visualizer
             if case .category(let c) = channel {
                 currentCategory = c
             }
+        }
+
+        // 冷启动默认选 Lo-fi Chill 作为展示（直接赋值绕过 selectStyle 的播放副作用）
+        if selectedStyle == nil {
+            selectedStyle = MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
         }
 
         lyriaClient.onAudioChunk = { [weak self] data in
@@ -170,8 +187,14 @@ final class AppState {
         }
     }
 
-    /// Switch to a channel: persist, rebind visualizer, play the first preset.
+    /// Switch to a channel: persist, rebind visualizer, queue up the first preset.
     /// No-op if the channel is already active.
+    ///
+    /// 关键：横滑频道不自动启动播放。selectStyle → applySelection 在
+    /// 未连接时会 audioEngine.start + connect（为了响应用户选风格时"立
+    /// 刻出声"的意图）。对频道横滑来说，用户并未按播放键，安静切换才
+    /// 是电台感。所以：未连接时只更新 selectedStyle 不走 applySelection；
+    /// 已连接时再把新 prompt 推给 Lyria 实现无缝切台。
     func switchToChannel(_ channel: Channel) {
         guard channel != currentChannel else { return }
         currentChannel = channel
@@ -180,7 +203,10 @@ final class AppState {
             currentCategory = c
         }
         styleHistory.removeAll()
-        if let first = stylesInCurrentChannel.first {
+        guard let first = stylesInCurrentChannel.first else { return }
+        if lyriaClient.connectionState == .disconnected {
+            selectedStyle = first
+        } else {
             selectStyle(first)
         }
     }
@@ -189,6 +215,7 @@ final class AppState {
 
     func selectStyle(_ style: MoodStyle) {
         selectedStyle = style
+        selectedVisualizer = currentChannel.visualizer
         applySelection()
     }
 

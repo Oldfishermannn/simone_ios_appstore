@@ -23,7 +23,13 @@ struct SpectrumCarouselView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 0) {
                         ForEach(Array(channels.enumerated()), id: \.element) { index, channel in
-                            visualizerView(for: channel.visualizer, spectrumData: spectrumData)
+                            // Current channel follows selectedVisualizer so per-style
+                            // overrides (R&B velvet/ember/liquor) take effect; other
+                            // channel pages keep their default visualizer.
+                            let visualizer = (channel == state.currentChannel)
+                                ? state.selectedVisualizer
+                                : channel.visualizer
+                            visualizerView(for: visualizer, spectrumData: spectrumData)
                                 .containerRelativeFrame(.horizontal)
                                 .id(index)
                         }
@@ -110,6 +116,26 @@ struct SpectrumCarouselView: View {
             GlitchView(spectrumData: spectrumData, density: density)
         case .oscilloscope:
             OscilloscopeView(spectrumData: spectrumData, density: density)
+        case .ember:
+            EmberView(spectrumData: spectrumData, density: density)
+        case .liquor:
+            LiquorView(spectrumData: spectrumData, density: density)
+        case .lofiTape:
+            LofiTapeView(spectrumData: spectrumData, density: density)
+        case .lofiPad:
+            LofiPadView(spectrumData: spectrumData, density: density)
+        case .lofiBlinds:
+            LofiBlindsView(spectrumData: spectrumData, density: density)
+        case .firefly:
+            FireflyJarView(spectrumData: spectrumData, density: density)
+        case .letters:
+            LetterRackView(spectrumData: spectrumData, density: density)
+        case .drawer:
+            DrawerView(spectrumData: spectrumData, density: density)
+        case .nightWindow:
+            NightWindowView(spectrumData: spectrumData, density: density)
+        case .vinylBooth:
+            VinylBoothView(spectrumData: spectrumData, density: density)
         }
     }
 }

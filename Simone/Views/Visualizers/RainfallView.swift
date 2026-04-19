@@ -20,9 +20,19 @@ struct RainfallView: View {
 
             let barWidth = drawSize / CGFloat(barCount)
 
+            // Idle baseline — 全零时画成柔和的钟形瀑布，保持雨滴阵列的画面感
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             for i in 0..<barCount {
                 let bin = min(i * binCount / barCount, binCount - 1)
-                let value = CGFloat(spectrumData[bin])
+                let raw = CGFloat(spectrumData[bin])
+                let t = CGFloat(i) / CGFloat(barCount - 1)
+                // 中间高两边低的钟形 + 轻微起伏
+                let bell = sin(t * .pi)
+                let ripple = 0.5 + 0.5 * sin(t * .pi * 4)
+                let idleVal: CGFloat = 0.18 + 0.32 * bell * (0.75 + 0.25 * ripple)
+                let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                 let x = offsetX + CGFloat(i) * barWidth + barWidth / 2
                 let barH = drawSize * 0.8 * value

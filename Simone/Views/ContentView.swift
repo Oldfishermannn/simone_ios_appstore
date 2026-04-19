@@ -5,7 +5,7 @@ struct ContentView: View {
     /// v1.1.1: 3-page structure — Immersive / Details (new home) / Settings.
     /// Main page was folded in: small spectrum lives on Immersive (tap toggle),
     /// transport controls moved to Details bottom.
-    @State private var currentPage: Int = 1  // 0=Immersive, 1=Details (default), 2=Settings
+    @State private var currentPage: Int = 0  // 0=Immersive (default), 1=Details, 2=Settings
 
     var body: some View {
         ZStack {

@@ -10,10 +10,16 @@ struct StyleRowView: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: FogTheme.spaceMD) {
+                // Playing indicator — small dot, only visible when active.
+                Circle()
+                    .fill(isPlaying ? FogTheme.accent : Color.clear)
+                    .frame(width: 5, height: 5)
+
                 Text(style.name)
-                    .font(.system(size: 15, weight: isPlaying ? .semibold : .regular))
-                    .foregroundStyle(isPlaying ? MorandiPalette.rose : .white.opacity(0.65))
+                    .font(FogTheme.display(15, weight: isPlaying ? .regular : .light))
+                    .tracking(FogTheme.trackDisplay)
+                    .foregroundStyle(isPlaying ? FogTheme.inkPrimary : FogTheme.inkSecondary)
                     .lineLimit(1)
 
                 Spacer()
@@ -23,18 +29,20 @@ struct StyleRowView: View {
                         onToggleFavorite()
                     } label: {
                         Image(systemName: isFavorite ? "heart.fill" : "heart")
-                            .font(.system(size: 14))
-                            .foregroundStyle(isFavorite ? MorandiPalette.rose : .white.opacity(0.2))
+                            .font(.system(size: 12))
+                            .foregroundStyle(isFavorite ? FogTheme.accent : FogTheme.inkTertiary)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isPlaying ? MorandiPalette.rose.opacity(0.08) : Color.white.opacity(0.025))
-            )
+            .padding(.horizontal, FogTheme.spaceSM)
+            .padding(.vertical, FogTheme.spaceMD)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(FogTheme.hairline)
+                    .frame(height: 0.5)
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

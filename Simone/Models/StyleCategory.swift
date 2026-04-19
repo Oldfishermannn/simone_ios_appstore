@@ -8,9 +8,10 @@ enum StyleCategory: String, CaseIterable, Codable {
     // Legacy cases — removed in Commit 3 after MoodStyle preset migration
     case blues, pop, classical, ambient, folk
 
+    /// v1.2 精简：只保留 5 个核心频道。midnight/cafe/rainy/library/dreamscape
+    /// 作为 case 保留做 Codable 降级兼容，但 UI 不再遍历。
     static var allCases: [StyleCategory] {
-        [.lofi, .jazz, .rnb, .rock, .electronic,
-         .midnight, .cafe, .rainy, .library, .dreamscape]
+        [.lofi, .jazz, .rnb, .rock, .electronic]
     }
 
     /// Decode fallback: unknown raw values map to .lofi so old user data never crashes.
@@ -65,10 +66,10 @@ enum StyleCategory: String, CaseIterable, Codable {
     /// Visualizer bound to this category — spectrum tonality follows channel.
     var defaultVisualizer: VisualizerStyle {
         switch self {
-        case .lofi:       return .horizon
+        case .lofi:       return .lofiTape  // v1.2 三选一评审中：tape / pad / blinds
         case .jazz:       return .oscilloscope
-        case .rnb:        return .flora
-        case .rock:       return .glitch
+        case .rnb:        return .liquor   // v1.2: 频谱威士忌 — 液面随频段起伏
+        case .rock:       return .ember    // v1.2: 频谱余烬 — 烟雾顶随频段弯折
         case .electronic: return .matrix
         case .midnight:   return .ringPulse
         case .cafe:       return .lattice

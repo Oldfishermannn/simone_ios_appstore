@@ -16,11 +16,21 @@ struct LatticeView: View {
             let cellW = w / CGFloat(cols)
             let cellH = h / CGFloat(rows)
 
+            // Idle baseline — 没音频时每个点有柔和大小变化，形成类似织物的静态图案
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             for row in 0..<rows {
                 for col in 0..<cols {
                     let idx = row * cols + col
                     let bin = min(idx * binCount / (rows * cols), binCount - 1)
-                    let value = CGFloat(spectrumData[bin])
+                    let raw = CGFloat(spectrumData[bin])
+                    // 静态图案：对角交错 + 双波，形成织纹
+                    let rowT = CGFloat(row) / CGFloat(max(rows - 1, 1))
+                    let colT = CGFloat(col) / CGFloat(max(cols - 1, 1))
+                    let weave = (0.5 + 0.5 * sin(rowT * .pi * 3)) * (0.5 + 0.5 * sin(colT * .pi * 3 + rowT * .pi))
+                    let idleVal: CGFloat = 0.12 + 0.32 * weave
+                    let value = raw * (1 - idleBlend) + idleVal * idleBlend
 
                     let cx = CGFloat(col) * cellW + cellW / 2
                     let cy = CGFloat(row) * cellH + cellH / 2

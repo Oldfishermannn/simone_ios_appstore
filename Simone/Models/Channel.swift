@@ -17,13 +17,23 @@ enum Channel: Hashable {
     }
 
     /// Spectrum tonality is bound to the channel — no user self-select in v1.1.1.
-    /// Favorites is a mixed bag so it falls back to terrain; category channels
-    /// delegate to StyleCategory.defaultVisualizer.
+    /// v1.2 Favorites 评审期：五种"物件感"可视化
+    /// （drawer / firefly / letters / nightWindow / vinylBooth）
+    /// 由 UserDefaults 支持，用户可在设置里切换；category 频道仍走默认。
     var visualizer: VisualizerStyle {
         switch self {
-        case .favorites: return .terrain
+        case .favorites: return Channel.favoritesVisualizerPreference
         case .category(let c): return c.defaultVisualizer
         }
+    }
+
+    static let favoritesVisualizerKey = "favoritesVisualizer"
+    static let favoritesVisualizerOptions: [VisualizerStyle] = [.nightWindow]
+
+    static var favoritesVisualizerPreference: VisualizerStyle {
+        let raw = UserDefaults.standard.string(forKey: favoritesVisualizerKey) ?? VisualizerStyle.nightWindow.rawValue
+        let resolved = VisualizerStyle(rawValue: raw) ?? .nightWindow
+        return favoritesVisualizerOptions.contains(resolved) ? resolved : .nightWindow
     }
 
     /// Stable string for UserDefaults persistence.

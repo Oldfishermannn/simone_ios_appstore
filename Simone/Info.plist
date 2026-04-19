@@ -13,13 +13,21 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>8</string>
 	<key>GEMINI_API_KEY</key>
 	<string>$(GEMINI_API_KEY)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Unbounded[wght].ttf</string>
+		<string>Fraunces[SOFT,WONK,opsz,wght].ttf</string>
+		<string>Fraunces-Italic[SOFT,WONK,opsz,wght].ttf</string>
+		<string>Archivo[wdth,wght].ttf</string>
+		<string>Archivo-Italic[wdth,wght].ttf</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

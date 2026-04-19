@@ -13,11 +13,18 @@ struct GlitchView: View {
 
             let scanLines = density > 1 ? 40 : 24
 
+            // Idle baseline — 没音频时让 CRT 扫描带仍有柔和起伏和色偏
+            let maxValue = spectrumData.max() ?? 0
+            let idleBlend = CGFloat(max(0, 1 - maxValue * 4))
+
             // Horizontal scan lines with frequency-driven displacement
             for line in 0..<scanLines {
                 let t = Float(line) / Float(scanLines)
                 let bin = min(Int(t * Float(binCount - 1)), binCount - 1)
-                let value = CGFloat(spectrumData[bin])
+                let raw = CGFloat(spectrumData[bin])
+                // 波段切片：三层柔和波形叠加，让扫描带有 "死机" 感但不空
+                let idleVal: CGFloat = 0.20 + 0.18 * CGFloat(sinf(t * .pi * 3)) * CGFloat(sinf(t * .pi * 1.3))
+                let value = raw * (1 - idleBlend) + max(0, idleVal) * idleBlend
 
                 let y = h * CGFloat(t)
                 let lineHeight = h / CGFloat(scanLines) - 1
