@@ -60,15 +60,6 @@ struct SettingsView: View {
                 tappable: false,
                 action: {}
             )
-            fogDivider
-
-            settingRow(
-                title: "Night Window",
-                subtitle: "glass · room · street",
-                value: state.nightWindowBigStyle.displayName.uppercased(),
-                tappable: true,
-                action: cycleNightWindowBigStyle
-            )
 
             spectrumPreview
                 .padding(.top, FogTheme.spaceMD)
@@ -212,15 +203,6 @@ struct SettingsView: View {
         let modes = AppState.EvolveMode.allCases
         guard let idx = modes.firstIndex(of: state.evolveMode) else { return }
         state.evolveMode = modes[(idx + 1) % modes.count]
-    }
-
-    private func cycleNightWindowBigStyle() {
-        let options = NightWindowBigStyle.allCases
-        guard let idx = options.firstIndex(of: state.nightWindowBigStyle) else {
-            state.nightWindowBigStyle = options.first ?? .glass
-            return
-        }
-        state.nightWindowBigStyle = options[(idx + 1) % options.count]
     }
 
     private func cycleFavoritesStyle() {
