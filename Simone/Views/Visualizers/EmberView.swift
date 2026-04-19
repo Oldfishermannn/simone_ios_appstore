@@ -1,21 +1,17 @@
 import SwiftUI
 
-// R&B visualizer — Ember & Smoke.
+// Rock visualizer — Ember & Smoke.
 //
-// Object: 炭灰房间里一支熄到只剩余烬的香/烟，火星在底部悬着，一缕烟从上方缓缓
-// 升起，在接近顶部时散开消失。低频让火星脉冲（像吸气时亮起），中频驱动烟丝弯
-// 曲，高频让烟尾分叉。
+// 小图 (expansion=0): 单枚余烬居中、略大。
+// 大图 (expansion=1): 主余烬右移缩小、两侧余烬淡入、背景深灰渐变 + 顶部 fade 淡入。
 //
-// OKLCH（真值）：
-//   bg dark   oklch(0.13 0.015 40) → rgb(32, 26, 22)
-//   ember core oklch(0.78 0.18 45) → rgb(246, 156, 72)
-//   ember mid  oklch(0.58 0.17 32) → rgb(186, 86, 52)
-//   ember edge oklch(0.38 0.12 25) → rgb(120, 54, 42)
-//   smoke cool oklch(0.62 0.02 240) → rgb(140, 148, 162)
-//   smoke warm oklch(0.48 0.03 50)  → rgb(120, 102, 88)
+// Object: 炭灰房间里的余烬火星，一缕烟升起散开。低频让火星脉冲（吸气时亮起），
+// 中频驱动烟丝弯曲，高频让烟尾分叉。
 struct EmberView: View {
     let spectrumData: [Float]
     var density: Int = 1
+    /// 0 = small (单余烬居中), 1 = big (三余烬 + 背景场景)
+    var expansion: CGFloat = 1.0
 
     var body: some View {
         Canvas { context, size in
@@ -26,16 +22,17 @@ struct EmberView: View {
     }
 
     private struct EmberSpec {
-        let cx: CGFloat     // 0..1 x
-        let cyBase: CGFloat // 0..1 y (火星位置)
-        let radius: CGFloat // 相对 w
+        let cx: CGFloat
+        let cyBase: CGFloat
+        let radius: CGFloat
         let seed: Double
-        let lenFactor: CGFloat  // smoke 长度相对 h
+        let lenFactor: CGFloat
     }
 
     private func renderEmbers(context: GraphicsContext, size: CGSize, binCount: Int) {
         let w = size.width, h = size.height
-        let isBig = density > 1
+        let e: CGFloat = max(0, min(1, expansion))
+        let sceneAlpha: Double = smoothstep(0.30, 0.88, Double(e))
 
         let bgDark  = Color(red: 32/255, green: 26/255, blue: 22/255)
         let bgMid   = Color(red: 52/255, green: 42/255, blue: 36/255)
@@ -57,9 +54,11 @@ struct EmberView: View {
 
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
-        // 背景：只在大图模式画。小图漂在 immersive 深灰底上，不做框。
-        if isBig {
-            context.fill(Path(CGRect(origin: .zero, size: size)),
+        // 背景深灰渐变（淡入）
+        if sceneAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                ctx.fill(Path(CGRect(origin: .zero, size: size)),
                          with: .linearGradient(
                             Gradient(stops: [
                                 .init(color: bgMid.opacity(0.85), location: 0),
@@ -69,45 +68,79 @@ struct EmberView: View {
                             startPoint: CGPoint(x: w * 0.5, y: h),
                             endPoint: CGPoint(x: w * 0.5, y: 0)
                          ))
+            }
         }
 
-        // Embers 布局
-        let embers: [EmberSpec] = isBig ? [
-            EmberSpec(cx: 0.22, cyBase: 0.82, radius: 0.022, seed: 0.0,  lenFactor: 0.78),
-            EmberSpec(cx: 0.55, cyBase: 0.87, radius: 0.026, seed: 1.7,  lenFactor: 0.85),
-            EmberSpec(cx: 0.81, cyBase: 0.79, radius: 0.019, seed: 3.4,  lenFactor: 0.72)
-        ] : [
-            EmberSpec(cx: 0.48, cyBase: 0.80, radius: 0.040, seed: 0.0,  lenFactor: 0.75)
-        ]
+        // 主余烬 —— 连续 morph 物体
+        let mainEmber = EmberSpec(
+            cx: 0.48 + (0.55 - 0.48) * e,
+            cyBase: 0.80 + (0.87 - 0.80) * e,
+            radius: 0.040 + (0.026 - 0.040) * e,
+            seed: 0.0,
+            lenFactor: 0.75 + (0.85 - 0.75) * e
+        )
 
-        // 烟（先画 — 在 ember 下层才不遮火）
-        for e in embers {
-            drawSmoke(context: context, w: w, h: h, ember: e,
-                     spectrumData: spectrumData, binCount: binCount,
-                     mid: mid, treble: treble, idleBlend: idleBlend, t: t,
-                     smokeCool: smokeCool, smokeWarm: smokeWarm,
-                     drawTopFade: isBig)
+        // 小图的 smoke 自己的顶部 fade 由 stroke alpha 衰减处理
+        // 大图需要画额外的顶部遮罩（sceneAlpha 淡入）
+        drawSmoke(context: context, w: w, h: h, ember: mainEmber,
+                  spectrumData: spectrumData, binCount: binCount,
+                  mid: mid, treble: treble, idleBlend: idleBlend, t: t,
+                  smokeCool: smokeCool, smokeWarm: smokeWarm)
+
+        drawEmber(context: context, w: w, h: h, ember: mainEmber,
+                  bass: bass, idleBlend: idleBlend, t: t,
+                  core: emberCore, midColor: emberMid, edge: emberEdge)
+
+        // 辅余烬（淡入）
+        if sceneAlpha > 0.01 {
+            let sideEmbers = [
+                EmberSpec(cx: 0.22, cyBase: 0.82, radius: 0.022, seed: 1.7,  lenFactor: 0.78),
+                EmberSpec(cx: 0.81, cyBase: 0.79, radius: 0.019, seed: 3.4,  lenFactor: 0.72)
+            ]
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                for se in sideEmbers {
+                    drawSmoke(context: ctx, w: w, h: h, ember: se,
+                              spectrumData: spectrumData, binCount: binCount,
+                              mid: mid, treble: treble, idleBlend: idleBlend, t: t,
+                              smokeCool: smokeCool, smokeWarm: smokeWarm)
+                }
+                for se in sideEmbers {
+                    drawEmber(context: ctx, w: w, h: h, ember: se,
+                              bass: bass, idleBlend: idleBlend, t: t,
+                              core: emberCore, midColor: emberMid, edge: emberEdge)
+                }
+            }
         }
 
-        // Ember（上层）
-        for e in embers {
-            drawEmber(context: context, w: w, h: h, ember: e,
-                     bass: bass, idleBlend: idleBlend, t: t,
-                     core: emberCore, midColor: emberMid, edge: emberEdge)
+        // 顶部淡出遮罩 —— 仅在大图 pose 显示
+        if sceneAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                let mainTopY = mainEmber.cyBase * h - mainEmber.lenFactor * h
+                let fadeRect = CGRect(x: 0, y: mainTopY - h * 0.02, width: w, height: h * 0.25)
+                ctx.fill(Path(fadeRect),
+                         with: .linearGradient(
+                            Gradient(colors: [
+                                Color.black.opacity(0.0),
+                                Color(red: 32/255, green: 26/255, blue: 22/255).opacity(0.9)
+                            ]),
+                            startPoint: CGPoint(x: w * 0.5, y: fadeRect.maxY),
+                            endPoint: CGPoint(x: w * 0.5, y: fadeRect.minY)
+                         ))
+            }
         }
     }
 
     private func drawEmber(context: GraphicsContext, w: CGFloat, h: CGFloat,
-                          ember e: EmberSpec, bass: Float, idleBlend: Float, t: Float,
-                          core: Color, midColor: Color, edge: Color) {
-        // bass 脉冲（吸气亮起）
+                           ember e: EmberSpec, bass: Float, idleBlend: Float, t: Float,
+                           core: Color, midColor: Color, edge: Color) {
         let pulse = bass * (1 - idleBlend) + (0.45 + sinf(t * 1.2 + Float(e.seed)) * 0.25) * idleBlend
         let pulseCG = CGFloat(pulse)
         let cx = e.cx * w
         let cy = e.cyBase * h
         let r = e.radius * w * (0.85 + pulseCG * 0.6)
 
-        // 外晕（宽）
         let halo = r * 2.8
         let haloRect = CGRect(x: cx - halo, y: cy - halo, width: halo * 2, height: halo * 2)
         context.fill(Path(ellipseIn: haloRect),
@@ -120,9 +153,8 @@ struct EmberView: View {
                         startRadius: 0, endRadius: halo
                      ))
 
-        // 中晕
-        let mid = r * 1.6
-        let midRect = CGRect(x: cx - mid, y: cy - mid, width: mid * 2, height: mid * 2)
+        let midR = r * 1.6
+        let midRect = CGRect(x: cx - midR, y: cy - midR, width: midR * 2, height: midR * 2)
         context.fill(Path(ellipseIn: midRect),
                      with: .radialGradient(
                         Gradient(colors: [
@@ -130,10 +162,9 @@ struct EmberView: View {
                             midColor.opacity(0)
                         ]),
                         center: CGPoint(x: cx, y: cy),
-                        startRadius: 0, endRadius: mid
+                        startRadius: 0, endRadius: midR
                      ))
 
-        // 核心
         let coreRect = CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2)
         context.fill(Path(ellipseIn: coreRect),
                      with: .radialGradient(
@@ -147,88 +178,66 @@ struct EmberView: View {
     }
 
     private func drawSmoke(context: GraphicsContext, w: CGFloat, h: CGFloat,
-                          ember e: EmberSpec,
-                          spectrumData: [Float], binCount: Int,
-                          mid: Float, treble: Float,
-                          idleBlend: Float, t: Float,
-                          smokeCool: Color, smokeWarm: Color,
-                          drawTopFade: Bool) {
+                           ember e: EmberSpec,
+                           spectrumData: [Float], binCount: Int,
+                           mid: Float, treble: Float,
+                           idleBlend: Float, t: Float,
+                           smokeCool: Color, smokeWarm: Color) {
         let cx = e.cx * w
         let cyBase = e.cyBase * h
         let smokeLen = e.lenFactor * h
-        let topY = cyBase - smokeLen
 
-        // 烟丝 = 沿 y 方向分 steps 的 x 偏移 — 频谱 bin 直接塑形。
-        // 底部（sf≈0）对应低频，顶部（sf≈1）对应高频；烟每段的水平偏移
-        // 是「该高度上那个频段的能量」。音乐越丰富，烟身越扭；静音时只
-        // 有轻微正弦基础飘动。这才是频谱理念。
         let steps = 36
         var points: [CGPoint] = []
         let midCG = CGFloat(mid * (1 - idleBlend) + 0.45 * idleBlend)
         let trebleCG = CGFloat(treble * (1 - idleBlend) + 0.12 * idleBlend)
 
         for s in 0...steps {
-            let sf = CGFloat(s) / CGFloat(steps)  // 0 底→1 顶
+            let sf = CGFloat(s) / CGFloat(steps)
             let y = cyBase - sf * smokeLen
 
-            // 频谱映射：sf 0→1 对应 bin 0→85% (砍掉最顶那些最高频噪声 bins)
             let binF = Float(sf) * Float(binCount - 1) * 0.85
             let binIdx = min(binCount - 1, max(0, Int(binF)))
             let binVal = CGFloat(spectrumData[binIdx])
 
-            // 基础飘动（sin）— idle 时唯一的运动来源
             let primary = sinf(Float(sf) * 4.2 + t * 0.8 + Float(e.seed)) * 0.6
             let secondary = sinf(Float(sf) * 9 + t * 1.3 + Float(e.seed) * 2) * 0.25
             let baseBend = CGFloat(primary + secondary) * 0.4
 
-            // 频谱塑形：这个 bin 能量推开烟柱
-            // 左右方向用 bin 的高位奇偶 + 时间相位，让能量能向两侧扩
             let phase = sinf(Float(binIdx) * 0.7 + t * 0.3 + Float(e.seed) * 1.3)
             let spectrumBend = CGFloat(phase) * binVal * 2.8
 
-            let bend = (baseBend * midCG + spectrumBend) * w * 0.07 * sf  // 越往上摆动越大
+            let bend = (baseBend * midCG + spectrumBend) * w * 0.07 * sf
             let x = cx + bend
 
             points.append(CGPoint(x: x, y: y))
         }
 
-        // 分层画 — 多描边层模拟烟的扩散
         let widthFactor: [CGFloat] = [4.0, 2.6, 1.4, 0.7]
         let alphas: [Double] = [0.08, 0.14, 0.22, 0.35]
 
-        for (layerIdx, w_) in widthFactor.enumerated() {
-            let strokeW = w_ * (1 + CGFloat(trebleCG) * 0.8)
+        for (layerIdx, wf) in widthFactor.enumerated() {
+            let strokeW = wf * (1 + CGFloat(trebleCG) * 0.8)
             var path = Path()
             path.move(to: points[0])
             for i in 1..<points.count {
                 let prev = points[i - 1]
                 let curr = points[i]
-                let mid = CGPoint(x: (prev.x + curr.x) * 0.5, y: (prev.y + curr.y) * 0.5)
-                path.addQuadCurve(to: mid, control: prev)
+                let midPt = CGPoint(x: (prev.x + curr.x) * 0.5, y: (prev.y + curr.y) * 0.5)
+                path.addQuadCurve(to: midPt, control: prev)
                 if i == points.count - 1 {
                     path.addLine(to: curr)
                 }
             }
 
-            // 渐变色（底部暖 → 顶部冷 → 透明）
             let color = layerIdx == 0 ? smokeWarm : smokeCool
             context.stroke(path, with: .color(color.opacity(alphas[layerIdx])),
-                          lineWidth: strokeW)
+                           lineWidth: strokeW)
         }
+    }
 
-        // 顶部淡出遮罩：只在大图模式画。小图直接靠 stroke alpha 衰减，
-        // 不再压一块深色矩形，避免小图顶部出现可见的方形色块。
-        if drawTopFade {
-            let fadeRect = CGRect(x: 0, y: topY - h * 0.02, width: w, height: h * 0.25)
-            context.fill(Path(fadeRect),
-                         with: .linearGradient(
-                            Gradient(colors: [
-                                Color.black.opacity(0.0),
-                                Color(red: 32/255, green: 26/255, blue: 22/255).opacity(0.9)
-                            ]),
-                            startPoint: CGPoint(x: w * 0.5, y: fadeRect.maxY),
-                            endPoint: CGPoint(x: w * 0.5, y: fadeRect.minY)
-                         ))
-        }
+    private func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
+        let t = max(0, min(1, (x - a) / (b - a)))
+        return t * t * (3 - 2 * t)
     }
 }

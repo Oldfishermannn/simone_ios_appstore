@@ -65,8 +65,8 @@ struct ImmersiveView: View {
                 Color(red: 0.165, green: 0.165, blue: 0.18)
                     .ignoresSafeArea()
 
-                if state.selectedVisualizer == .lofiTape {
-                    lofiMorphContent(geo: geo)
+                if supportsMorph(state.selectedVisualizer) {
+                    morphContent(geo: geo)
                 } else {
                     crossfadeContent(geo: geo, specSize: specSize)
                 }
@@ -169,15 +169,28 @@ struct ImmersiveView: View {
         }
     }
 
-    // MARK: - Lofi morph content (single full-screen canvas, body-to-body morph)
+    // MARK: - Unified morph content (single full-screen canvas, body-to-body morph)
+    //
+    // 适用于支持 expansion 参数的 5 个 visualizer —— LofiTape/Oscilloscope/
+    // Liquor/Ember/Matrix。每帧基于时间 tween 采样 expansion 驱动同一个画布，
+    // 不做双层 crossfade。
+
+    private func supportsMorph(_ style: VisualizerStyle) -> Bool {
+        switch style {
+        case .lofiTape, .oscilloscope, .liquor, .ember, .matrix:
+            return true
+        default:
+            return false
+        }
+    }
 
     @ViewBuilder
-    private func lofiMorphContent(geo: GeometryProxy) -> some View {
+    private func morphContent(geo: GeometryProxy) -> some View {
         ZStack {
             TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
-                LofiTapeView(
+                morphVisualizer(
+                    for: state.selectedVisualizer,
                     spectrumData: state.audioEngine.spectrumData,
-                    density: 2,
                     expansion: currentExpansion(now: ctx.date)
                 )
             }
@@ -197,6 +210,25 @@ struct ImmersiveView: View {
                 Spacer().frame(height: isSmall ? 80 : 48)
             }
             .allowsHitTesting(true)
+        }
+    }
+
+    @ViewBuilder
+    private func morphVisualizer(for style: VisualizerStyle, spectrumData: [Float], expansion: CGFloat) -> some View {
+        switch style {
+        case .lofiTape:
+            LofiTapeView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .oscilloscope:
+            OscilloscopeView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .liquor:
+            LiquorView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .ember:
+            EmberView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        case .matrix:
+            MatrixView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        default:
+            // 不走 morph 路径的 visualizer 已在上层被 supportsMorph 过滤掉
+            EmptyView()
         }
     }
 

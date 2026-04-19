@@ -123,8 +123,10 @@ final class AppState {
         autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
 
         // Restore last channel (no didSet side-effect during init)
+        // v1.2: 频道收缩到 5 个，落在旧 channel 上则 fallback 到 lofi。
         if let raw = UserDefaults.standard.string(forKey: currentChannelKey),
-           let channel = Channel(rawKey: raw) {
+           let channel = Channel(rawKey: raw),
+           Channel.all.contains(channel) {
             currentChannel = channel
             selectedVisualizer = channel.visualizer
             if case .category(let c) = channel {

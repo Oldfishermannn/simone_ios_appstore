@@ -8,11 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		02EFD611E85BB464212FF117 /* FloraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C427F742A90188BAED3B87EB /* FloraView.swift */; };
-		B3C4D5E6F7081920304151B7 /* EmberView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */; };
-		C4D5E6F708192A3B4C5D6E7F /* LiquorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */; };
-		A0B1C2D3E4F50617283940A1 /* LofiTapeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */; };
-		A1B2C3D4E5F60718293A4B51 /* LofiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */; };
-		A2B3C4D5E6F708192A3B4C52 /* LofiBlindsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */; };
 		08852DDB83F31A4AF4F3A875 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA9A410DEBEC3A63AE39244 /* WaveformView.swift */; };
 		0E43FBD54389D8586234B2FF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FB00288B34147AC47677E8 /* SettingsView.swift */; };
 		0E9D9C1EAF46E64C82DB51FD /* OscilloscopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BC765E6835D0DD6DA8C7D7 /* OscilloscopeView.swift */; };
@@ -54,11 +49,16 @@
 		91F2FF5882950688BC4DF83F /* DetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E8D1FD4A80AB66E94AF8B91 /* DetailsView.swift */; };
 		99F3869BAA2870A7961E8F9C /* HorizonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011B1EEA4AE69FA3586496C2 /* HorizonView.swift */; };
 		9D487B4F9A1DF78BD705E2AA /* PromptBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C943A16718E552C85DBB7619 /* PromptBuilderTests.swift */; };
+		A0B1C2D3E4F50617283940A1 /* LofiTapeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */; };
+		A1B2C3D4E5F60718293A4B51 /* LofiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */; };
 		A2A5B643BA227229887CB35C /* FountainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A40BC1215B61DAEA12C8A4C /* FountainView.swift */; };
+		A2B3C4D5E6F708192A3B4C52 /* LofiBlindsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */; };
 		A40EAD33ADFE94381EF3DE3D /* AudioBufferQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B550C29D0C8CB6F21DFDAC /* AudioBufferQueue.swift */; };
 		AC34F5DFDC91302BDE9B1FCF /* SilkWaveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB03C3E0027DA1E34444342 /* SilkWaveView.swift */; };
 		AEDCE52FD41257F56771DE7E /* MusicStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A7AFA8DBEF4C7D5D193D3F /* MusicStyle.swift */; };
+		B3C4D5E6F7081920304151B7 /* EmberView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */; };
 		C178B65701B8A31E07E83305 /* SimoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3479E50F6ECCC6E55C21D8 /* SimoneApp.swift */; };
+		C4D5E6F708192A3B4C5D6E7F /* LiquorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */; };
 		CA9FF3A7A8420C0C7278F486 /* StyleRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16965D51275875EB67E8C74C /* StyleRowView.swift */; };
 		D4BCFD536CCF57555F6C8559 /* ConstellationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CD84A1A70E8AE6866CD124 /* ConstellationView.swift */; };
 		D4EEAAF69B859D48A77D81AB /* FireflyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D69B790410D2F7FA9CD6F9B6 /* FireflyView.swift */; };
@@ -127,23 +127,22 @@
 		95BFE1B3AFD7015A25189575 /* AudioBufferQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioBufferQueueTests.swift; sourceTree = "<group>"; };
 		97AD740E416C7C18B7E88657 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9AF475AAE6BEBBA91DF7836A /* VisualizerStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerStyle.swift; sourceTree = "<group>"; };
-		9CCE3D2FC8D625E20719F260 /* Simone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Simone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9CCE3D2FC8D625E20719F260 /* Simone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Simone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FA9A410DEBEC3A63AE39244 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		A051AB5DAB29F481270E3FF3 /* OrbitalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalView.swift; sourceTree = "<group>"; };
 		AA44938A444AA921CDA587C9 /* OFL-Fraunces.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Fraunces.txt"; sourceTree = "<group>"; };
 		ADE35BACA0AC9A4AB7F37FA7 /* Archivo[wdth,wght].ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Archivo[wdth,wght].ttf"; sourceTree = "<group>"; };
 		B297E75541715BF298B32801 /* OFL-Archivo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Archivo.txt"; sourceTree = "<group>"; };
 		B2E2B4F8FBE1CDFA615DD2AA /* PrismView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismView.swift; sourceTree = "<group>"; };
+		B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiTapeView.swift; sourceTree = "<group>"; };
+		B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiPadView.swift; sourceTree = "<group>"; };
 		B622969586557E8AE6AF0564 /* VinylView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylView.swift; sourceTree = "<group>"; };
+		B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiBlindsView.swift; sourceTree = "<group>"; };
 		BEEB2773C02855218BF54C5F /* CascadeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CascadeView.swift; sourceTree = "<group>"; };
 		C3FE0CF17074DAAB966F1795 /* HelixView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelixView.swift; sourceTree = "<group>"; };
 		C427F742A90188BAED3B87EB /* FloraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloraView.swift; sourceTree = "<group>"; };
-		C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberView.swift; sourceTree = "<group>"; };
-		D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquorView.swift; sourceTree = "<group>"; };
-		B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiTapeView.swift; sourceTree = "<group>"; };
-		B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiPadView.swift; sourceTree = "<group>"; };
-		B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiBlindsView.swift; sourceTree = "<group>"; };
 		C5691669D5AA081409BCD205 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C5D6E7F8091A2B3C4D5E6F70 /* EmberView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmberView.swift; sourceTree = "<group>"; };
 		C68F2E7CD5140703D789F6AB /* LatticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatticeView.swift; sourceTree = "<group>"; };
 		C6E1B6F55990C90B53BB9263 /* ParticleFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParticleFlowView.swift; sourceTree = "<group>"; };
 		C90FA1CBA43A0D41EDEF1B85 /* APIKeySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeySettingsView.swift; sourceTree = "<group>"; };
@@ -154,6 +153,7 @@
 		D1D790402405B648A16528DF /* ImmersiveCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveCanvasView.swift; sourceTree = "<group>"; };
 		D223C2B3DE67420499B46269 /* AuroraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuroraView.swift; sourceTree = "<group>"; };
 		D69B790410D2F7FA9CD6F9B6 /* FireflyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FireflyView.swift; sourceTree = "<group>"; };
+		D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquorView.swift; sourceTree = "<group>"; };
 		DC0A8DFD1D048D25678627A6 /* FogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogTheme.swift; sourceTree = "<group>"; };
 		E3D1CADC3D74E03B5060FA0B /* StyleCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleCategory.swift; sourceTree = "<group>"; };
 		F4CD84A1A70E8AE6866CD124 /* ConstellationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConstellationView.swift; sourceTree = "<group>"; };
@@ -371,7 +371,6 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					7C186E217DF122D6DB80D18D = {
-						DevelopmentTeam = 627M26D553;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -587,7 +586,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 627M26D553;
+				DEVELOPMENT_TEAM = 9YD5W53S9K;
 				INFOPLIST_FILE = Simone/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -663,7 +662,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 627M26D553;
+				DEVELOPMENT_TEAM = 9YD5W53S9K;
 				INFOPLIST_FILE = Simone/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

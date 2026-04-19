@@ -8,9 +8,10 @@ enum StyleCategory: String, CaseIterable, Codable {
     // Legacy cases — removed in Commit 3 after MoodStyle preset migration
     case blues, pop, classical, ambient, folk
 
+    /// v1.2 精简：只保留 5 个核心频道。midnight/cafe/rainy/library/dreamscape
+    /// 作为 case 保留做 Codable 降级兼容，但 UI 不再遍历。
     static var allCases: [StyleCategory] {
-        [.lofi, .jazz, .rnb, .rock, .electronic,
-         .midnight, .cafe, .rainy, .library, .dreamscape]
+        [.lofi, .jazz, .rnb, .rock, .electronic]
     }
 
     /// Decode fallback: unknown raw values map to .lofi so old user data never crashes.
