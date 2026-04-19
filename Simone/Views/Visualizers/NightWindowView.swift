@@ -150,11 +150,12 @@ struct NightWindowView: View {
         }
         var windows: [WindowFrame] = []
 
-        // 主窗：小图居中大特写，大图偏左下
+        // 主窗：小图居中大特写，大图收缩成楼群里的一颗暖像素
+        //       (drawWindow 内按尺寸分级渲染——小了就只剩暖光+辉光)
         let mainSmall = CGRect(x: w * 0.18, y: h * 0.16,
                                 width: w * 0.64, height: h * 0.68)
-        let mainBig   = CGRect(x: w * 0.18, y: h * 0.42,
-                                width: w * 0.40, height: h * 0.42)
+        let mainBig   = CGRect(x: w * 0.765, y: h * 0.545,
+                                width: 11, height: 14)
         let mainRect = CGRect(
             x: mainSmall.minX + (mainBig.minX - mainSmall.minX) * e,
             y: mainSmall.minY + (mainBig.minY - mainSmall.minY) * e,
@@ -186,103 +187,104 @@ struct NightWindowView: View {
             }
         }
 
-        // ── 主窗下方窗台 + 蜡烛
-        let sillH: CGFloat = 8 + 4 * (1 - e)
-        let sillRect = CGRect(x: mainRect.minX - 6, y: mainRect.maxY,
-                               width: mainRect.width + 12, height: sillH)
-        context.fill(Path(sillRect),
-                     with: .linearGradient(
-                        Gradient(colors: [mullionHL, mullion]),
-                        startPoint: CGPoint(x: 0, y: sillRect.minY),
-                        endPoint: CGPoint(x: 0, y: sillRect.maxY)
-                     ))
-        var sillSh = Path()
-        sillSh.move(to: CGPoint(x: sillRect.minX + 2, y: sillRect.maxY + 1.5))
-        sillSh.addLine(to: CGPoint(x: sillRect.maxX - 2, y: sillRect.maxY + 1.5))
-        context.stroke(sillSh, with: .color(Color.black.opacity(0.55)), lineWidth: 0.8)
+        // ── 主窗下方窗台 + 蜡烛 + 烛火反射
+        //    只在主窗够大（小图/中间态）时渲染。大图下主窗是楼群里一颗像素，这些细节都消失。
+        if mainRect.width > 80 {
+            let sillH: CGFloat = 8 + 4 * (1 - e)
+            let sillRect = CGRect(x: mainRect.minX - 6, y: mainRect.maxY,
+                                   width: mainRect.width + 12, height: sillH)
+            context.fill(Path(sillRect),
+                         with: .linearGradient(
+                            Gradient(colors: [mullionHL, mullion]),
+                            startPoint: CGPoint(x: 0, y: sillRect.minY),
+                            endPoint: CGPoint(x: 0, y: sillRect.maxY)
+                         ))
+            var sillSh = Path()
+            sillSh.move(to: CGPoint(x: sillRect.minX + 2, y: sillRect.maxY + 1.5))
+            sillSh.addLine(to: CGPoint(x: sillRect.maxX - 2, y: sillRect.maxY + 1.5))
+            context.stroke(sillSh, with: .color(Color.black.opacity(0.55)), lineWidth: 0.8)
 
-        // 蜡烛
-        let candleX = mainRect.minX + mainRect.width * 0.16
-        let candleBaseY = sillRect.minY
-        let candleH: CGFloat = 14 + 6 * (1 - e)
-        let candleW: CGFloat = 5
-        let candleRect = CGRect(x: candleX - candleW / 2, y: candleBaseY - candleH,
-                                 width: candleW, height: candleH)
-        context.fill(Path(candleRect),
-                     with: .linearGradient(
-                        Gradient(colors: [
-                            Color(red: 226/255, green: 214/255, blue: 192/255),
-                            Color(red: 172/255, green: 152/255, blue: 120/255)
-                        ]),
-                        startPoint: CGPoint(x: candleRect.minX, y: candleRect.minY),
-                        endPoint: CGPoint(x: candleRect.maxX, y: candleRect.maxY)
-                     ))
+            // 蜡烛
+            let candleX = mainRect.minX + mainRect.width * 0.16
+            let candleBaseY = sillRect.minY
+            let candleH: CGFloat = 14 + 6 * (1 - e)
+            let candleW: CGFloat = 5
+            let candleRect = CGRect(x: candleX - candleW / 2, y: candleBaseY - candleH,
+                                     width: candleW, height: candleH)
+            context.fill(Path(candleRect),
+                         with: .linearGradient(
+                            Gradient(colors: [
+                                Color(red: 226/255, green: 214/255, blue: 192/255),
+                                Color(red: 172/255, green: 152/255, blue: 120/255)
+                            ]),
+                            startPoint: CGPoint(x: candleRect.minX, y: candleRect.minY),
+                            endPoint: CGPoint(x: candleRect.maxX, y: candleRect.maxY)
+                         ))
 
-        // 火焰
-        let flameJitter = CGFloat(sin(Double(t) * 6)) * (0.5 + midCG * 2.8)
-        let flameH: CGFloat = 9 + midCG * 7
-        let flameW: CGFloat = 4 + midCG * 1.6
-        let flameCX = candleX + flameJitter
-        let flameCY = candleRect.minY - flameH / 2
-        var flame = Path()
-        flame.move(to: CGPoint(x: flameCX, y: flameCY - flameH / 2))
-        flame.addQuadCurve(to: CGPoint(x: flameCX, y: flameCY + flameH / 2),
-                            control: CGPoint(x: flameCX + flameW, y: flameCY))
-        flame.addQuadCurve(to: CGPoint(x: flameCX, y: flameCY - flameH / 2),
-                            control: CGPoint(x: flameCX - flameW, y: flameCY))
-        context.fill(flame,
-                     with: .radialGradient(
-                        Gradient(colors: [
-                            candleFlame,
-                            warmLamp.opacity(0.55),
-                            Color.clear
-                        ]),
-                        center: CGPoint(x: flameCX, y: flameCY + flameH / 4),
-                        startRadius: 0, endRadius: flameH
-                     ))
-        // 火焰光晕
-        let glowR: CGFloat = 22 + midCG * 16
-        context.fill(Path(ellipseIn: CGRect(x: flameCX - glowR, y: flameCY - glowR,
-                                             width: glowR * 2, height: glowR * 2)),
-                     with: .radialGradient(
-                        Gradient(colors: [
-                            warmLamp.opacity(0.38),
-                            warmLamp.opacity(0)
-                        ]),
-                        center: CGPoint(x: flameCX, y: flameCY),
-                        startRadius: 0, endRadius: glowR
-                     ))
+            // 火焰
+            let flameJitter = CGFloat(sin(Double(t) * 6)) * (0.5 + midCG * 2.8)
+            let flameH: CGFloat = 9 + midCG * 7
+            let flameW: CGFloat = 4 + midCG * 1.6
+            let flameCX = candleX + flameJitter
+            let flameCY = candleRect.minY - flameH / 2
+            var flame = Path()
+            flame.move(to: CGPoint(x: flameCX, y: flameCY - flameH / 2))
+            flame.addQuadCurve(to: CGPoint(x: flameCX, y: flameCY + flameH / 2),
+                                control: CGPoint(x: flameCX + flameW, y: flameCY))
+            flame.addQuadCurve(to: CGPoint(x: flameCX, y: flameCY - flameH / 2),
+                                control: CGPoint(x: flameCX - flameW, y: flameCY))
+            context.fill(flame,
+                         with: .radialGradient(
+                            Gradient(colors: [
+                                candleFlame,
+                                warmLamp.opacity(0.55),
+                                Color.clear
+                            ]),
+                            center: CGPoint(x: flameCX, y: flameCY + flameH / 4),
+                            startRadius: 0, endRadius: flameH
+                         ))
+            // 火焰光晕
+            let glowR: CGFloat = 22 + midCG * 16
+            context.fill(Path(ellipseIn: CGRect(x: flameCX - glowR, y: flameCY - glowR,
+                                                 width: glowR * 2, height: glowR * 2)),
+                         with: .radialGradient(
+                            Gradient(colors: [
+                                warmLamp.opacity(0.38),
+                                warmLamp.opacity(0)
+                            ]),
+                            center: CGPoint(x: flameCX, y: flameCY),
+                            startRadius: 0, endRadius: glowR
+                         ))
 
-        // ── 蜡烛火焰在主窗玻璃里的"倒影"（关键细节——玻璃内侧反射）
-        // 反射位置：火焰对称投在窗玻璃下部，颜色更淡，水平抖动稍滞后。
-        let reflY = mainRect.maxY - mainRect.height * 0.22
-        let reflX = candleX + flameJitter * 0.7  // 稍迟的晃动
-        let reflAlpha = 0.32 + Double(midCG) * 0.22
-        let reflW: CGFloat = flameW * 0.9
-        let reflH: CGFloat = flameH * 0.8
-        var reflection = Path()
-        reflection.move(to: CGPoint(x: reflX, y: reflY - reflH / 2))
-        reflection.addQuadCurve(to: CGPoint(x: reflX, y: reflY + reflH / 2),
-                                 control: CGPoint(x: reflX + reflW, y: reflY))
-        reflection.addQuadCurve(to: CGPoint(x: reflX, y: reflY - reflH / 2),
-                                 control: CGPoint(x: reflX - reflW, y: reflY))
-        context.fill(reflection,
-                     with: .radialGradient(
-                        Gradient(colors: [
-                            candleFlame.opacity(reflAlpha),
-                            warmLamp.opacity(reflAlpha * 0.35),
-                            Color.clear
-                        ]),
-                        center: CGPoint(x: reflX, y: reflY),
-                        startRadius: 0, endRadius: reflH
-                     ))
-        // 玻璃反射的一条竖向 streak（拉伸感——符合光学）
-        var reflStreak = Path()
-        reflStreak.move(to: CGPoint(x: reflX, y: reflY - reflH * 1.4))
-        reflStreak.addLine(to: CGPoint(x: reflX, y: reflY + reflH * 0.8))
-        context.stroke(reflStreak,
-                        with: .color(candleFlame.opacity(reflAlpha * 0.4)),
-                        lineWidth: 0.8)
+            // 烛火在主窗玻璃里的"倒影"
+            let reflY = mainRect.maxY - mainRect.height * 0.22
+            let reflX = candleX + flameJitter * 0.7
+            let reflAlpha = 0.32 + Double(midCG) * 0.22
+            let reflW: CGFloat = flameW * 0.9
+            let reflH: CGFloat = flameH * 0.8
+            var reflection = Path()
+            reflection.move(to: CGPoint(x: reflX, y: reflY - reflH / 2))
+            reflection.addQuadCurve(to: CGPoint(x: reflX, y: reflY + reflH / 2),
+                                     control: CGPoint(x: reflX + reflW, y: reflY))
+            reflection.addQuadCurve(to: CGPoint(x: reflX, y: reflY - reflH / 2),
+                                     control: CGPoint(x: reflX - reflW, y: reflY))
+            context.fill(reflection,
+                         with: .radialGradient(
+                            Gradient(colors: [
+                                candleFlame.opacity(reflAlpha),
+                                warmLamp.opacity(reflAlpha * 0.35),
+                                Color.clear
+                            ]),
+                            center: CGPoint(x: reflX, y: reflY),
+                            startRadius: 0, endRadius: reflH
+                         ))
+            var reflStreak = Path()
+            reflStreak.move(to: CGPoint(x: reflX, y: reflY - reflH * 1.4))
+            reflStreak.addLine(to: CGPoint(x: reflX, y: reflY + reflH * 0.8))
+            context.stroke(reflStreak,
+                            with: .color(candleFlame.opacity(reflAlpha * 0.4)),
+                            lineWidth: 0.8)
+        }
 
         // ── 左上斜冷光束（月光/街灯切入室内，主光方向）
         // 贯穿左上外 → 右下，覆盖整个画面，但强度随 bass 微调
@@ -434,6 +436,48 @@ struct NightWindowView: View {
                              t: Float, isMain: Bool,
                              spectrumData: [Float],
                              sceneAlpha: Double) {
+        // ── 小像素窗分支：楼群里的一颗暖像素
+        //    不画窗框/室内/雨水/反射——那些细节在 render() 外部按 mainRect.width 分级渲染
+        //    这里只负责：外圈暖辉光 + 暖矩形 + 随 bass 呼吸 + mini mullion
+        if frame.width < 40 {
+            // 外圈辉光（让它在楼海中显眼——关键"我们"识别信号）
+            let breathe = 1.0 + Double(bassCG) * 0.14
+                           + sin(Double(t) * 1.4) * 0.05
+            let glowR = max(frame.width, frame.height) * CGFloat(2.4 * breathe)
+            let cx = frame.midX, cy = frame.midY
+            ctx.fill(Path(ellipseIn: CGRect(x: cx - glowR, y: cy - glowR,
+                                               width: glowR * 2, height: glowR * 2)),
+                     with: .radialGradient(
+                        Gradient(stops: [
+                            .init(color: lampColor.opacity(0.48), location: 0),
+                            .init(color: lampColor.opacity(0.18), location: 0.35),
+                            .init(color: lampColor.opacity(0),    location: 1)
+                        ]),
+                        center: CGPoint(x: cx, y: cy),
+                        startRadius: 0, endRadius: glowR
+                     ))
+
+            // 窗格本体：暖光填充 + 极细深色外框
+            let lampIntensity = 0.88 + Double(bassCG) * 0.10
+            ctx.fill(Path(frame), with: .color(lampColor.opacity(lampIntensity)))
+
+            // 内部 mini mullion（一竖一横十字，极细）
+            let mW: CGFloat = 0.6
+            let mxC = frame.minX + frame.width * 0.5
+            ctx.fill(Path(CGRect(x: mxC - mW / 2, y: frame.minY,
+                                  width: mW, height: frame.height)),
+                     with: .color(Color.black.opacity(0.45)))
+            let myC = frame.minY + frame.height * 0.5
+            ctx.fill(Path(CGRect(x: frame.minX, y: myC - mW / 2,
+                                  width: frame.width, height: mW)),
+                     with: .color(Color.black.opacity(0.45)))
+
+            // 窗框外缘暗线（让它嵌在楼面里）
+            ctx.stroke(Path(frame), with: .color(Color.black.opacity(0.70)),
+                       lineWidth: 0.7)
+            return
+        }
+
         // 窗框外圈 —— 主窗粗一点
         let frameInset: CGFloat = isMain ? 4 : 2.5
         let frameOuter = frame.insetBy(dx: -frameInset, dy: -frameInset)
