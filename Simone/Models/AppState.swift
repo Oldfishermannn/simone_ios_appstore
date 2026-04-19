@@ -187,8 +187,14 @@ final class AppState {
         }
     }
 
-    /// Switch to a channel: persist, rebind visualizer, play the first preset.
+    /// Switch to a channel: persist, rebind visualizer, queue up the first preset.
     /// No-op if the channel is already active.
+    ///
+    /// 关键：横滑频道不自动启动播放。selectStyle → applySelection 在
+    /// 未连接时会 audioEngine.start + connect（为了响应用户选风格时"立
+    /// 刻出声"的意图）。对频道横滑来说，用户并未按播放键，安静切换才
+    /// 是电台感。所以：未连接时只更新 selectedStyle 不走 applySelection；
+    /// 已连接时再把新 prompt 推给 Lyria 实现无缝切台。
     func switchToChannel(_ channel: Channel) {
         guard channel != currentChannel else { return }
         currentChannel = channel
@@ -197,7 +203,10 @@ final class AppState {
             currentCategory = c
         }
         styleHistory.removeAll()
-        if let first = stylesInCurrentChannel.first {
+        guard let first = stylesInCurrentChannel.first else { return }
+        if lyriaClient.connectionState == .disconnected {
+            selectedStyle = first
+        } else {
             selectStyle(first)
         }
     }
