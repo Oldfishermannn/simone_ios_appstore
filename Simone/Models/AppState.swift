@@ -33,9 +33,10 @@ final class AppState {
         case auto1m = "1 min"
         case auto5m = "5 min"
     }
-    // Default Lock: don't touch a landed soundscape unless the user opts in.
-    // 30s is the fastest tier — 10s felt twitchy on Lyria's settle time.
-    var evolveMode: EvolveMode = .locked {
+    // v1.2.1 default: auto1m — CEO 验收"撑 30 分钟不疲劳"需要持续 evolve，
+    // 1min tick × 三维度调制（每次只动 1-2 维度）在 30 分钟内触发约 30 次
+    // 微调，足够抗疲劳又不打破沉浸感。Lock 挡保留作为用户手动选项。
+    var evolveMode: EvolveMode = .auto1m {
         didSet { restartEvolveTimer() }
     }
     private var evolveTimer: Timer?
