@@ -114,7 +114,9 @@ struct DetailsView: View {
         let opacity: Double = isCurrent
             ? 0.90
             : (distance == 1 ? 0.38 : (distance == 2 ? 0.22 : 0.12))
-        let tint: Color = isCurrent ? headerTint : .white
+        // v1.2.1: non-current dial cells use cool-axis primary text tone
+        // (oklch 0.94/0.012/250) instead of pure white — cleaner on cold bg.
+        let tint: Color = isCurrent ? headerTint : FogTokens.textPrimary
 
         Text(channel.displayName.uppercased())
             .font(FogTheme.mono(12, weight: .regular))
@@ -129,9 +131,11 @@ struct DetailsView: View {
         return HStack(spacing: 5) {
             ForEach(Array(channels.enumerated()), id: \.element) { index, _ in
                 Circle()
+                    // v1.2.1: pill dots use cool hairline tone instead of
+                    // warm-tinted .white.opacity(0.15) — subtle but audible.
                     .fill(index == selectedIndex
                           ? headerTint
-                          : Color.white.opacity(0.15))
+                          : FogTokens.textTertiary.opacity(0.35))
                     .frame(width: index == selectedIndex ? 6 : 4,
                            height: index == selectedIndex ? 6 : 4)
             }
@@ -141,7 +145,10 @@ struct DetailsView: View {
 
     private var headerTint: Color {
         switch browseChannel {
-        case .favorites:       return MorandiPalette.rose
+        // v1.2.1: favorites previously tinted Morandi rose — too warm against
+        // the cool Fog base. Brass is the one allowed warm accent; keeps the
+        // "this is yours" heat without dropping into dusk territory.
+        case .favorites:       return FogTokens.accentBrass
         case .category(let c): return c.color
         }
     }

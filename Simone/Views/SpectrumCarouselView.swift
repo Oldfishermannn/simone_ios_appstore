@@ -50,10 +50,12 @@ struct SpectrumCarouselView: View {
                 HStack(spacing: 4) {
                     ForEach(Array(channels.enumerated()), id: \.element) { index, _ in
                         Circle()
+                            // v1.2.1: dots were rose (warm) on cool bg — swap
+                            // to cool-axis pair.
                             .fill(
                                 index == currentIndex
-                                    ? MorandiPalette.rose
-                                    : Color.white.opacity(0.3)
+                                    ? FogTokens.accentIndigo
+                                    : FogTokens.textTertiary.opacity(0.55)
                             )
                             .frame(width: index == currentIndex ? 6 : 5,
                                    height: index == currentIndex ? 6 : 5)

@@ -29,10 +29,10 @@ struct ChannelPageView: View {
                 Spacer().frame(height: 40)
                 Image(systemName: "heart")
                     .font(.system(size: 28))
-                    .foregroundStyle(.white.opacity(0.15))
+                    .foregroundStyle(FogTokens.textTertiary.opacity(0.55))
                 Text("Tap ♡ on any style to save it here")
                     .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.2))
+                    .foregroundStyle(FogTokens.textTertiary.opacity(0.75))
                 Spacer()
             }
         } else {

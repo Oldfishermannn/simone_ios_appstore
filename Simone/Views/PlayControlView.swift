@@ -11,7 +11,7 @@ struct PlayControlView: View {
             } label: {
                 Image(systemName: "backward.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(FogTokens.textSecondary)
             }
             .buttonStyle(.plain)
 
@@ -20,17 +20,18 @@ struct PlayControlView: View {
                 state.togglePlayPause()
             } label: {
                 ZStack {
+                    // v1.2.1: cool-axis surface + hairline stroke.
                     Circle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(FogTokens.bgSurface.opacity(0.5))
                         .frame(width: 52, height: 52)
                         .overlay(
                             Circle()
-                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                .stroke(FogTokens.lineHairline, lineWidth: 1)
                         )
 
                     Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(FogTokens.textPrimary.opacity(0.8))
                 }
             }
             .buttonStyle(.plain)
@@ -42,7 +43,7 @@ struct PlayControlView: View {
             } label: {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(FogTokens.textSecondary)
             }
             .buttonStyle(.plain)
         }

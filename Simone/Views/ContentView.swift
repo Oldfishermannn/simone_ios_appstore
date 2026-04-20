@@ -9,11 +9,16 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.165, green: 0.165, blue: 0.18)
+            // v1.2.1: cool-axis base (was 0.165/0.165/0.18 warm grey).
+            // FogTokens.bgDeep = oklch(0.13 0.018 252).
+            FogTokens.bgDeep
                 .ignoresSafeArea()
 
+            // v1.2.1: soft indigo halo from top (was Morandi rose — the last
+            // warm leak on the root chrome). Amount unchanged (0.06) so the
+            // feel stays a whisper, not a vignette.
             RadialGradient(
-                colors: [MorandiPalette.rose.opacity(0.06), .clear],
+                colors: [FogTokens.accentIndigo.opacity(0.06), .clear],
                 center: .top,
                 startRadius: 0,
                 endRadius: 300

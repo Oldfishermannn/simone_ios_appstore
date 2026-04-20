@@ -71,7 +71,8 @@ struct ImmersiveView: View {
             let specSize: CGFloat = min(geo.size.width - 60, 300)
 
             ZStack {
-                Color(red: 0.165, green: 0.165, blue: 0.18)
+                // v1.2.1: cool-axis base; matches ContentView root.
+                FogTokens.bgDeep
                     .ignoresSafeArea()
 
                 if supportsMorph(state.selectedVisualizer) {
@@ -289,7 +290,7 @@ struct ImmersiveView: View {
             } label: {
                 Image(systemName: "backward.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(FogTokens.textSecondary)
             }
             .buttonStyle(.plain)
 
@@ -297,13 +298,14 @@ struct ImmersiveView: View {
                 state.togglePlayPause()
             } label: {
                 ZStack {
+                    // v1.2.1: chrome on cool axis. Dimmer fill, same hairline.
                     Circle()
-                        .fill(Color.white.opacity(0.08))
+                        .fill(FogTokens.bgSurface.opacity(0.5))
                         .frame(width: 52, height: 52)
-                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
                     Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(FogTokens.textPrimary.opacity(0.8))
                 }
             }
             .buttonStyle(.plain)
@@ -314,7 +316,7 @@ struct ImmersiveView: View {
             } label: {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(FogTokens.textSecondary)
             }
             .buttonStyle(.plain)
         }

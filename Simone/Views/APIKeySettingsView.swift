@@ -66,15 +66,18 @@ struct APIKeySettingsView: View {
     }
 
     private var statusColor: Color {
+        // v1.2.1: lock status hues to Fog cool axis + two permitted warms.
+        // sage → accentIndigo (healthy/connected), sand → accentBrass
+        // (warming up / retrying), rose → dangerEmber (error).
         switch state.lyriaClient.connectionState {
-        case .connected: return MorandiPalette.sage
-        case .connecting, .reconnecting: return MorandiPalette.sand
+        case .connected: return FogTokens.accentIndigo
+        case .connecting, .reconnecting: return FogTokens.accentBrass
         case .disconnected:
             switch testStatus {
-            case .success: return MorandiPalette.sage
-            case .failed: return MorandiPalette.rose
-            case .testing: return MorandiPalette.sand
-            case .idle: return .white.opacity(0.3)
+            case .success: return FogTokens.accentIndigo
+            case .failed: return FogTokens.dangerEmber
+            case .testing: return FogTokens.accentBrass
+            case .idle: return FogTokens.textTertiary.opacity(0.6)
             }
         }
     }
@@ -103,7 +106,7 @@ struct APIKeySettingsView: View {
             HStack(spacing: 10) {
                 Image(systemName: "key.fill")
                     .font(.system(size: 12))
-                    .foregroundStyle(MorandiPalette.sage.opacity(0.5))
+                    .foregroundStyle(FogTokens.accentIndigo.opacity(0.55))
 
                 Text(showKey ? saved : maskKey(saved))
                     .font(.system(size: 14, design: .monospaced))
@@ -130,7 +133,7 @@ struct APIKeySettingsView: View {
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 14))
-                        .foregroundStyle(MorandiPalette.rose.opacity(0.5))
+                        .foregroundStyle(FogTokens.dangerEmber.opacity(0.55))
                 }
                 .buttonStyle(.plain)
             }
@@ -145,7 +148,7 @@ struct APIKeySettingsView: View {
                     if testStatus == .testing {
                         ProgressView()
                             .scaleEffect(0.8)
-                            .tint(MorandiPalette.sage)
+                            .tint(FogTokens.accentIndigo)
                     } else {
                         Image(systemName: "antenna.radiowaves.left.and.right")
                             .font(.system(size: 14))
@@ -155,9 +158,9 @@ struct APIKeySettingsView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(MorandiPalette.sage.opacity(0.15))
+                .background(FogTokens.accentIndigo.opacity(0.14))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .foregroundStyle(MorandiPalette.sage)
+                .foregroundStyle(FogTokens.accentIndigo)
             }
             .buttonStyle(.plain)
             .disabled(testStatus == .testing)
@@ -175,24 +178,24 @@ struct APIKeySettingsView: View {
                     .autocorrectionDisabled()
                     .focused($isInputFocused)
                     .padding(14)
-                    .background(Color.white.opacity(0.06))
+                    .background(FogTokens.bgSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(
                                 isInputFocused
-                                    ? MorandiPalette.sage.opacity(0.3)
-                                    : Color.white.opacity(0.06),
+                                    ? FogTokens.accentIndigo.opacity(0.35)
+                                    : FogTokens.lineHairline,
                                 lineWidth: 1
                             )
                     )
-                    .foregroundStyle(.white.opacity(0.8))
+                    .foregroundStyle(FogTokens.textPrimary.opacity(0.9))
                     .onSubmit { saveAndTest() }
 
                 if let msg = validationMessage {
                     Text(msg)
                         .font(.system(size: 12))
-                        .foregroundStyle(MorandiPalette.rose.opacity(0.8))
+                        .foregroundStyle(FogTokens.dangerEmber.opacity(0.85))
                 }
 
                 Button {
@@ -208,14 +211,14 @@ struct APIKeySettingsView: View {
                     .padding(.vertical, 14)
                     .background(
                         keyInput.isEmpty
-                            ? Color.white.opacity(0.04)
-                            : MorandiPalette.sage.opacity(0.2)
+                            ? FogTokens.bgSurface
+                            : FogTokens.accentIndigo.opacity(0.18)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .foregroundStyle(
                         keyInput.isEmpty
-                            ? .white.opacity(0.2)
-                            : MorandiPalette.sage
+                            ? FogTokens.textTertiary
+                            : FogTokens.accentIndigo
                     )
                 }
                 .buttonStyle(.plain)
@@ -225,14 +228,14 @@ struct APIKeySettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Get a free Gemini API Key:")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(FogTokens.textSecondary.opacity(0.65))
 
                 guideStep("1", "Visit aistudio.google.com")
                 guideStep("2", "Sign in with Google")
                 guideStep("3", "Click Get API Key → Create")
             }
             .padding(16)
-            .background(Color.white.opacity(0.03))
+            .background(FogTokens.bgSurface.opacity(0.55))
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
@@ -243,13 +246,13 @@ struct APIKeySettingsView: View {
         HStack(spacing: 8) {
             Text(num)
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundStyle(MorandiPalette.sage.opacity(0.5))
+                .foregroundStyle(FogTokens.accentIndigo.opacity(0.7))
                 .frame(width: 18, height: 18)
-                .background(MorandiPalette.sage.opacity(0.1))
+                .background(FogTokens.accentIndigo.opacity(0.12))
                 .clipShape(Circle())
             Text(text)
                 .font(.system(size: 13))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(FogTokens.textTertiary)
         }
     }
 
