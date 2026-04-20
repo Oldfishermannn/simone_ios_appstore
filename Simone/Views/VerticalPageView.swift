@@ -26,8 +26,7 @@ struct VerticalPageView<Content: View>: UIViewControllerRepresentable {
 
         // 冷启动首次上滑被"按住"感的根因：UIPageViewController 内部 UIScrollView
         // 默认 delaysContentTouches=true，会先等 ~150ms 判断「是否真的要 scroll」
-        // 再 forward 触摸。app 第一次 interaction 时这个 delay 被感知最明显。
-        // 关掉它，触摸立即 forward，纵滑换页瞬发。
+        // 再 forward 触摸。关掉它让触摸立即 forward。
         for subview in pvc.view.subviews {
             if let scrollView = subview as? UIScrollView {
                 scrollView.delaysContentTouches = false

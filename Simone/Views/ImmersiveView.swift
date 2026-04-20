@@ -45,13 +45,6 @@ struct ImmersiveView: View {
         return morphFrom + (morphTo - morphFrom) * CGFloat(eased)
     }
 
-    /// Begin a big↔small transition. Updates both the logical `isSmall` flag
-    /// (which drives non-lofi crossfade modifiers) and the morph tween state
-    /// (which drives the lofi expansion interpolation).
-    private func toggleMode() {
-        setMode(toSmall: !isSmall)
-    }
-
     /// Drive mode transition to an absolute target. No-op if already there so
     /// we can safely call this from audio-state change observers without
     /// fighting the user's in-flight tap. Preserves mid-flight expansion so
@@ -74,6 +67,26 @@ struct ImmersiveView: View {
                 // v1.2.1: cool-axis base; matches ContentView root.
                 FogTokens.bgDeep
                     .ignoresSafeArea()
+
+                // v1.2.1 big-mode stage: Fog City Nocturne 夜色渐变。
+                // 顶部 accentIndigo 微光（远处夜空的城市光晕）→ 中段 bgDeep →
+                // 底部 bgSurface 浅一档（地平线 / 地板反光）。幅度克制到
+                // lightness 差 < 0.05，色调仍在 bgDeep 同族——不和 visualizer
+                // 前景抢戏，消解大图一整片死色的闷感。小图模式时 opacity=0
+                // 回到纯 bgDeep 的"一片黑夜"基底。
+                LinearGradient(
+                    stops: [
+                        .init(color: FogTokens.accentIndigo.opacity(0.07), location: 0.0),
+                        .init(color: FogTokens.bgDeep, location: 0.35),
+                        .init(color: FogTokens.bgDeep, location: 0.72),
+                        .init(color: FogTokens.bgSurface.opacity(0.85), location: 1.0),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                .opacity(isSmall ? 0 : 1)
+                .allowsHitTesting(false)
 
                 if supportsMorph(state.selectedVisualizer) {
                     morphContent(geo: geo)
@@ -147,9 +160,6 @@ struct ImmersiveView: View {
                     )
                 }
                 .frame(width: specSize, height: specSize)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleMode() }
-                .simultaneousGesture(channelSwipe)
 
                 Spacer().frame(height: 44)
 
@@ -167,8 +177,6 @@ struct ImmersiveView: View {
             ZStack {
                 SpectrumCarouselView(state: state, showDots: false, density: 2)
                     .frame(width: geo.size.width, height: geo.size.height)
-                    .contentShape(Rectangle())
-                    .onTapGesture { toggleMode() }
 
                 VStack(spacing: 0) {
                     Spacer()
@@ -213,9 +221,6 @@ struct ImmersiveView: View {
                 )
             }
             .frame(width: geo.size.width, height: geo.size.height)
-            .contentShape(Rectangle())
-            .onTapGesture { toggleMode() }
-            .simultaneousGesture(channelSwipe)
 
             VStack(spacing: 0) {
                 Spacer()
@@ -290,7 +295,7 @@ struct ImmersiveView: View {
     private var transportControls: some View {
         HStack(spacing: 40) {
             Button {
-                state.previousStyle()
+                switchChannel(by: -1)
             } label: {
                 Image(systemName: "backward.fill")
                     .font(.system(size: 24))
@@ -316,7 +321,7 @@ struct ImmersiveView: View {
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
 
             Button {
-                state.nextStyle()
+                switchChannel(by: +1)
             } label: {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 24))
@@ -324,6 +329,17 @@ struct ImmersiveView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    /// v1.2.1: transport 左右键语义从"上一/下一 style"改成"上一/下一 channel"。
+    /// Simone 是 mood radio — 这对按钮在电台语境里本来就是"换台"，比同频道内
+    /// 20 个预设里跳 style 层级更高、对用户更直觉。横滑手势同步移除。
+    private func switchChannel(by delta: Int) {
+        let channels = Channel.all
+        let idx = channels.firstIndex(of: state.currentChannel) ?? 0
+        let newIdx = max(0, min(channels.count - 1, idx + delta))
+        guard newIdx != idx else { return }
+        state.switchToChannel(channels[newIdx])
     }
 
     // MARK: - Small-mode visualizer dispatch
@@ -353,35 +369,6 @@ struct ImmersiveView: View {
         case .nightWindow:  NightWindowView(spectrumData: spectrumData, density: 1)
         case .vinylBooth:   VinylBoothView(spectrumData: spectrumData, density: 1)
         }
-    }
-
-    // MARK: - Channel swipe (小图模式左右滑动换频道)
-
-    /// 横滑换频道：只在横向 dominant 且 > 30pt 时触发。
-    /// 挂载用 .simultaneousGesture（不是 .gesture）—— iOS 17+ 嵌套手势仲裁里，
-    /// .gesture 会独占触摸，阻塞 VerticalPageView 的纵向 pan；
-    /// .simultaneousGesture 让两个手势并行评估，各自按方向 claim，纵滑能正常换页。
-    private var channelSwipe: some Gesture {
-        DragGesture(minimumDistance: 20)
-            .onEnded { value in
-                let dx = value.translation.width
-                let dy = value.translation.height
-
-                // 只响应横向 dominant 的滑动。
-                guard abs(dx) > abs(dy) else { return }
-                guard abs(dx) > 30 else { return }
-
-                let channels = Channel.all
-                let currentIdx = channels.firstIndex(of: state.currentChannel) ?? 0
-                let newIdx: Int
-                if dx < 0 {
-                    newIdx = min(currentIdx + 1, channels.count - 1)
-                } else {
-                    newIdx = max(currentIdx - 1, 0)
-                }
-                guard newIdx != currentIdx else { return }
-                state.switchToChannel(channels[newIdx])
-            }
     }
 
     // MARK: - Music DNA
