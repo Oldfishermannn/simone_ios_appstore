@@ -27,6 +27,7 @@
 		457310387726C5CCC68A8FC2 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D507A7E2E4EE4C1B598C0F3 /* KeychainHelper.swift */; };
 		4BB2C421AA09A83D7187399C /* LyriaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251E4193BD73FBA3F798227E /* LyriaClient.swift */; };
 		4C1D301744921FBD39BEC748 /* StyleCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D1CADC3D74E03B5060FA0B /* StyleCategory.swift */; };
+		4D2E3F5061532FBD3A9CEC90 /* PromptState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D2CBDD4E75F14C6171FA0C /* PromptState.swift */; };
 		4D31082FF032C8312B994E93 /* AuroraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D223C2B3DE67420499B46269 /* AuroraView.swift */; };
 		529506AAC786BF713400AD32 /* RippleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AFE505680E95BADF1399B0 /* RippleView.swift */; };
 		5A4CDFE84DE9F81BB18ED27A /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80194874FBD4D2401255FFAC /* Channel.swift */; };
@@ -166,6 +167,7 @@
 		D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquorView.swift; sourceTree = "<group>"; };
 		DC0A8DFD1D048D25678627A6 /* FogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogTheme.swift; sourceTree = "<group>"; };
 		E3D1CADC3D74E03B5060FA0B /* StyleCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleCategory.swift; sourceTree = "<group>"; };
+		E4D2CBDD4E75F14C6171FA0C /* PromptState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptState.swift; sourceTree = "<group>"; };
 		F4CD84A1A70E8AE6866CD124 /* ConstellationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConstellationView.swift; sourceTree = "<group>"; };
 		F65AC8031ADEE704B3F43BDC /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
 		FB72481B7544B4D6712314C0 /* RainfallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RainfallView.swift; sourceTree = "<group>"; };
@@ -331,6 +333,7 @@
 				80194874FBD4D2401255FFAC /* Channel.swift */,
 				DC0A8DFD1D048D25678627A6 /* FogTheme.swift */,
 				28A7AFA8DBEF4C7D5D193D3F /* MusicStyle.swift */,
+				E4D2CBDD4E75F14C6171FA0C /* PromptState.swift */,
 				E3D1CADC3D74E03B5060FA0B /* StyleCategory.swift */,
 				9AF475AAE6BEBBA91DF7836A /* VisualizerStyle.swift */,
 			);
@@ -488,6 +491,7 @@
 				C178B65701B8A31E07E83305 /* SimoneApp.swift in Sources */,
 				F646F9AC92231D9595C99AA8 /* SpectrumCarouselView.swift in Sources */,
 				5E7B0A06C987DE1DF22E2B2D /* SpectrumDataProvider.swift in Sources */,
+				4D2E3F5061532FBD3A9CEC90 /* PromptState.swift in Sources */,
 				4C1D301744921FBD39BEC748 /* StyleCategory.swift in Sources */,
 				CA9FF3A7A8420C0C7278F486 /* StyleRowView.swift in Sources */,
 				24D3365691580B669BF855F0 /* TerrainView.swift in Sources */,
