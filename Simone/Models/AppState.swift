@@ -94,6 +94,13 @@ final class AppState {
     var energy: Float = 0.5    // 0..1
     var mood: Float = 0.5      // 0..1
 
+    // v1.2.1 · 三维度调制后台状态（RFC §2.1–§2.4）。
+    // **不暴露 UI**（CEO 决策 #2），仅 evolve() 读写。不持久化（RFC §R5 特征不是 bug）。
+    private var activeAccents: Set<String> = []
+    private var activeOptionals: Set<String> = []
+    private var currentDensity: Float = 0.6
+    private var currentEnergy: Float = 0.55
+
     /// Apply current config to server
     func applyConfig() {
         guard lyriaClient.connectionState == .connected else { return }
@@ -216,7 +223,19 @@ final class AppState {
     func selectStyle(_ style: MoodStyle) {
         selectedStyle = style
         selectedVisualizer = currentChannel.visualizer
+        resetEvolveState(for: style.category)
         applySelection()
+    }
+
+    /// v1.2.1 · 切台时重置三维度状态（RFC 附录 B）。
+    /// accent 取池内前 2 件、optional 取池内前 1 件，density/energy 回默认中值。
+    /// 保证 Lock 挡下仍有 active 乐器被拼进 evolve prompt（如果 evolve 触发）。
+    private func resetEvolveState(for category: StyleCategory) {
+        let pool = category.instrumentPool
+        activeAccents = Set(pool.accent.prefix(2))
+        activeOptionals = Set(pool.optional.prefix(1))
+        currentDensity = 0.6
+        currentEnergy = 0.55
     }
 
     func togglePlayPause() {
@@ -483,27 +502,80 @@ final class AppState {
         }
     }
 
+    /// v1.2.1 · 三维度调制 evolve（RFC §2.4）。
+    /// 每 tick 只挑 1-2 个维度动，避免突变；Lock 挡由 restartEvolveTimer 过滤（return）。
+    /// Temperature / guidance / brightness 不再由 evolve 抖动（交给手动 config）。
     private func evolve() {
         guard let style = selectedStyle,
               lyriaClient.connectionState == .connected else { return }
 
-        // Prompt-level mutation: per-category vocab variant (primary signal).
-        let prompts = PromptBuilder.evolveVariant(style: style)
+        // 1. 随机挑 1-2 个维度
+        let picked = EvolveDimension.allCases.shuffled().prefix(Int.random(in: 1...2))
+
+        // 2. 分别调制
+        for dim in picked {
+            switch dim {
+            case .instruments:
+                evolveInstruments(category: style.category, mode: evolveMode)
+            case .density:
+                currentDensity = ScalarWalk.next(currentDensity)
+            case .energy:
+                currentEnergy = ScalarWalk.next(currentEnergy)
+            }
+        }
+
+        // 3. 重建 prompt（不 append！长度有界）
+        let prompts = PromptBuilder.build(
+            style: style,
+            activeAccents: activeAccents,
+            activeOptionals: activeOptionals,
+            density: currentDensity,
+            energy: currentEnergy
+        )
         lyriaClient.sendPrompts(prompts)
 
-        // Config-level perturbation: reduced amplitude — prompt variant is the main lever.
-        let newTemp = max(0.1, min(3.0, temperature + Float.random(in: -0.1...0.1)))
-        let newGuidance = max(0.0, min(6.0, guidance + Float.random(in: -0.25...0.25)))
-        temperature = newTemp
-        guidance = newGuidance
+        // 4. 同步 density 到 Lyria 原生 config（描述词 + 数值双保险）
+        density = currentDensity
+        lyriaClient.sendConfig(["density": currentDensity])
+    }
 
-        if density >= 0 {
-            density = max(0.0, min(1.0, density + Float.random(in: -0.08...0.08)))
+    /// 乐器池加减：按挡位决定动 accent 还是 optional（RFC §2.1）。
+    private func evolveInstruments(category: StyleCategory, mode: EvolveMode) {
+        let pool = category.instrumentPool
+        switch mode {
+        case .locked:
+            return  // Lock 挡不变 active（restartEvolveTimer 已拦截，此处冗余防御）
+        case .auto30s:
+            // 只动 optional，±1 件，上限 2
+            toggleOne(from: pool.optional, in: &activeOptionals, maxSize: 2)
+        case .auto1m:
+            // 70% 动 accent（上限 3），30% 动 optional
+            if Float.random(in: 0...1) < 0.7 {
+                toggleOne(from: pool.accent, in: &activeAccents, maxSize: 3)
+            } else {
+                toggleOne(from: pool.optional, in: &activeOptionals, maxSize: 2)
+            }
+        case .auto5m:
+            // 整组 reshuffle：accent 抽 2、optional 抽 1
+            activeAccents = Set(pool.accent.shuffled().prefix(2))
+            activeOptionals = Set(pool.optional.shuffled().prefix(1))
         }
-        if brightness >= 0 {
-            brightness = max(0.0, min(1.0, brightness + Float.random(in: -0.08...0.08)))
-        }
+    }
 
-        lyriaClient.sendConfig(buildFullConfig())
+    /// 有状态的 ±1 加减：满了强制减、空了强制加、否则 50/50。
+    private func toggleOne(from pool: [String], in active: inout Set<String>, maxSize: Int) {
+        let shouldAdd: Bool
+        if active.count >= maxSize { shouldAdd = false }
+        else if active.isEmpty { shouldAdd = true }
+        else { shouldAdd = Bool.random() }
+
+        if shouldAdd {
+            let candidates = pool.filter { !active.contains($0) }
+            guard let pick = candidates.randomElement() else { return }
+            active.insert(pick)
+        } else {
+            guard let drop = active.randomElement() else { return }
+            active.remove(drop)
+        }
     }
 }
