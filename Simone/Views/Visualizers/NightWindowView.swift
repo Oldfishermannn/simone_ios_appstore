@@ -90,10 +90,11 @@ struct NightWindowView: View {
         }
 
         // ── 主窗矩形（小图→大图平滑插值）
-        //   小图 0.72w × 0.52h 居中（横向家窗，和大图同一家族比）
-        //   大图 0.52w × 0.36h 中上偏方
-        let mainSmall = CGRect(x: w * 0.14, y: h * 0.24,
-                                width: w * 0.72, height: h * 0.52)
+        //   小图 0.50w × 0.34h 居中（物件感：窗浮在 bgDeep 上，和 Lo-fi
+        //         cassette / R&B 玻璃杯同构——以物为核心，不做"站到窗前"大特写）
+        //   大图 0.52w × 0.36h 中上偏方（退一步看整面墙 + 街景淡入）
+        let mainSmall = CGRect(x: w * 0.25, y: h * 0.32,
+                                width: w * 0.50, height: h * 0.34)
         let mainTarget = CGRect(x: w * 0.24, y: h * 0.14,
                                  width: w * 0.52, height: h * 0.36)
         let mainRect = CGRect(

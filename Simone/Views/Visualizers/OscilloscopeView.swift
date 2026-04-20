@@ -31,8 +31,11 @@ struct OscilloscopeView: View {
         let idleBlend = max(Float(0), 1 - maxValue * 4)
 
         // 黑胶几何连续插值
+        // 小图 = 一张黑胶浮在 bgDeep 上（物件感，和 Lo-fi cassette 同构），缩到
+        //        直径 ≈ 屏宽 52%，比 v1.2 的 84% 小一大圈
+        // 大图 = 原"俯视 + 唱臂场景"，尺寸保持
         let centerY = h * (0.50 + 0.02 * e)
-        let vinylSmallR = min(w, h) * 0.42
+        let vinylSmallR = min(w, h) * 0.26
         let vinylBigR = min(w * 0.42, h * 0.38)
         let vinylR = vinylSmallR + (vinylBigR - vinylSmallR) * e
         let squash: CGFloat = 1.0 - 0.68 * e
