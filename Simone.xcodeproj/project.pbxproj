@@ -34,6 +34,7 @@
 		4D31082FF032C8312B994E93 /* AuroraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D223C2B3DE67420499B46269 /* AuroraView.swift */; };
 		529506AAC786BF713400AD32 /* RippleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AFE505680E95BADF1399B0 /* RippleView.swift */; };
 		5A4CDFE84DE9F81BB18ED27A /* Channel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80194874FBD4D2401255FFAC /* Channel.swift */; };
+		F061C0A5E5D9B11A8B6BA001 /* Tier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F061C0A5E5D9B11A8B6BA002 /* Tier.swift */; };
 		5E7B0A06C987DE1DF22E2B2D /* SpectrumDataProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB75D286C86C9126CF4E106A /* SpectrumDataProvider.swift */; };
 		5F92DF7ECEEDC298DD3F0725 /* RainfallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB72481B7544B4D6712314C0 /* RainfallView.swift */; };
 		61CB9C301C818147AC9D77BF /* APIKeyObfuscator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC18A906CEC1BFC13FCA76B1 /* APIKeyObfuscator.swift */; };
@@ -130,6 +131,7 @@
 		71AD7AC112D5608BE9C99020 /* VortexView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VortexView.swift; sourceTree = "<group>"; };
 		746420BC6C0BE038E546B913 /* GlitchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlitchView.swift; sourceTree = "<group>"; };
 		80194874FBD4D2401255FFAC /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
+		F061C0A5E5D9B11A8B6BA002 /* Tier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tier.swift; sourceTree = "<group>"; };
 		84074B0CC7DD19010B4DD8B4 /* ChannelPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelPageView.swift; sourceTree = "<group>"; };
 		8BB5A8FFA3CC63049E1AF303 /* TerrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerrainView.swift; sourceTree = "<group>"; };
 		95786D6355DCB02999C093A8 /* Fraunces[SOFT,WONK,opsz,wght].ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fraunces[SOFT,WONK,opsz,wght].ttf"; sourceTree = "<group>"; };
@@ -360,6 +362,7 @@
 				28A7AFA8DBEF4C7D5D193D3F /* MusicStyle.swift */,
 				E4D2CBDD4E75F14C6171FA0C /* PromptState.swift */,
 				E3D1CADC3D74E03B5060FA0B /* StyleCategory.swift */,
+				F061C0A5E5D9B11A8B6BA002 /* Tier.swift */,
 				9AF475AAE6BEBBA91DF7836A /* VisualizerStyle.swift */,
 			);
 			path = Models;
@@ -470,6 +473,7 @@
 				4D31082FF032C8312B994E93 /* AuroraView.swift in Sources */,
 				89DE4DCBA348FE3B66FA8BE5 /* CascadeView.swift in Sources */,
 				5A4CDFE84DE9F81BB18ED27A /* Channel.swift in Sources */,
+				F061C0A5E5D9B11A8B6BA001 /* Tier.swift in Sources */,
 				422FDD340ED9F751F3701EE5 /* ChannelPageView.swift in Sources */,
 				D4BCFD536CCF57555F6C8559 /* ConstellationView.swift in Sources */,
 				2F375703031EEAAD4848277B /* ContentView.swift in Sources */,
