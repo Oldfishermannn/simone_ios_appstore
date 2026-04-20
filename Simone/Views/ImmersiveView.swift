@@ -11,14 +11,65 @@ struct ImmersiveView: View {
     @State private var displayStyleName: String = ""
     @State private var displayStyle: MoodStyle? = nil
 
-    // v1.2.1: the v1.1.1 big↔small tap toggle is gone. Visualizers stay in
-    // their scene pose at full-screen at all times — the pause hint is now a
-    // breathing-rate shift (see BreathingModifier) rather than a size change.
-    // expansion is hard-pinned to 1.0 (scene pose) and all morphStart /
-    // toggleMode / setMode plumbing has been retired.
+    /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
+    /// Default is big; small mode shows a card-sized spectrum at top.
+    @State private var isSmall: Bool = true
+
+    // MARK: - Lofi morph tween state
+    //
+    // Visualizers that expose an `expansion` parameter (currently only LofiTape)
+    // render as a single full-screen canvas — geometry morphs continuously from
+    // the bare-object pose (expansion=0) to the scene pose (expansion=1).
+    // SwiftUI's withAnimation does not interpolate plain @State Doubles into a
+    // Canvas draw closure, so we drive expansion ourselves off a timestamp and
+    // sample it every TimelineView frame.
+    @State private var morphStart: Date = .distantPast
+    @State private var morphFrom: CGFloat = 0
+    @State private var morphTo: CGFloat = 0
+    private let morphDuration: Double = 0.55
+
+    /// Exponential ease-out curve — strong deceleration, physical-feeling settle.
+    /// Used for the dual-layer crossfade on non-lofi channels; the lofi path
+    /// uses a matching pow-based ease so both feel identical.
+    private var toggleAnim: Animation {
+        .timingCurve(0.22, 1.0, 0.36, 1.0, duration: 0.52)
+    }
+
+    private func currentExpansion(now: Date) -> CGFloat {
+        let elapsed = now.timeIntervalSince(morphStart)
+        if elapsed <= 0 { return morphFrom }
+        if elapsed >= morphDuration { return morphTo }
+        let t = elapsed / morphDuration
+        // ease-out expo — matches the timingCurve used for non-lofi modifiers.
+        let eased = 1.0 - pow(2.0, -10.0 * t)
+        return morphFrom + (morphTo - morphFrom) * CGFloat(eased)
+    }
+
+    /// Begin a big↔small transition. Updates both the logical `isSmall` flag
+    /// (which drives non-lofi crossfade modifiers) and the morph tween state
+    /// (which drives the lofi expansion interpolation).
+    private func toggleMode() {
+        setMode(toSmall: !isSmall)
+    }
+
+    /// Drive mode transition to an absolute target. No-op if already there so
+    /// we can safely call this from audio-state change observers without
+    /// fighting the user's in-flight tap. Preserves mid-flight expansion so
+    /// rapid play/pause stays smooth.
+    private func setMode(toSmall: Bool) {
+        guard isSmall != toSmall else { return }
+        let now = Date()
+        let current = currentExpansion(now: now)
+        morphFrom = current
+        morphTo = toSmall ? 0.0 : 1.0
+        morphStart = now
+        withAnimation(toggleAnim) { isSmall = toSmall }
+    }
 
     var body: some View {
         GeometryReader { geo in
+            let specSize: CGFloat = min(geo.size.width - 60, 300)
+
             ZStack {
                 // v1.2.1: cool-axis base; matches ContentView root.
                 FogTokens.bgDeep
@@ -27,7 +78,7 @@ struct ImmersiveView: View {
                 if supportsMorph(state.selectedVisualizer) {
                     morphContent(geo: geo)
                 } else {
-                    crossfadeContent(geo: geo)
+                    crossfadeContent(geo: geo, specSize: specSize)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -48,10 +99,12 @@ struct ImmersiveView: View {
                 displayStyle = state.selectedStyle
             }
         }
-        // v1.2.1: onChange(of: isPlaying) used to trigger setMode(toSmall:!playing)
-        // which pushed the visualizer down to a thumbnail. That behaviour broke
-        // immersion on pause, so the observer is gone — BreathingModifier alone
-        // carries the visual state.
+        .onChange(of: state.audioEngine.isPlaying) { _, playing in
+            // Auto: play → big pose, pause → small pose.
+            // Reuses the morph tween so transition is continuous even if the
+            // user toggled mid-flight via tap.
+            setMode(toSmall: !playing)
+        }
     }
 
     private func slideOnChannelChange(from old: Channel, to new: Channel) {
@@ -80,32 +133,56 @@ struct ImmersiveView: View {
     }
 
     // MARK: - Crossfade content (non-lofi channels)
-    //
-    // v1.2.1: always full-screen. The v1.1.1 small-mode (300pt rounded card
-    // at top of screen) was the thumbnail-on-pause behavior that v1.2.1
-    // retired — it broke immersion. Tap-to-toggle is also gone: visualizers
-    // are objects, not UI widgets you can shrink.
 
     @ViewBuilder
-    private func crossfadeContent(geo: GeometryProxy) -> some View {
-        ZStack {
-            SpectrumCarouselView(state: state, showDots: false, density: 2)
-                .frame(width: geo.size.width, height: geo.size.height)
-                .breathing(isPlaying: state.audioEngine.isPlaying)
-                .contentShape(Rectangle())
-                .gesture(channelSwipe)
-
+    private func crossfadeContent(geo: GeometryProxy, specSize: CGFloat) -> some View {
+        if isSmall {
             VStack(spacing: 0) {
                 Spacer()
 
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
+                    smallVisualizer(
+                        for: state.selectedVisualizer,
+                        spectrumData: state.audioEngine.spectrumData
+                    )
+                }
+                .frame(width: specSize, height: specSize)
+                .contentShape(Rectangle())
+                .onTapGesture { toggleMode() }
+                .gesture(channelSwipe)
+
+                Spacer().frame(height: 44)
+
                 bottomOverlay
 
-                Spacer().frame(height: 32)
+                Spacer().frame(height: 0)
 
                 transportControls
 
-                Spacer().frame(height: 48)
+                Spacer()
             }
+            .frame(maxWidth: .infinity)
+            .transition(.opacity)
+        } else {
+            ZStack {
+                SpectrumCarouselView(state: state, showDots: false, density: 2)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .contentShape(Rectangle())
+                    .onTapGesture { toggleMode() }
+
+                VStack(spacing: 0) {
+                    Spacer()
+
+                    bottomOverlay
+
+                    Spacer().frame(height: 32)
+
+                    transportControls
+
+                    Spacer().frame(height: 48)
+                }
+            }
+            .transition(.opacity)
         }
     }
 
@@ -128,19 +205,16 @@ struct ImmersiveView: View {
     @ViewBuilder
     private func morphContent(geo: GeometryProxy) -> some View {
         ZStack {
-            // v1.2.1: expansion is pinned to 1.0 (scene pose) at all times.
-            // Before, it tweened 0↔1 driven by play/pause — the "bare object
-            // on pause" was part of the thumbnail behavior that got retired.
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { _ in
+            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
                 morphVisualizer(
                     for: state.selectedVisualizer,
                     spectrumData: state.audioEngine.spectrumData,
-                    expansion: 1.0
+                    expansion: currentExpansion(now: ctx.date)
                 )
             }
             .frame(width: geo.size.width, height: geo.size.height)
-            .breathing(isPlaying: state.audioEngine.isPlaying)
             .contentShape(Rectangle())
+            .onTapGesture { toggleMode() }
             .gesture(channelSwipe)
 
             VStack(spacing: 0) {
@@ -148,11 +222,11 @@ struct ImmersiveView: View {
 
                 bottomOverlay
 
-                Spacer().frame(height: 32)
+                Spacer().frame(height: isSmall ? 28 : 32)
 
                 transportControls
 
-                Spacer().frame(height: 48)
+                Spacer().frame(height: isSmall ? 80 : 48)
             }
             .allowsHitTesting(true)
         }
@@ -252,12 +326,36 @@ struct ImmersiveView: View {
         }
     }
 
-    // MARK: - Channel swipe
-    //
-    // v1.2.1: small-mode dispatch (smallVisualizer) was retired along with
-    // the thumbnail-on-pause behavior. Full-screen is the only mode, driven
-    // by SpectrumCarouselView (crossfade path) or morphVisualizer at
-    // expansion=1 (morph path).
+    // MARK: - Small-mode visualizer dispatch
+
+    @ViewBuilder
+    private func smallVisualizer(for style: VisualizerStyle, spectrumData: [Float]) -> some View {
+        switch style {
+        case .horizon:      HorizonView(spectrumData: spectrumData, density: 1)
+        case .ringPulse:    RingPulseView(spectrumData: spectrumData, density: 1)
+        case .terrain:      TerrainView(spectrumData: spectrumData, density: 1)
+        case .rainfall:     RainfallView(spectrumData: spectrumData, density: 1)
+        case .helix:        HelixView(spectrumData: spectrumData, density: 1)
+        case .lattice:      LatticeView(spectrumData: spectrumData, density: 1)
+        case .prism:        PrismView(spectrumData: spectrumData, density: 1)
+        case .matrix:       MatrixView(spectrumData: spectrumData, density: 1)
+        case .flora:        FloraView(spectrumData: spectrumData, density: 1)
+        case .glitch:       GlitchView(spectrumData: spectrumData, density: 1)
+        case .oscilloscope: OscilloscopeView(spectrumData: spectrumData, density: 1)
+        case .ember:        EmberView(spectrumData: spectrumData, density: 1)
+        case .liquor:       LiquorView(spectrumData: spectrumData, density: 1)
+        case .lofiTape:     LofiTapeView(spectrumData: spectrumData, density: 1)
+        case .lofiPad:      LofiPadView(spectrumData: spectrumData, density: 1)
+        case .lofiBlinds:   LofiBlindsView(spectrumData: spectrumData, density: 1)
+        case .firefly:      FireflyJarView(spectrumData: spectrumData, density: 1)
+        case .letters:      LetterRackView(spectrumData: spectrumData, density: 1)
+        case .drawer:       DrawerView(spectrumData: spectrumData, density: 1)
+        case .nightWindow:  NightWindowView(spectrumData: spectrumData, density: 1)
+        case .vinylBooth:   VinylBoothView(spectrumData: spectrumData, density: 1)
+        }
+    }
+
+    // MARK: - Channel swipe (小图模式左右滑动换频道)
 
     /// 横滑换频道：只在横向 dominant 且 > 30pt 时触发。
     /// minimumDistance: 20 是关键 —— 低于这个阈值 SwiftUI 不认领 touch，
