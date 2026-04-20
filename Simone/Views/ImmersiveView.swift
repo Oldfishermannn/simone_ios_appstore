@@ -149,7 +149,7 @@ struct ImmersiveView: View {
                 .frame(width: specSize, height: specSize)
                 .contentShape(Rectangle())
                 .onTapGesture { toggleMode() }
-                .gesture(channelSwipe)
+                .simultaneousGesture(channelSwipe)
 
                 Spacer().frame(height: 44)
 
@@ -215,7 +215,7 @@ struct ImmersiveView: View {
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
             .onTapGesture { toggleMode() }
-            .gesture(channelSwipe)
+            .simultaneousGesture(channelSwipe)
 
             VStack(spacing: 0) {
                 Spacer()
@@ -358,9 +358,9 @@ struct ImmersiveView: View {
     // MARK: - Channel swipe (小图模式左右滑动换频道)
 
     /// 横滑换频道：只在横向 dominant 且 > 30pt 时触发。
-    /// minimumDistance: 20 是关键 —— 低于这个阈值 SwiftUI 不认领 touch，
-    /// VerticalPageView 的纵向 pan 可以抢先。tap 用独立的 onTapGesture
-    /// 承载，tap 和 drag 因阈值差（20pt）天然互斥，不会重复触发。
+    /// 挂载用 .simultaneousGesture（不是 .gesture）—— iOS 17+ 嵌套手势仲裁里，
+    /// .gesture 会独占触摸，阻塞 VerticalPageView 的纵向 pan；
+    /// .simultaneousGesture 让两个手势并行评估，各自按方向 claim，纵滑能正常换页。
     private var channelSwipe: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
