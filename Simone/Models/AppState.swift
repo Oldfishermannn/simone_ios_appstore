@@ -79,7 +79,10 @@ final class AppState {
 
 
     // Config
-    var temperature: Float = 1.1
+    // v1.2.1 · Lock 挡 temperature 从 1.1 → 0.8（RFC §8 Decision 1 = A 方案）。
+    // Lyria 内部熵降低，Lock 听感更"实心"；evolve 不再抖 temperature，
+    // 变化由三维度调制承担（RFC §1.2 根因 A）。
+    var temperature: Float = 0.8
     var guidance: Float = 4.0
     var bpm: Int = 0           // 0 = model decides
     var density: Float = -1    // -1 = model decides
