@@ -1,191 +1,355 @@
 import SwiftUI
 
-/// Fog City Nocturne — one-screen settings.
-/// No ScrollView by design: every control fits in a single frame so it never
-/// competes with the outer VerticalPageView gesture. Future expansions go to
-/// secondary pages (tap version row in Colophon).
+/// Fog City Nocturne — Settings as a Night Log page.
+///
+/// The metaphor: this page is not a form, it's a page torn from a nocturne
+/// workbook. A typeset sheet with an editorial header (page number + title),
+/// an uneven weighted set of entries (Auto Tune is the primary act; the other
+/// three are secondary attendants), and a colophon block at the foot.
+///
+/// Structural devices (all intentional, all restraint):
+///   • Left margin marker — vertical SF-Mono legend "SIMONE · SETTINGS · NOCTURNE"
+///     running up the left gutter. Acts as a book-spine / column rule; not an
+///     accent stripe (that is specifically banned in impeccable).
+///   • Asymmetric, left-aligned header — no centered decorative label. Page
+///     number "04" (the 4th page of the app if you count Immersive / Details /
+///     Channels / Settings) sits in a big Unbounded cut, then the title, then
+///     a Fraunces-italic subtitle.
+///   • Weight hierarchy — Auto Tune is the fulcrum (people toggle it most);
+///     Evolve / Sleep / Spectrum are smaller satellites. OPEN / CLOSED reads
+///     more like a radio-room log than ON / OFF.
+///   • Visualizer glyph column — each row carries a 2-letter codex label on
+///     the right (TP / OS / LQ / EM / MX …) like a library catalog card; the
+///     current channel's codex glows with accent, everyone else is quiet ink.
+///   • Accent is scarce — mauve is reserved for (a) Auto Tune's live state
+///     label and (b) the Privacy link arrow. Everything else is ink grades.
 struct SettingsView: View {
     @Bindable var state: AppState
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer().frame(height: 72)
+        ZStack(alignment: .leading) {
+            // Left gutter marker — vertical printed legend, not a stripe.
+            gutterLegend
 
-            Text("∙ Preferences ∙")
-                .fogSectionLabel()
+            VStack(alignment: .leading, spacing: 0) {
+                Spacer().frame(height: 64)
 
-            Spacer().frame(height: FogTheme.space2XL)
+                header
 
-            // Four setting rows
-            settingRow(
-                title: "Evolve",
-                subtitle: "the slow mood shift",
-                value: state.evolveMode.rawValue.uppercased(),
-                tappable: true,
-                action: cycleEvolve
-            )
-            fogDivider
+                Spacer().frame(height: FogTheme.space3XL)
 
-            settingRow(
-                title: "Auto Tune",
-                subtitle: "fresh channel every 25 min",
-                value: state.autoTuneEnabled ? "ON" : "OFF",
-                tappable: true,
-                action: { state.autoTuneEnabled.toggle() }
-            )
-            fogDivider
+                // Primary entry — the one people actually touch.
+                primaryRow
 
-            settingRow(
-                title: "Sleep",
-                subtitle: sleepSubtitle,
-                value: sleepDisplay,
-                tappable: true,
-                action: cycleSleep
-            )
-            fogDivider
+                Spacer().frame(height: FogTheme.spaceXL)
 
-            settingRow(
-                title: "Spectrum",
-                subtitle: "one shape per channel",
-                value: state.currentChannel.visualizer.displayName.uppercased(),
-                tappable: false,
-                action: {}
-            )
+                // Satellites — same topic, lower visual weight.
+                VStack(alignment: .leading, spacing: 0) {
+                    satelliteRow(
+                        title: "Evolve",
+                        subtitle: "the slow mood shift",
+                        value: state.evolveMode.rawValue.uppercased(),
+                        codex: nil,
+                        tappable: true,
+                        isLive: state.evolveMode != .locked,
+                        action: cycleEvolve
+                    )
 
-            spectrumPreview
-                .padding(.top, FogTheme.spaceMD)
-                .padding(.bottom, FogTheme.spaceSM)
+                    hairlineDivider
 
-            Spacer()
+                    satelliteRow(
+                        title: "Sleep",
+                        subtitle: sleepSubtitle,
+                        value: sleepDisplay,
+                        codex: nil,
+                        tappable: true,
+                        isLive: state.activeSleepDuration != nil,
+                        action: cycleSleep
+                    )
 
-            colophon
+                    hairlineDivider
 
-            Spacer().frame(height: 40)
+                    satelliteRow(
+                        title: "Spectrum",
+                        subtitle: "one shape per channel",
+                        value: state.currentChannel.visualizer.displayName.uppercased(),
+                        codex: visualizerCodex(state.currentChannel.visualizer),
+                        tappable: false,
+                        isLive: false,
+                        action: {}
+                    )
+                }
+
+                Spacer(minLength: FogTheme.spaceXL)
+
+                colophon
+                    .padding(.top, FogTheme.space2XL)
+
+                Spacer().frame(height: 40)
+            }
+            .padding(.leading, 44)   // leave room for the gutter legend
+            .padding(.trailing, 28)
         }
-        .frame(maxWidth: 440)
+        .frame(maxWidth: 460)
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 28)
     }
 
-    // MARK: - Row
+    // MARK: - Gutter legend
 
+    /// Thin vertical legend running up the left margin. SF-Mono, wide tracking,
+    /// rotated -90°. Reads like the spine lettering on a slim paperback. NOT a
+    /// colored accent bar — that pattern is forbidden; this is a piece of type.
+    private var gutterLegend: some View {
+        VStack {
+            Spacer()
+            Text("SIMONE · SETTINGS · NOCTURNE · 04")
+                .font(FogTheme.mono(9, weight: .regular))
+                .tracking(3.6)
+                .foregroundStyle(FogTheme.inkTertiary.opacity(0.55))
+                .fixedSize()
+                .rotationEffect(.degrees(-90))
+                .frame(width: 12)
+            Spacer()
+        }
+        .frame(maxHeight: .infinity)
+        .padding(.leading, 14)
+    }
+
+    // MARK: - Editorial header
+
+    /// Page-number editorial header. Asymmetric, left-aligned. The "04" is the
+    /// real visual anchor of the page — a typeset heavyweight, not the kind of
+    /// decorative "∙ Preferences ∙" label that treats chrome like chrome.
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: FogTheme.spaceLG) {
+            Text("04")
+                .font(FogTheme.display(56, weight: .light))
+                .tracking(-1.6)
+                .foregroundStyle(FogTheme.inkPrimary)
+                .baselineOffset(-4)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Settings")
+                    .font(FogTheme.display(22, weight: .light))
+                    .tracking(FogTheme.trackDisplay)
+                    .foregroundStyle(FogTheme.inkPrimary)
+                Text("notes from the listening room")
+                    .font(FogTheme.serifItalic(13, weight: .light))
+                    .foregroundStyle(FogTheme.inkSecondary.opacity(0.75))
+            }
+
+            Spacer()
+        }
+    }
+
+    // MARK: - Primary row (Auto Tune)
+
+    /// Auto Tune gets deliberately bigger type + a log-style state word
+    /// (OPEN / CLOSED) so it reads as a radio station sign, not a generic
+    /// iOS toggle. This is the most-toggled setting on the page; the weight
+    /// hierarchy reflects that.
+    private var primaryRow: some View {
+        Button {
+            state.autoTuneEnabled.toggle()
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .lastTextBaseline) {
+                    Text("Auto Tune")
+                        .font(FogTheme.display(26, weight: .light))
+                        .tracking(FogTheme.trackDisplay)
+                        .foregroundStyle(FogTheme.inkPrimary)
+
+                    Spacer(minLength: FogTheme.spaceLG)
+
+                    // State word — the only place accent is allowed to flicker.
+                    Text(state.autoTuneEnabled ? "OPEN" : "CLOSED")
+                        .font(FogTheme.mono(12, weight: .regular))
+                        .tracking(FogTheme.trackLabel)
+                        .foregroundStyle(
+                            state.autoTuneEnabled
+                                ? FogTheme.accent
+                                : FogTheme.inkSecondary.opacity(0.7)
+                        )
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Text("fresh channel every 25 min")
+                        .font(FogTheme.serifItalic(13, weight: .light))
+                        .foregroundStyle(FogTheme.inkSecondary.opacity(0.7))
+
+                    Spacer()
+
+                    // Live-state dot — tiny, only visible when active.
+                    Circle()
+                        .fill(FogTheme.accent)
+                        .frame(width: 5, height: 5)
+                        .opacity(state.autoTuneEnabled ? 1.0 : 0.0)
+                }
+            }
+            .padding(.vertical, FogTheme.spaceMD)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Satellite rows
+
+    /// Secondary entries. Smaller type, visually subordinate. The codex
+    /// parameter renders a two-letter visualizer code on the right for the
+    /// Spectrum row; other rows leave it nil and show a plain mono value.
     @ViewBuilder
-    private func settingRow(
+    private func satelliteRow(
         title: String,
         subtitle: String,
         value: String,
+        codex: String?,
         tappable: Bool,
+        isLive: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: tappable ? action : {}) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: FogTheme.spaceLG) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(FogTheme.display(15, weight: .light))
+                        .font(FogTheme.display(16, weight: .light))
                         .tracking(FogTheme.trackDisplay)
                         .foregroundStyle(FogTheme.inkPrimary)
                     Text(subtitle)
                         .font(FogTheme.serifItalic(11, weight: .light))
-                        .foregroundStyle(FogTheme.inkSecondary.opacity(0.7))
+                        .foregroundStyle(FogTheme.inkSecondary.opacity(0.65))
                 }
+
                 Spacer(minLength: FogTheme.spaceLG)
-                Text(value)
-                    .font(FogTheme.mono(11, weight: .regular))
-                    .tracking(FogTheme.trackMeta)
-                    .foregroundStyle(tappable ? FogTheme.accent : FogTheme.inkSecondary)
+
+                // Right-hand column: either the library-card codex glyph
+                // (Spectrum) or a plain mono value (Evolve / Sleep).
+                if let codex {
+                    codexBlock(value: value, codex: codex)
+                } else {
+                    Text(value)
+                        .font(FogTheme.mono(11, weight: .regular))
+                        .tracking(FogTheme.trackMeta)
+                        .foregroundStyle(
+                            isLive
+                                ? FogTheme.inkPrimary
+                                : FogTheme.inkSecondary.opacity(0.7)
+                        )
+                }
             }
-            .padding(.vertical, FogTheme.spaceMD)
+            .padding(.vertical, FogTheme.spaceMD + 2)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!tappable)
     }
 
-    private var fogDivider: some View {
+    /// Library-catalog glyph: tiny 2-letter codex stacked over the full
+    /// spelled-out value. The codex is the eye-catch; the full word is the
+    /// confirmation beneath it. Only Spectrum uses this.
+    private func codexBlock(value: String, codex: String) -> some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(codex)
+                .font(FogTheme.display(18, weight: .light))
+                .tracking(1.2)
+                .foregroundStyle(FogTheme.inkPrimary)
+            Text(value)
+                .font(FogTheme.mono(9, weight: .regular))
+                .tracking(FogTheme.trackLabel)
+                .foregroundStyle(FogTheme.inkTertiary)
+        }
+    }
+
+    private var hairlineDivider: some View {
         Rectangle()
             .fill(FogTheme.hairline)
             .frame(height: 0.5)
     }
 
-    // MARK: - Spectrum mini preview
+    // MARK: - Colophon
 
-    private var spectrumPreview: some View {
-        let current = state.currentChannel.visualizer
-        let styles = VisualizerStyle.allCases
-        return HStack(alignment: .bottom, spacing: 4) {
-            ForEach(Array(styles.enumerated()), id: \.element.id) { index, style in
-                let isCurrent = style == current
-                // Pseudo-random but stable heights so the strip reads as a spectrum.
-                let h = CGFloat(6 + (index * 37) % 14)
-                Rectangle()
-                    .fill(isCurrent ? FogTheme.accent : FogTheme.inkQuiet)
-                    .frame(width: 4, height: isCurrent ? 16 : h)
-            }
-        }
-        .frame(height: 20)
-    }
-
-    // MARK: - Colophon (book-copyright-page style)
-
+    /// Foot of the page — colophon block in the style of a book's copyright
+    /// page. Two data rows (version/engine, privacy/year). The hairline-rule
+    /// with an inset "Colophon" label sits between body and colophon like a
+    /// typeset ornament.
     private var colophon: some View {
-        VStack(spacing: FogTheme.spaceMD) {
-            Rectangle()
-                .fill(FogTheme.hairline)
-                .frame(height: 0.5)
-                .overlay(
-                    Text("Colophon")
-                        .font(FogTheme.mono(9, weight: .regular))
+        VStack(alignment: .leading, spacing: FogTheme.spaceLG) {
+            // Rule with label inset — reads like a frontispiece caption.
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(FogTheme.hairline)
+                    .frame(height: 0.5)
+                Text("COLOPHON")
+                    .font(FogTheme.mono(9, weight: .regular))
+                    .tracking(FogTheme.trackLabel)
+                    .foregroundStyle(FogTheme.inkTertiary)
+                    .padding(.horizontal, FogTheme.spaceSM)
+                    .background(FogTheme.surfaceBottom)
+                    .padding(.leading, FogTheme.spaceMD)
+            }
+
+            HStack(alignment: .top, spacing: FogTheme.space2XL) {
+                colophonEntry(
+                    label: "VERSION",
+                    value: "Simone v\(appVersion)"
+                )
+                colophonEntry(
+                    label: "ENGINE",
+                    value: "Google Lyria RT"
+                )
+                Spacer()
+                colophonEntry(
+                    label: "PRESSED",
+                    value: "2026 · Night",
+                    alignment: .trailing
+                )
+            }
+
+            HStack(alignment: .top, spacing: FogTheme.space2XL) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("PRIVACY")
+                        .font(FogTheme.mono(8, weight: .regular))
                         .tracking(FogTheme.trackLabel)
                         .foregroundStyle(FogTheme.inkTertiary)
-                        .padding(.horizontal, FogTheme.spaceMD)
-                        .background(FogTheme.surfaceBottom)
-                )
-
-            HStack(alignment: .top, spacing: FogTheme.spaceLG) {
-                VStack(alignment: .leading, spacing: 4) {
-                    colophonLabel("VERSION")
-                    Text("Simone v\(appVersion)")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkPrimary)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    colophonLabel("ENGINE")
-                    Text("Google Lyria RT")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkPrimary)
-                }
-            }
-            .padding(.top, FogTheme.spaceSM)
-
-            HStack(alignment: .top, spacing: FogTheme.spaceLG) {
-                VStack(alignment: .leading, spacing: 4) {
-                    colophonLabel("PRIVACY")
                     Button {
                         openPrivacy()
                     } label: {
-                        Text("Read →")
-                            .font(FogTheme.mono(11, weight: .regular))
-                            .foregroundStyle(FogTheme.accent)
+                        HStack(spacing: 6) {
+                            Text("Read the policy")
+                                .font(FogTheme.mono(11, weight: .regular))
+                                .foregroundStyle(FogTheme.inkPrimary)
+                            Text("↗")
+                                .font(FogTheme.mono(11, weight: .regular))
+                                .foregroundStyle(FogTheme.accent)
+                        }
                     }
                     .buttonStyle(.plain)
                 }
+
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    colophonLabel("MADE")
-                    Text("2026 · Night")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkPrimary)
-                }
+
+                colophonEntry(
+                    label: "CHANNEL",
+                    value: state.currentChannel.displayName.uppercased(),
+                    alignment: .trailing
+                )
             }
         }
     }
 
-    private func colophonLabel(_ text: String) -> some View {
-        Text(text)
-            .font(FogTheme.mono(8, weight: .regular))
-            .tracking(FogTheme.trackLabel)
-            .foregroundStyle(FogTheme.inkTertiary)
+    private func colophonEntry(
+        label: String,
+        value: String,
+        alignment: HorizontalAlignment = .leading
+    ) -> some View {
+        VStack(alignment: alignment, spacing: 4) {
+            Text(label)
+                .font(FogTheme.mono(8, weight: .regular))
+                .tracking(FogTheme.trackLabel)
+                .foregroundStyle(FogTheme.inkTertiary)
+            Text(value)
+                .font(FogTheme.mono(11, weight: .regular))
+                .foregroundStyle(FogTheme.inkPrimary)
+        }
     }
 
     // MARK: - Actions & derived display
@@ -226,6 +390,34 @@ struct SettingsView: View {
         let dict = Bundle.main.infoDictionary
         let short = dict?["CFBundleShortVersionString"] as? String ?? "1.0"
         return short
+    }
+
+    /// Library catalog-card code for each visualizer style. Two letters so the
+    /// right column stays column-aligned regardless of which channel is live.
+    private func visualizerCodex(_ style: VisualizerStyle) -> String {
+        switch style {
+        case .horizon:       return "HZ"
+        case .ringPulse:     return "RP"
+        case .terrain:       return "TR"
+        case .rainfall:      return "RF"
+        case .helix:         return "HX"
+        case .lattice:       return "LT"
+        case .prism:         return "PR"
+        case .matrix:        return "MX"
+        case .flora:         return "FL"
+        case .glitch:        return "GL"
+        case .oscilloscope:  return "OS"
+        case .ember:         return "EM"
+        case .liquor:        return "LQ"
+        case .lofiTape:      return "TP"
+        case .lofiPad:       return "PD"
+        case .lofiBlinds:    return "BL"
+        case .firefly:       return "FF"
+        case .letters:       return "LE"
+        case .drawer:        return "DR"
+        case .nightWindow:   return "NW"
+        case .vinylBooth:    return "VB"
+        }
     }
 
     private func openPrivacy() {
