@@ -3,7 +3,8 @@ import SwiftUI
 /// Fog City Nocturne — Settings as a Night Log page.
 ///
 /// The metaphor: this page is not a form, it's a page torn from a nocturne
-/// workbook. A typeset sheet with an editorial header (page number + title),
+/// workbook. A typeset sheet with an editorial header (version as volume
+/// number + title),
 /// an uneven weighted set of entries (Auto Tune is the primary act; the other
 /// three are secondary attendants), and a colophon block at the foot.
 ///
@@ -11,10 +12,9 @@ import SwiftUI
 ///   • Left margin marker — vertical SF-Mono legend "SIMONE · SETTINGS · NOCTURNE"
 ///     running up the left gutter. Acts as a book-spine / column rule; not an
 ///     accent stripe (that is specifically banned in impeccable).
-///   • Asymmetric, left-aligned header — no centered decorative label. Page
-///     number "04" (the 4th page of the app if you count Immersive / Details /
-///     Channels / Settings) sits in a big Unbounded cut, then the title, then
-///     a Fraunces-italic subtitle.
+///   • Asymmetric, left-aligned header — no centered decorative label. App
+///     version number (the volume number of a magazine issue) sits in a big
+///     Unbounded cut, then the title, then a Fraunces-italic subtitle.
 ///   • Weight hierarchy — Auto Tune is the fulcrum (people toggle it most);
 ///     Evolve / Sleep / Spectrum are smaller satellites. OPEN / CLOSED reads
 ///     more like a radio-room log than ON / OFF.
@@ -102,7 +102,7 @@ struct SettingsView: View {
     private var gutterLegend: some View {
         VStack {
             Spacer()
-            Text("SIMONE · SETTINGS · NOCTURNE · 04")
+            Text("SIMONE · SETTINGS · NOCTURNE · v\(appVersion)")
                 .font(FogTheme.mono(9, weight: .regular))
                 .tracking(3.6)
                 .foregroundStyle(FogTheme.inkTertiary.opacity(0.55))
@@ -117,16 +117,18 @@ struct SettingsView: View {
 
     // MARK: - Editorial header
 
-    /// Page-number editorial header. Asymmetric, left-aligned. The "04" is the
-    /// real visual anchor of the page — a typeset heavyweight, not the kind of
-    /// decorative "∙ Preferences ∙" label that treats chrome like chrome.
+    /// Page-number editorial header. Asymmetric, left-aligned. The version
+    /// number sits where a magazine would print its volume/issue — a typeset
+    /// heavyweight that doubles as meta-information. 42pt instead of 56pt
+    /// because "1.2.1" has two dots; at 56pt the dots float and the overall
+    /// mass looks wider than "04" did. 42pt keeps the visual weight comparable.
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: FogTheme.spaceLG) {
-            Text("04")
-                .font(FogTheme.display(56, weight: .light))
-                .tracking(-1.6)
+            Text(appVersion)
+                .font(FogTheme.display(42, weight: .light))
+                .tracking(-0.8)
                 .foregroundStyle(FogTheme.inkPrimary)
-                .baselineOffset(-4)
+                .baselineOffset(-2)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Settings")
@@ -288,10 +290,6 @@ struct SettingsView: View {
             }
 
             HStack(alignment: .top, spacing: FogTheme.space2XL) {
-                colophonEntry(
-                    label: "VERSION",
-                    value: "Simone v\(appVersion)"
-                )
                 colophonEntry(
                     label: "ENGINE",
                     value: "Google Lyria RT"
