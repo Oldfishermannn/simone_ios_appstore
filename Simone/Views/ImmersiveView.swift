@@ -271,10 +271,14 @@ struct ImmersiveView: View {
                     .opacity(nameOpacity)
             }
 
+            // v1.2.1: immersive channel/style title — now display-sm (28pt).
+            // Previous v1.2 used FogTheme.display(24, .light); this lands the
+            // CEO-requested +2pt bump (to 28pt) via FogType scale token, and
+            // at the same time moves from light-weight Unbounded to medium to
+            // keep readability at the new size on dark Fog bg.
             Text(displayStyleName)
-                .font(FogTheme.display(24, weight: .light))
-                .tracking(FogTheme.trackDisplay)
-                .foregroundStyle(FogTheme.inkPrimary)
+                .fog(.displaySm)
+                .foregroundStyle(FogTokens.textPrimary)
                 .offset(x: nameSlideOffset)
                 .opacity(nameOpacity)
         }
