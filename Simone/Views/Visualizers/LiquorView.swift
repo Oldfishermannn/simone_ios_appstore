@@ -64,18 +64,22 @@ struct LiquorView: View {
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
         // ─── 背景径向暖光晕（淡入）────────────────────────────
+        // v1.2.1 收敛：原 0.65 opacity × 0.85 radius 的大面积暖黄覆盖了 60-70%
+        // 屏幕，和 Rock/Ember 的冷暗底在横切频道时亮度落差过大（眼睛不适）。
+        // 按 Fog 原则 #3「暖意点缀、底色冷雾」压回：opacity 0.35、radius 0.55，
+        // 让暖只在右下酒杯附近生效，屏幕大半回到冷雾底。
         if sceneAlpha > 0.01 {
             context.drawLayer { ctx in
                 ctx.opacity = sceneAlpha
                 ctx.fill(Path(CGRect(origin: .zero, size: size)),
                          with: .radialGradient(
                             Gradient(stops: [
-                                .init(color: bgWarm.opacity(0.65), location: 0),
-                                .init(color: bg, location: 0.7),
+                                .init(color: bgWarm.opacity(0.35), location: 0),
+                                .init(color: bg.opacity(0.88), location: 0.5),
                                 .init(color: bg, location: 1)
                             ]),
-                            center: CGPoint(x: w * 0.75, y: h * 0.92),
-                            startRadius: 0, endRadius: max(w, h) * 0.85
+                            center: CGPoint(x: w * 0.78, y: h * 0.94),
+                            startRadius: 0, endRadius: max(w, h) * 0.55
                          ))
             }
         }

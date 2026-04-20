@@ -93,6 +93,30 @@ struct EmberView: View {
             }
         }
 
+        // ─── 余烬广域暖光（大图淡入）─────────────────────────
+        // v1.2.1 新增：与 R&B/Liquor 右下暖光晕对齐。原先 Ember 只有一个像素
+        // 级亮点，Rock 频道整屏近全黑，横切到 Liquor（右下暖光晕）亮度跃迁
+        // 太大。这里给 ember 位置加一圈低不透明的暖光晕（opacity 0.30、
+        // radius ~0.52），余烬周围有一块「被烤暖的空气」，场景温度升到
+        // 和 Liquor 同一个量级，但仍是 Fog 冷底主导——不破坏克制温度。
+        if sceneAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                let glowCx = w * 0.52
+                let glowCy = h * 0.84
+                ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                         with: .radialGradient(
+                            Gradient(stops: [
+                                .init(color: emberEdge.opacity(0.30), location: 0),
+                                .init(color: bgMid.opacity(0.20), location: 0.45),
+                                .init(color: bgDark.opacity(0), location: 1)
+                            ]),
+                            center: CGPoint(x: glowCx, y: glowCy),
+                            startRadius: 0, endRadius: max(w, h) * 0.52
+                         ))
+            }
+        }
+
         // ─── 炭木堆（大图淡入）──────────────────────────────
         // 后方斜柴 + 前方横柴两根交叠，主余烬坐在顶上。
         // 高频让橙色裂缝脉动——木头里还剩一点活火。
