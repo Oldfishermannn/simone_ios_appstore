@@ -26,6 +26,7 @@
 		453E552B8C92007029B47E34 /* RingPulseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C9DD835ED09640EB4102B0 /* RingPulseView.swift */; };
 		457310387726C5CCC68A8FC2 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D507A7E2E4EE4C1B598C0F3 /* KeychainHelper.swift */; };
 		4BB2C421AA09A83D7187399C /* LyriaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251E4193BD73FBA3F798227E /* LyriaClient.swift */; };
+		F061C0A5E5D9B11A8B6BA011 /* StoreKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F061C0A5E5D9B11A8B6BA012 /* StoreKitManager.swift */; };
 		4C1D301744921FBD39BEC748 /* StyleCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3D1CADC3D74E03B5060FA0B /* StyleCategory.swift */; };
 		4D2E3F5061532FBD3A9CEC90 /* PromptState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D2CBDD4E75F14C6171FA0C /* PromptState.swift */; };
 		F061C0A5E5D9B11A8B6B9001 /* FogTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = F061C0A5E5D9B11A8B6B9002 /* FogTokens.swift */; };
@@ -110,6 +111,7 @@
 		1C7C85DF0FDE49B5A95A60C9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1CB03C3E0027DA1E34444342 /* SilkWaveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilkWaveView.swift; sourceTree = "<group>"; };
 		251E4193BD73FBA3F798227E /* LyriaClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyriaClient.swift; sourceTree = "<group>"; };
+		F061C0A5E5D9B11A8B6BA012 /* StoreKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitManager.swift; sourceTree = "<group>"; };
 		28A7AFA8DBEF4C7D5D193D3F /* MusicStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicStyle.swift; sourceTree = "<group>"; };
 		2D507A7E2E4EE4C1B598C0F3 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		2E8D1FD4A80AB66E94AF8B91 /* DetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsView.swift; sourceTree = "<group>"; };
@@ -272,6 +274,7 @@
 				2D507A7E2E4EE4C1B598C0F3 /* KeychainHelper.swift */,
 				251E4193BD73FBA3F798227E /* LyriaClient.swift */,
 				FF932CE07449AB9905863377 /* PromptBuilder.swift */,
+				F061C0A5E5D9B11A8B6BA012 /* StoreKitManager.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -501,6 +504,7 @@
 				A6B7C8D9E0F12C3D4E5F6056 /* NightWindowView.swift in Sources */,
 				A7B8C9D0E1F23D4E5F607157 /* VinylBoothView.swift in Sources */,
 				4BB2C421AA09A83D7187399C /* LyriaClient.swift in Sources */,
+				F061C0A5E5D9B11A8B6BA011 /* StoreKitManager.swift in Sources */,
 				6A9468756F35B0B44BDB8FB6 /* MatrixView.swift in Sources */,
 				1D21D970A64103BC8C4C5A2C /* MiniPlayerView.swift in Sources */,
 				AEDCE52FD41257F56771DE7E /* MusicStyle.swift in Sources */,
