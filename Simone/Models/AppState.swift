@@ -140,7 +140,15 @@ final class AppState {
             if needsRewrite { savePinnedStyles() }
         }
 
-        // Restore Auto Tune preference
+        // Restore Auto Tune preference.
+        // v1.2.1 一次性迁移：v1.1.x 时代 Auto Tune 默认 ON，老用户升级后即使 v1.1.1
+        // 改默认 OFF，UserDefaults 里的 true 仍会保留，听到第 25 min 触发 nextStyle()
+        // 导致"听着听着换风格"。这里一次性重置为 false，用户想开自己去 Settings 再开。
+        let autoTuneMigrationKey = "autoTuneMigrationV121Done"
+        if !UserDefaults.standard.bool(forKey: autoTuneMigrationKey) {
+            UserDefaults.standard.set(false, forKey: "autoTuneEnabled")
+            UserDefaults.standard.set(true, forKey: autoTuneMigrationKey)
+        }
         autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
 
         // Restore last channel (no didSet side-effect during init)
