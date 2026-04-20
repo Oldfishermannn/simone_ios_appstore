@@ -61,17 +61,23 @@ struct NightWindowView: View {
 
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 600)
 
-        // ── 通用冷夜渐变底
-        context.fill(Path(CGRect(origin: .zero, size: size)),
-                     with: .linearGradient(
-                        Gradient(stops: [
-                            .init(color: nightDeep, location: 0),
-                            .init(color: nightMid,  location: 0.5),
-                            .init(color: cityFar,   location: 1)
-                        ]),
-                        startPoint: CGPoint(x: 0, y: 0),
-                        endPoint: CGPoint(x: 0, y: h)
-                     ))
+        // ── 通用冷夜渐变底（仅大图淡入，小图让 FogTokens.bgDeep 透过来，
+        //    和 Lo-fi / Liquor / Firefly / Letters / Drawer 同构）
+        if sceneAlpha > 0.01 {
+            context.drawLayer { ctx in
+                ctx.opacity = sceneAlpha
+                ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                         with: .linearGradient(
+                            Gradient(stops: [
+                                .init(color: nightDeep, location: 0),
+                                .init(color: nightMid,  location: 0.5),
+                                .init(color: cityFar,   location: 1)
+                            ]),
+                            startPoint: CGPoint(x: 0, y: 0),
+                            endPoint: CGPoint(x: 0, y: h)
+                         ))
+            }
+        }
 
         // ── 大图场景背景（Street 基底：冷墙 + 湿地砖）
         if sceneAlpha > 0.01 {
