@@ -85,13 +85,18 @@ struct LiquorView: View {
         }
 
         // 主杯几何（用于 coaster/decanter 几何关联）
+        // 小图 (e=0): 威士忌 rocks glass 样式 — 矮胖、直筒微外张、贴下。
+        //   cyBase 0.92 贴底；height 0.36 ~ width 0.46 约 0.78 比例（威士忌杯典型）；
+        //   taper -0.03 杯口略宽于杯底 3%（经典 rocks glass 侧壁微外张）；
+        //   fillLevel 0.62 酒装过半（威士忌通常装 1/3 ~ 1/2，但视觉上过半更有料）。
+        // 大图 (e=1): 仍是威士忌杯形 — 保持 rocks glass 一致性，只是缩小左移。
         let mainSpec = GlassSpec(
             cx: 0.50 + (0.32 - 0.50) * e,
-            cyBase: 0.82 + (0.84 - 0.82) * e,
-            width: 0.50 + (0.30 - 0.50) * e,
-            height: 0.60 + (0.45 - 0.60) * e,
-            fillLevel: 0.60 + (0.62 - 0.60) * e,
-            taper: 0.06 + (0.08 - 0.06) * e,
+            cyBase: 0.92 + (0.86 - 0.92) * e,
+            width: 0.46 + (0.30 - 0.46) * e,
+            height: 0.36 + (0.30 - 0.36) * e,
+            fillLevel: 0.62 + (0.60 - 0.62) * e,
+            taper: -0.03 + (0.00 - (-0.03)) * e,
             seed: 0.0
         )
 
