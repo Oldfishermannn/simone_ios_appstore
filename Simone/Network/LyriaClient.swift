@@ -13,6 +13,10 @@ final class LyriaClient {
 
     var onAudioChunk: ((Data) -> Void)?
     var onConnected: (() -> Void)?
+    /// v1.3 · Lock 10min 跳风格修复：reconnectAndRestore 成功续接时触发，
+    /// 与 onConnected 区分（后者走 sendCurrentPrompts 重置路径）。
+    /// 典型用途：让 AudioEngine 对新 session 第一批音频做软淡入。
+    var onReconnected: (() -> Void)?
 
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession
@@ -275,6 +279,9 @@ final class LyriaClient {
                         self.connectionState = .connected
                         self.reconnectAttempts = 0
                         self.statusMessage = "Reconnected"
+                        // v1.3 · 通知上层：这是 reconnectAndRestore 而不是首次 connect，
+                        // 上层（AppState）据此对 AudioEngine arm 软淡入降低跳变感知。
+                        self.onReconnected?()
                     }
                     // 恢复之前的参数
                     if let prompts = self.lastPrompts {

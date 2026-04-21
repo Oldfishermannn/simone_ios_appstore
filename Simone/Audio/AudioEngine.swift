@@ -15,6 +15,14 @@ final class AudioEngine {
     private let bufferMin = 1
     private let fadeSamples = 48 // 1ms at 48kHz — imperceptible but kills pops
 
+    // v1.3 · Lock 10min 跳风格修复：reconnectAndRestore 后对接下来的音频做软淡入，
+    // 降低用户对「Lyria 重新生成新音乐」跳变的感知。
+    // softFadeInTotal 是整段淡入的总长度（ramp 分母），softFadeInConsumed 是已处理的样本数，
+    // 两者共同维持跨 drainQueue / 跨 buffer 的连续线性 ramp。
+    private var softFadeInTotal: Int = 0
+    private var softFadeInConsumed: Int = 0
+    private let softFadeInLock = NSLock()
+
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private let bufferQueue = AudioBufferQueue()
@@ -180,6 +188,17 @@ final class AudioEngine {
         resetScheduledCount()
     }
 
+    /// v1.3 · Lock 10min 跳风格修复：安排下一批音频的软淡入。
+    /// 典型用法：LyriaClient.reconnectAndRestore 成功重连后调用，duration≈0.5s，
+    /// 新 session 第一批 chunk 渐入，降低跳变感知。
+    func armSoftFadeIn(duration: TimeInterval) {
+        let samples = max(0, Int(duration * sampleRate))
+        softFadeInLock.lock()
+        softFadeInTotal = samples
+        softFadeInConsumed = 0
+        softFadeInLock.unlock()
+    }
+
     func flushScheduledBuffers() {
         bufferQueue.clear()
         isDraining = false
@@ -302,6 +321,34 @@ final class AudioEngine {
         }
     }
 
+    /// v1.3 · 软淡入：把 softFadeInRemainingSamples 预算按样本顺序抹在 buffer 前缀上。
+    /// 返回 buffer 真正消耗掉的 ramp 样本数，供外部调用方扣减全局预算。
+    /// - Parameters:
+    ///   - buffer: 目标 PCM buffer
+    ///   - totalRampLength: 整段淡入的总长度（用于算线性比例，跨 buffer 保持连续）
+    ///   - alreadyRamped: 这段淡入之前已经处理过的样本数
+    /// - Returns: 本 buffer 内被处理的样本数
+    private func applySoftFadeIn(
+        _ buffer: AVAudioPCMBuffer,
+        totalRampLength: Int,
+        alreadyRamped: Int
+    ) -> Int {
+        guard totalRampLength > 0 else { return 0 }
+        let bufferLen = Int(buffer.frameLength)
+        let remaining = totalRampLength - alreadyRamped
+        guard remaining > 0 else { return 0 }
+        let count = min(remaining, bufferLen)
+        for ch in 0..<Int(channels) {
+            guard let data = buffer.floatChannelData?[ch] else { continue }
+            for i in 0..<count {
+                let globalIndex = alreadyRamped + i
+                let gain = Float(globalIndex) / Float(totalRampLength)
+                data[i] *= gain
+            }
+        }
+        return count
+    }
+
     // MARK: - Private
 
     private func drainQueue() {
@@ -315,6 +362,13 @@ final class AudioEngine {
 
         let wasUnderrun = isUnderrun
         let chunks = bufferQueue.drainAll()
+
+        // v1.3 · 软淡入：一次性快照当前 total/consumed，drain 循环内累加，收尾回写。
+        // total 跨 drainQueue 保持不变（ramp 分母），consumed 跨 drain 累计（保证线性连续）。
+        softFadeInLock.lock()
+        let softFadeTotal = softFadeInTotal
+        var softFadeConsumed = softFadeInConsumed
+        softFadeInLock.unlock()
 
         for (idx, chunk) in chunks.enumerated() {
             let numBytes = chunk.count - (chunk.count % (Int(channels) * 2))
@@ -338,6 +392,16 @@ final class AudioEngine {
                 }
             }
 
+            // v1.3 · 软淡入必须先于 applyFadeIn，避免短 fadeSamples 的 1ms ramp 被软 ramp 压成 0。
+            if softFadeTotal > 0 && softFadeConsumed < softFadeTotal {
+                let consumed = applySoftFadeIn(
+                    pcmBuffer,
+                    totalRampLength: softFadeTotal,
+                    alreadyRamped: softFadeConsumed
+                )
+                softFadeConsumed += consumed
+            }
+
             // Fade-in/out on every buffer: ensures all transitions are smooth
             // - Normal playback: buffer boundaries go through 0 seamlessly (1ms dip, inaudible)
             // - Underrun: both edges fade to/from 0, no pop
@@ -348,6 +412,16 @@ final class AudioEngine {
             player.scheduleBuffer(pcmBuffer) { [weak self] in
                 self?.decrementScheduled()
             }
+        }
+
+        // 回写已消耗的样本数；ramp 结束后（consumed >= total）后续 buffer 走全增益
+        if softFadeTotal > 0 {
+            softFadeInLock.lock()
+            // 只在没被 armSoftFadeIn 重置的前提下累加（比较 total 是否还是那批）
+            if softFadeInTotal == softFadeTotal {
+                softFadeInConsumed = min(softFadeConsumed, softFadeTotal)
+            }
+            softFadeInLock.unlock()
         }
     }
 

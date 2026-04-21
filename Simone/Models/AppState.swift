@@ -174,6 +174,12 @@ final class AppState {
         lyriaClient.onConnected = { [weak self] in
             self?.sendCurrentPrompts()
         }
+        // v1.3 · Lock 10min 跳风格修复：会话轮转（reconnectAndRestore）成功续接后
+        // 对新 session 第一批音频做 0.5s 软淡入，降低「Lyria 重新生成新音乐」的跳变感知。
+        // 不走 sendCurrentPrompts 重置路径，完全由 LyriaClient 复用 lastPrompts/lastConfig。
+        lyriaClient.onReconnected = { [weak self] in
+            self?.audioEngine.armSoftFadeIn(duration: 0.5)
+        }
         // 卡死自救：AudioEngine 发现 20s 无新 chunk + buffer 空 → 触发会话轮转
         // v1.3 · Lock 10min 跳风格修复：改走 reconnectAndRestore（不走 onConnected
         // → 不触发 sendCurrentPrompts → 不发新 prompt），统一会话轮转逻辑，
