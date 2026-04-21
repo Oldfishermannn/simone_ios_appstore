@@ -17,6 +17,10 @@ final class LyriaClient {
     /// 与 onConnected 区分（后者走 sendCurrentPrompts 重置路径）。
     /// 典型用途：让 AudioEngine 对新 session 第一批音频做软淡入。
     var onReconnected: (() -> Void)?
+    // v1.3 · Lock 无缝续接：reconnectAndRestore 起点通知上层准备 fallback。
+    // 与 onReconnected（重连成功）配对：started 在 cancel 老 ws 之前触发，
+    // started 之后 AudioEngine 立即开始播 ring buffer 内容，覆盖空档。
+    var onReconnectStarted: (() -> Void)?
 
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession
@@ -245,6 +249,11 @@ final class LyriaClient {
     /// v1.3 起对外开放，onPlaybackStalled 卡死自救也改走这条路径，统一会话轮转逻辑。
     func reconnectAndRestore() {
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else { return }
+
+        // v1.3 · 先通知上层（AudioEngine 开始 fallback loop 盖空档）
+        DispatchQueue.main.async { [weak self] in
+            self?.onReconnectStarted?()
+        }
 
         connectionState = .reconnecting
         isSetupComplete = false
