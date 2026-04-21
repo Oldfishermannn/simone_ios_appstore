@@ -57,6 +57,8 @@
 		A0B1C2D3E4F50617283940A1 /* LofiTapeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */; };
 		A1B2C3D4E5F60718293A4B51 /* LofiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */; };
 		A2A5B643BA227229887CB35C /* FountainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A40BC1215B61DAEA12C8A4C /* FountainView.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B101 /* GrainMaterial.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A101 /* GrainMaterial.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B102 /* LofiSignatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A102 /* LofiSignatureView.swift */; };
 		A2B3C4D5E6F708192A3B4C52 /* LofiBlindsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */; };
 		A3B4C5D6E7F819203A4B5C53 /* FireflyJarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C8D9E0F1234A5B6C7D8E64 /* FireflyJarView.swift */; };
 		A4B5C6D7E8F91A2B3C4D5E54 /* LetterRackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8C9D0E1F2345A6B7C8D9E65 /* LetterRackView.swift */; };
@@ -126,6 +128,8 @@
 		57B550C29D0C8CB6F21DFDAC /* AudioBufferQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioBufferQueue.swift; sourceTree = "<group>"; };
 		5A8C8FA89D7F493C32EAC820 /* EvolveVocabulary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvolveVocabulary.swift; sourceTree = "<group>"; };
 		6A40BC1215B61DAEA12C8A4C /* FountainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FountainView.swift; sourceTree = "<group>"; };
+		C1D2E3F4A5B6C7D8E9F0A101 /* GrainMaterial.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrainMaterial.swift; sourceTree = "<group>"; };
+		C1D2E3F4A5B6C7D8E9F0A102 /* LofiSignatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiSignatureView.swift; sourceTree = "<group>"; };
 		6B3479E50F6ECCC6E55C21D8 /* SimoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimoneApp.swift; sourceTree = "<group>"; };
 		6C4631B1A8C6EC69450E2E97 /* SpectrumCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumCarouselView.swift; sourceTree = "<group>"; };
 		6DC5C9CC001411B2C83A8E4C /* Archivo-Italic[wdth,wght].ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Archivo-Italic[wdth,wght].ttf"; sourceTree = "<group>"; };
@@ -286,6 +290,7 @@
 				D69B790410D2F7FA9CD6F9B6 /* FireflyView.swift */,
 				C427F742A90188BAED3B87EB /* FloraView.swift */,
 				6A40BC1215B61DAEA12C8A4C /* FountainView.swift */,
+				C1D2E3F4A5B6C7D8E9F0A101 /* GrainMaterial.swift */,
 				746420BC6C0BE038E546B913 /* GlitchView.swift */,
 				C3FE0CF17074DAAB966F1795 /* HelixView.swift */,
 				011B1EEA4AE69FA3586496C2 /* HorizonView.swift */,
@@ -294,6 +299,7 @@
 				D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */,
 				B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */,
 				B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */,
+				C1D2E3F4A5B6C7D8E9F0A102 /* LofiSignatureView.swift */,
 				B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */,
 				B7C8D9E0F1234A5B6C7D8E64 /* FireflyJarView.swift */,
 				B8C9D0E1F2345A6B7C8D9E65 /* LetterRackView.swift */,
@@ -484,6 +490,8 @@
 				02EFD611E85BB464212FF117 /* FloraView.swift in Sources */,
 				778A93CA811F4FEEDE8E575F /* FogTheme.swift in Sources */,
 				A2A5B643BA227229887CB35C /* FountainView.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B101 /* GrainMaterial.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B102 /* LofiSignatureView.swift in Sources */,
 				E670CC9692AA413CE82DF217 /* GlitchView.swift in Sources */,
 				FA54C6EE02073EC517D0A48B /* HelixView.swift in Sources */,
 				99F3869BAA2870A7961E8F9C /* HorizonView.swift in Sources */,

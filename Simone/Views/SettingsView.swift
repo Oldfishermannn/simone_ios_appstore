@@ -70,6 +70,18 @@ struct SettingsView: View {
                     hairlineDivider
 
                     satelliteRow(
+                        title: "Art",
+                        subtitle: "signature totem or classic set",
+                        value: state.visualizationMode.rawValue.uppercased(),
+                        codex: nil,
+                        tappable: true,
+                        isLive: state.visualizationMode == .signature,
+                        action: toggleVisualizationMode
+                    )
+
+                    hairlineDivider
+
+                    satelliteRow(
                         title: "Spectrum",
                         subtitle: "one shape per channel",
                         value: state.currentChannel.visualizer.displayName.uppercased(),
@@ -349,6 +361,12 @@ struct SettingsView: View {
         let modes = AppState.EvolveMode.allCases
         guard let idx = modes.firstIndex(of: state.evolveMode) else { return }
         state.evolveMode = modes[(idx + 1) % modes.count]
+    }
+
+    /// v1.4a Signature: flip between Signature totem and Classic visualizer set.
+    private func toggleVisualizationMode() {
+        state.visualizationMode =
+            (state.visualizationMode == .signature) ? .classic : .signature
     }
 
     private func cycleSleep() {
