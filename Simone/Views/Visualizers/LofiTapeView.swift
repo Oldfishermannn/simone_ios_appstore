@@ -507,13 +507,12 @@ struct LofiTapeView: View {
         ctx.fill(Path(ellipseIn: pinRect), with: .color(ring.opacity(0.95)))
     }
 
-    // MARK: - VU LED Panel (v1.4a Signature)
+    // MARK: - Ridge Spectrum Panel (v1.4a Signature)
     //
-    // A wide dark LCD window sunken into the deck's lower metal region,
-    // populated with 24 thin amber LED bars driven by spectrumData. Each
-    // bar has a soft glow halo beneath and a crisp lit body. A faint
-    // horizontal "0 dB" guide sits at ~70% of bar height; bars crossing
-    // it get a subtler red tint at the top segment like a real VU meter.
+    // A wide dark window sitting above the track title, showing 3 stacked
+    // ridgeline layers driven by spectrumData — same "peaks" language used
+    // across the house (HorizonView etc). Uses warm amber palette so it
+    // reads as deck instrumentation, not a foreign import.
     private func drawVUPanel(
         on ctx: GraphicsContext,
         size: CGSize,
@@ -524,114 +523,93 @@ struct LofiTapeView: View {
         t: Float
     ) {
         let w = size.width, h = size.height
+        // Positioned above the track title (bottomOverlay sits around h*0.76).
         let vuRect = CGRect(
             x: w * 0.10,
-            y: deckTopY + h * 0.36,
+            y: h * 0.54,
             width: w * 0.80,
-            height: h * 0.18
+            height: h * 0.14
         )
 
         // Sunken LCD-style window
         let windowPath = Path(roundedRect: vuRect, cornerRadius: 4)
         ctx.fill(windowPath, with: .color(window))
-        // Inner top-edge shadow for depth
         var innerShadow = Path()
         innerShadow.move(to: CGPoint(x: vuRect.minX + 3, y: vuRect.minY + 1))
         innerShadow.addLine(to: CGPoint(x: vuRect.maxX - 3, y: vuRect.minY + 1))
         ctx.stroke(innerShadow, with: .color(Color.black.opacity(0.75)), lineWidth: 0.8)
-        // Outer subtle frame hairline
         ctx.stroke(windowPath, with: .color(Color.white.opacity(0.06)), lineWidth: 0.5)
 
-        // "VU" label (top-left, small mono caps)
+        // Small mono label
         ctx.draw(
-            Text("VU")
+            Text("SPECTRUM")
                 .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                .foregroundColor(Color.white.opacity(0.28)),
-            at: CGPoint(x: vuRect.minX + 14, y: vuRect.minY + 7)
-        )
-        // "dB" scale hint (top-right)
-        ctx.draw(
-            Text("dB")
-                .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                .foregroundColor(Color.white.opacity(0.22)),
-            at: CGPoint(x: vuRect.maxX - 14, y: vuRect.minY + 7)
+                .foregroundColor(Color.white.opacity(0.24)),
+            at: CGPoint(x: vuRect.minX + 32, y: vuRect.minY + 8)
         )
 
-        // Bar cluster geometry
-        let padX: CGFloat = vuRect.width * 0.045
-        let padTop: CGFloat = vuRect.height * 0.26   // leave room for labels
-        let padBottom: CGFloat = vuRect.height * 0.10
+        // Inner drawing region
+        let padX: CGFloat = vuRect.width * 0.04
+        let padTop: CGFloat = vuRect.height * 0.22
+        let padBottom: CGFloat = vuRect.height * 0.08
         let innerX = vuRect.minX + padX
         let innerW = vuRect.width - padX * 2
         let innerTop = vuRect.minY + padTop
         let innerBottom = vuRect.maxY - padBottom
         let innerH = innerBottom - innerTop
 
-        let N = 24
-        let slotW = innerW / CGFloat(N)
-        let barW = slotW * 0.55
-
-        // Faint horizontal "0 dB" guide at 70% of bar height (above is hot)
-        let guideY = innerBottom - innerH * 0.70
-        var guide = Path()
-        guide.move(to: CGPoint(x: innerX, y: guideY))
-        guide.addLine(to: CGPoint(x: innerX + innerW, y: guideY))
-        ctx.stroke(guide, with: .color(Color.white.opacity(0.10)), lineWidth: 0.4)
-
-        // Lit bar gradient stops (amber → warm orange top)
         let amberHot = Color(red: 242/255, green: 168/255, blue: 90/255)
-        let amberRed = Color(red: 230/255, green: 100/255, blue: 70/255)
+        let copper   = Color(red: 150/255, green:  92/255, blue:  56/255)
+        let rust     = Color(red: 102/255, green:  62/255, blue:  38/255)
 
-        let brightScale = max(0.8, min(1.2, Double(signatureDensityScale)))
+        let brightScale = max(0.80, min(1.20, Double(signatureDensityScale)))
         let heightScale = max(0.85, min(1.15, Double(signatureOmegaScale)))
 
-        for i in 0..<N {
-            let binIdx = min(binCount - 1, (i * binCount) / N)
-            let binVal = CGFloat(spectrumData[binIdx])
-            // Gentle compression + noise floor so idle state still shows a breath
-            let wobble = CGFloat(sinf(t * 1.6 + Float(i) * 0.7)) * 0.02
-            let level = min(1.0, binVal * 1.35 * CGFloat(heightScale) + 0.04 + wobble)
-            let barH = max(innerH * 0.04, innerH * level)
+        // 3 stacked ridges, each offset into spectrum bins to decorrelate layers.
+        let layers: [(color: Color, baseNorm: CGFloat, ampNorm: CGFloat, binOffset: Int, width: CGFloat)] = [
+            (amberHot, 0.86, 0.38, 0,  1.6),
+            (copper,   0.72, 0.32, 3,  1.3),
+            (rust,     0.58, 0.26, 6,  1.1),
+        ]
 
-            let bx = innerX + CGFloat(i) * slotW + (slotW - barW) / 2
-            let by = innerBottom - barH
-            let barRect = CGRect(x: bx, y: by, width: barW, height: barH)
+        let N = 64
+        for layer in layers {
+            let baseY = innerTop + innerH * layer.baseNorm
+            let amp = innerH * layer.ampNorm * CGFloat(heightScale)
 
-            // Soft halo behind bar for LED glow (larger + dimmer)
-            let haloRect = barRect.insetBy(dx: -1.4, dy: -0.8)
-            ctx.fill(
-                Path(roundedRect: haloRect, cornerRadius: barW * 0.6),
-                with: .radialGradient(
-                    Gradient(colors: [amber.opacity(0.45 * brightScale), Color.clear]),
-                    center: CGPoint(x: barRect.midX, y: barRect.midY),
-                    startRadius: 0,
-                    endRadius: max(barW, barH) * 0.85
-                )
-            )
+            var pts: [CGPoint] = []
+            for i in 0...N {
+                let u = CGFloat(i) / CGFloat(N)
+                let binF = Float(u) * Float(binCount - 1) + Float(layer.binOffset)
+                let binIdx = max(0, min(binCount - 1, Int(binF)))
+                var v = CGFloat(spectrumData[binIdx])
+                let wobble = CGFloat(sinf(t * 0.9 + Float(i) * 0.22 + Float(layer.binOffset))) * 0.04
+                v = max(0, min(1, v * 1.2 + wobble))
+                let envelope = sin(CGFloat.pi * u) // 两端收窄，中间饱满
+                let y = baseY - amp * v * envelope
+                pts.append(CGPoint(x: innerX + u * innerW, y: y))
+            }
 
-            // Lit bar body with subtle top-hot gradient
-            let crossesGuide = by < guideY
-            let topColor = crossesGuide ? amberRed : amberHot
-            ctx.fill(
-                Path(roundedRect: barRect, cornerRadius: barW * 0.35),
-                with: .linearGradient(
-                    Gradient(stops: [
-                        .init(color: topColor.opacity(0.95 * brightScale), location: 0),
-                        .init(color: amber.opacity(0.92 * brightScale), location: 0.55),
-                        .init(color: amber.opacity(0.70 * brightScale), location: 1)
-                    ]),
-                    startPoint: CGPoint(x: barRect.midX, y: barRect.minY),
-                    endPoint: CGPoint(x: barRect.midX, y: barRect.maxY)
-                )
-            )
+            // Smooth stroke through the ridge points using quadratic segments
+            var ridge = Path()
+            ridge.move(to: pts[0])
+            for i in 1..<pts.count - 1 {
+                let mid = CGPoint(x: (pts[i].x + pts[i+1].x) / 2,
+                                  y: (pts[i].y + pts[i+1].y) / 2)
+                ridge.addQuadCurve(to: mid, control: pts[i])
+            }
+            ridge.addLine(to: pts.last!)
 
-            // Tiny bright cap at top of bar
-            let capH: CGFloat = max(0.8, barW * 0.5)
-            let capRect = CGRect(x: bx, y: by, width: barW, height: capH)
-            ctx.fill(
-                Path(roundedRect: capRect, cornerRadius: barW * 0.3),
-                with: .color(Color.white.opacity(0.28))
-            )
+            // Faint fill underneath the ridge for depth
+            var fillPath = ridge
+            fillPath.addLine(to: CGPoint(x: innerX + innerW, y: innerBottom))
+            fillPath.addLine(to: CGPoint(x: innerX, y: innerBottom))
+            fillPath.closeSubpath()
+            ctx.fill(fillPath, with: .color(layer.color.opacity(0.05 * brightScale)))
+
+            ctx.stroke(ridge,
+                       with: .color(layer.color.opacity(0.85 * brightScale)),
+                       lineWidth: layer.width)
         }
     }
 
