@@ -49,6 +49,7 @@
 		7CF828DE7FF7EA8ABE659D67 /* OFL-Archivo.txt in Resources */ = {isa = PBXBuildFile; fileRef = B297E75541715BF298B32801 /* OFL-Archivo.txt */; };
 		82C30E7873BC82D62884C99C /* OrbitalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A051AB5DAB29F481270E3FF3 /* OrbitalView.swift */; };
 		844CBB3232710872121FBBBF /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 361BD115BA6F452EB86E3012 /* AudioEngine.swift */; };
+		A1D714EA8A9BBAE3F7798C65 /* SplicePlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821BA0A3EC72D17776B6B018 /* SplicePlayback.swift */; };
 		888A6F4A5BE246453DD53566 /* APIKeySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90FA1CBA43A0D41EDEF1B85 /* APIKeySettingsView.swift */; };
 		89DE4DCBA348FE3B66FA8BE5 /* CascadeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEB2773C02855218BF54C5F /* CascadeView.swift */; };
 		90621F9FC20861CD6A438E57 /* OFL-Unbounded.txt in Resources */ = {isa = PBXBuildFile; fileRef = 038CA7BDF8337DA4F425DFB4 /* OFL-Unbounded.txt */; };
@@ -119,6 +120,7 @@
 		30BC765E6835D0DD6DA8C7D7 /* OscilloscopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OscilloscopeView.swift; sourceTree = "<group>"; };
 		33DA43F0A0298D89DE9E3DDB /* PlayControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayControlView.swift; sourceTree = "<group>"; };
 		361BD115BA6F452EB86E3012 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
+		821BA0A3EC72D17776B6B018 /* SplicePlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplicePlayback.swift; sourceTree = "<group>"; };
 		3B1417CDE4E522FF495399CA /* NebulaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NebulaView.swift; sourceTree = "<group>"; };
 		46836E98AC135C30D0B9B460 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		4AF0466E4894B9CD17377F62 /* Unbounded[wght].ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Unbounded[wght].ttf"; sourceTree = "<group>"; };
@@ -262,6 +264,7 @@
 			children = (
 				57B550C29D0C8CB6F21DFDAC /* AudioBufferQueue.swift */,
 				361BD115BA6F452EB86E3012 /* AudioEngine.swift */,
+				821BA0A3EC72D17776B6B018 /* SplicePlayback.swift */,
 			);
 			path = Audio;
 			sourceTree = "<group>";
@@ -473,6 +476,7 @@
 				DF817DF7EE2C1EBAF221285F /* AppState.swift in Sources */,
 				A40EAD33ADFE94381EF3DE3D /* AudioBufferQueue.swift in Sources */,
 				844CBB3232710872121FBBBF /* AudioEngine.swift in Sources */,
+				A1D714EA8A9BBAE3F7798C65 /* SplicePlayback.swift in Sources */,
 				4D31082FF032C8312B994E93 /* AuroraView.swift in Sources */,
 				89DE4DCBA348FE3B66FA8BE5 /* CascadeView.swift in Sources */,
 				5A4CDFE84DE9F81BB18ED27A /* Channel.swift in Sources */,
