@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ImmersiveView: View {
     @Bindable var state: AppState
+    var onTapDetails: () -> Void = {}
+    var onTapSettings: () -> Void = {}
 
     // Slide-on-channel-swipe plumbing — mirrors ContentView's pattern so the
     // immersive page overlay tracks the same horizontal gesture the carousel
@@ -96,6 +98,8 @@ struct ImmersiveView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .overlay(alignment: .bottomLeading) { detailsButton }
+        .overlay(alignment: .bottomTrailing) { settingsButton }
         .ignoresSafeArea()
         .statusBarHidden(true)
         .onAppear {
@@ -288,6 +292,38 @@ struct ImmersiveView: View {
                 .opacity(nameOpacity)
         }
         .allowsHitTesting(false)
+    }
+
+    // MARK: - Corner Buttons (v1.3)
+
+    private var detailsButton: some View {
+        Button(action: onTapDetails) {
+            Image(systemName: "list.bullet")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(FogTokens.textSecondary)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(FogTokens.bgSurface.opacity(0.55)))
+                .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 12)
+        .padding(.bottom, 12)
+        .accessibilityLabel("Details")
+    }
+
+    private var settingsButton: some View {
+        Button(action: onTapSettings) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(FogTokens.textSecondary)
+                .frame(width: 28, height: 28)
+                .background(Circle().fill(FogTokens.bgSurface.opacity(0.55)))
+                .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .padding(.trailing, 12)
+        .padding(.bottom, 12)
+        .accessibilityLabel("Settings")
     }
 
     // MARK: - Transport (ported from DetailsView)
