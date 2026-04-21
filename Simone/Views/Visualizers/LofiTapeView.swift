@@ -525,9 +525,9 @@ struct LofiTapeView: View {
         t: Float
     ) {
         let w = size.width, h = size.height
-        // Signature mode hides the LED/counter/buttons row, so the spectrum
-        // window gets the whole lower-deck real-estate between the cassette
-        // bay (~h*0.48) and the track title (bottomOverlay ~h*0.74).
+        // No window chrome — the spectrum is drawn directly onto the deck's
+        // metal surface so it reads as "light reflecting on brushed steel",
+        // not as a separate instrument panel.
         let vuRect = CGRect(
             x: w * 0.06,
             y: h * 0.49,
@@ -535,45 +535,30 @@ struct LofiTapeView: View {
             height: h * 0.21
         )
 
-        // Sunken LCD-style window
-        let windowPath = Path(roundedRect: vuRect, cornerRadius: 4)
-        ctx.fill(windowPath, with: .color(window))
-        var innerShadow = Path()
-        innerShadow.move(to: CGPoint(x: vuRect.minX + 3, y: vuRect.minY + 1))
-        innerShadow.addLine(to: CGPoint(x: vuRect.maxX - 3, y: vuRect.minY + 1))
-        ctx.stroke(innerShadow, with: .color(Color.black.opacity(0.75)), lineWidth: 0.8)
-        ctx.stroke(windowPath, with: .color(Color.white.opacity(0.06)), lineWidth: 0.5)
-
-        // Small mono label
-        ctx.draw(
-            Text("SPECTRUM")
-                .font(.system(size: 7, weight: .semibold, design: .monospaced))
-                .foregroundColor(Color.white.opacity(0.24)),
-            at: CGPoint(x: vuRect.minX + 32, y: vuRect.minY + 8)
-        )
-
-        // Inner drawing region
         let padX: CGFloat = vuRect.width * 0.04
-        let padTop: CGFloat = vuRect.height * 0.22
-        let padBottom: CGFloat = vuRect.height * 0.08
+        let padTop: CGFloat = vuRect.height * 0.10
+        let padBottom: CGFloat = vuRect.height * 0.10
         let innerX = vuRect.minX + padX
         let innerW = vuRect.width - padX * 2
         let innerTop = vuRect.minY + padTop
         let innerBottom = vuRect.maxY - padBottom
         let innerH = innerBottom - innerTop
 
-        let amberHot = Color(red: 242/255, green: 168/255, blue: 90/255)
-        let copper   = Color(red: 150/255, green:  92/255, blue:  56/255)
-        let rust     = Color(red: 102/255, green:  62/255, blue:  38/255)
+        // Cassette-family palette so the ridges feel like reflections of the
+        // tape sitting in the bay above, not a foreign overlay.
+        let cream  = Color(red: 246/255, green: 232/255, blue: 200/255)  // shell
+        let tan    = Color(red: 186/255, green: 162/255, blue: 120/255)  // labelLine
+        let bronze = Color(red: 148/255, green: 108/255, blue:  72/255)  // hubRing
 
         let brightScale = max(0.80, min(1.20, Double(signatureDensityScale)))
         let heightScale = max(0.85, min(1.15, Double(signatureOmegaScale)))
 
-        // 3 stacked ridges, each offset into spectrum bins to decorrelate layers.
-        let layers: [(color: Color, baseNorm: CGFloat, ampNorm: CGFloat, binOffset: Int, width: CGFloat)] = [
-            (amberHot, 0.86, 0.38, 0,  1.6),
-            (copper,   0.72, 0.32, 3,  1.3),
-            (rust,     0.58, 0.26, 6,  1.1),
+        // 3 stacked ridges, back-to-front. Back layer (deepest) is dimmest
+        // and thinnest; front layer is the most visible but still restrained.
+        let layers: [(color: Color, baseNorm: CGFloat, ampNorm: CGFloat, binOffset: Int, width: CGFloat, alpha: Double)] = [
+            (bronze, 0.58, 0.22, 6, 0.7, 0.22),
+            (tan,    0.72, 0.28, 3, 0.9, 0.32),
+            (cream,  0.86, 0.34, 0, 1.1, 0.42),
         ]
 
         let N = 64
@@ -587,14 +572,13 @@ struct LofiTapeView: View {
                 let binF = Float(u) * Float(binCount - 1) + Float(layer.binOffset)
                 let binIdx = max(0, min(binCount - 1, Int(binF)))
                 var v = CGFloat(spectrumData[binIdx])
-                let wobble = CGFloat(sinf(t * 0.9 + Float(i) * 0.22 + Float(layer.binOffset))) * 0.04
+                let wobble = CGFloat(sinf(t * 0.9 + Float(i) * 0.22 + Float(layer.binOffset))) * 0.03
                 v = max(0, min(1, v * 1.2 + wobble))
-                let envelope = sin(CGFloat.pi * u) // 两端收窄，中间饱满
+                let envelope = sin(CGFloat.pi * u)
                 let y = baseY - amp * v * envelope
                 pts.append(CGPoint(x: innerX + u * innerW, y: y))
             }
 
-            // Smooth stroke through the ridge points using quadratic segments
             var ridge = Path()
             ridge.move(to: pts[0])
             for i in 1..<pts.count - 1 {
@@ -604,15 +588,8 @@ struct LofiTapeView: View {
             }
             ridge.addLine(to: pts.last!)
 
-            // Faint fill underneath the ridge for depth
-            var fillPath = ridge
-            fillPath.addLine(to: CGPoint(x: innerX + innerW, y: innerBottom))
-            fillPath.addLine(to: CGPoint(x: innerX, y: innerBottom))
-            fillPath.closeSubpath()
-            ctx.fill(fillPath, with: .color(layer.color.opacity(0.05 * brightScale)))
-
             ctx.stroke(ridge,
-                       with: .color(layer.color.opacity(0.85 * brightScale)),
+                       with: .color(layer.color.opacity(layer.alpha * brightScale)),
                        lineWidth: layer.width)
         }
     }
