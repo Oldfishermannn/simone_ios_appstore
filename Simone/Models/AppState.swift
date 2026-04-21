@@ -49,6 +49,27 @@ final class AppState {
     }
     private var autoTuneTimer: Timer?
 
+    // v1.4a Part 3 — Signature axis. Classic keeps every existing visualizer
+    // exactly as shipped; Signature swaps the per-channel totem only where
+    // one is defined (Lo-fi today, 4 more channels later). Default Signature
+    // so new installs see the new art; Classic is the opt-back-in for users
+    // who already love the Cassette Deck / Pad / Blinds set.
+    enum VisualizationMode: String, CaseIterable {
+        case signature = "Signature"
+        case classic = "Classic"
+    }
+    var visualizationMode: VisualizationMode = .signature {
+        didSet {
+            UserDefaults.standard.set(visualizationMode.rawValue, forKey: "visualizationMode")
+        }
+    }
+
+    /// Evolve-driven multipliers for Signature visualizers (M4 wires these to
+    /// evolveMode). 1.0 = neutral. Kept as plain vars so Observation picks up
+    /// changes and redraws without extra wiring.
+    var signatureDensityScale: CGFloat = 1.0
+    var signatureOmegaScale: CGFloat = 1.0
+
     // v1.2 Favorites 评审期：三选一可视化（firefly / letters / drawer）
     var favoritesVisualizer: VisualizerStyle = Channel.favoritesVisualizerPreference {
         didSet {
@@ -131,6 +152,12 @@ final class AppState {
 
         // Restore Auto Tune preference
         autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
+
+        // Restore Signature/Classic visualization mode. Unset → Signature (new default).
+        if let raw = UserDefaults.standard.string(forKey: "visualizationMode"),
+           let mode = VisualizationMode(rawValue: raw) {
+            visualizationMode = mode
+        }
 
         // Restore last channel (no didSet side-effect during init)
         // v1.2: 频道收缩到 5 个，落在旧 channel 上则 fallback 到 lofi。

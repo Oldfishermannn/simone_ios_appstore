@@ -45,6 +45,15 @@ struct SettingsView: View {
             fogDivider
 
             settingRow(
+                title: "Art",
+                subtitle: "signature totem or classic set",
+                value: state.visualizationMode.rawValue.uppercased(),
+                tappable: true,
+                action: toggleVisualizationMode
+            )
+            fogDivider
+
+            settingRow(
                 title: "Spectrum",
                 subtitle: "one shape per channel",
                 value: state.currentChannel.visualizer.displayName.uppercased(),
@@ -194,6 +203,11 @@ struct SettingsView: View {
         let modes = AppState.EvolveMode.allCases
         guard let idx = modes.firstIndex(of: state.evolveMode) else { return }
         state.evolveMode = modes[(idx + 1) % modes.count]
+    }
+
+    private func toggleVisualizationMode() {
+        state.visualizationMode =
+            (state.visualizationMode == .signature) ? .classic : .signature
     }
 
     private func cycleSleep() {

@@ -29,9 +29,17 @@ struct SpectrumCarouselView: View {
                             let visualizer = (channel == state.currentChannel)
                                 ? state.selectedVisualizer
                                 : channel.visualizer
-                            visualizerView(for: visualizer, spectrumData: spectrumData)
-                                .containerRelativeFrame(.horizontal)
-                                .id(index)
+                            Group {
+                                if state.visualizationMode == .signature,
+                                   hasSignature(for: channel) {
+                                    signatureView(for: channel,
+                                                  spectrumData: spectrumData)
+                                } else {
+                                    visualizerView(for: visualizer, spectrumData: spectrumData)
+                                }
+                            }
+                            .containerRelativeFrame(.horizontal)
+                            .id(index)
                         }
                     }
                     .scrollTargetLayout()
@@ -88,6 +96,29 @@ struct SpectrumCarouselView: View {
             try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             dotsVisible = false
+        }
+    }
+
+    /// v1.4a Part 3 — true when a Signature visualizer is defined for this
+    /// channel. Today only Lo-fi has one; the other 4 fall through to Classic.
+    private func hasSignature(for channel: Channel) -> Bool {
+        if case .category(.lofi) = channel { return true }
+        return false
+    }
+
+    @ViewBuilder
+    private func signatureView(for channel: Channel,
+                               spectrumData: [Float]) -> some View {
+        switch channel {
+        case .category(.lofi):
+            LofiSignatureView(
+                spectrumData: spectrumData,
+                density: density,
+                densityScale: state.signatureDensityScale,
+                omegaScale: state.signatureOmegaScale
+            )
+        default:
+            EmptyView()
         }
     }
 

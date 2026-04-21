@@ -140,10 +140,20 @@ struct ImmersiveView: View {
                 Spacer()
 
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-                    smallVisualizer(
-                        for: state.selectedVisualizer,
-                        spectrumData: state.audioEngine.spectrumData
-                    )
+                    if state.visualizationMode == .signature,
+                       case .category(.lofi) = state.currentChannel {
+                        LofiSignatureView(
+                            spectrumData: state.audioEngine.spectrumData,
+                            density: 1,
+                            densityScale: state.signatureDensityScale,
+                            omegaScale: state.signatureOmegaScale
+                        )
+                    } else {
+                        smallVisualizer(
+                            for: state.selectedVisualizer,
+                            spectrumData: state.audioEngine.spectrumData
+                        )
+                    }
                 }
                 .frame(width: specSize, height: specSize)
                 .contentShape(Rectangle())
