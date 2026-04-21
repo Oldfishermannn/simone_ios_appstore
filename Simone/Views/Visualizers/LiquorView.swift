@@ -95,7 +95,7 @@ struct LiquorView: View {
         //   taper -0.06 杯口比杯底宽 6%（明显外张 = rocks glass 签名侧壁）
         let mainSpec = GlassSpec(
             cx: 0.50 + (0.32 - 0.50) * e,
-            cyBase: 0.86 + (0.84 - 0.86) * e,
+            cyBase: 0.78 + (0.84 - 0.78) * e,
             width: 0.52 + (0.34 - 0.52) * e,
             height: 0.26 + (0.22 - 0.26) * e,
             fillLevel: 0.55 + (0.55 - 0.55) * e,
