@@ -25,6 +25,13 @@ struct LofiTapeView: View {
     /// 0 = small pose (single cassette), 1 = big pose (cassette in deck).
     /// Smoothly interpolated for the body-to-body morph ImmersiveView drives.
     var expansion: CGFloat = 1.0
+    /// v1.4a Signature: draw a VU LED spectrum panel on the deck's empty
+    /// metal area. Only visible in big pose (gated by deckAlpha).
+    var signatureVU: Bool = false
+    /// Signature Evolve drift: scales VU brightness slightly around 1.0.
+    var signatureDensityScale: CGFloat = 1.0
+    /// Signature Evolve drift: scales VU bar height slightly around 1.0.
+    var signatureOmegaScale: CGFloat = 1.0
 
     var body: some View {
         Canvas { context, size in
@@ -240,6 +247,21 @@ struct LofiTapeView: View {
                         .foregroundColor(Color.white.opacity(0.32)),
                     at: CGPoint(x: counterRect.midX, y: counterRect.midY)
                 )
+
+                // v1.4a Signature: VU LED spectrum panel on deck's empty area.
+                // Vintage cassette-deck amber LED look — 24 thin vertical bars
+                // inside a sunken dark window with faint scale tick.
+                if signatureVU {
+                    drawVUPanel(
+                        on: ctx,
+                        size: size,
+                        deckTopY: deckTopY,
+                        binCount: binCount,
+                        amber: accent,
+                        window: deckDarker,
+                        t: t
+                    )
+                }
             }
         }
 
@@ -483,6 +505,134 @@ struct LofiTapeView: View {
         let pinRect = CGRect(x: center.x - pinR, y: center.y - pinR,
                              width: pinR * 2, height: pinR * 2)
         ctx.fill(Path(ellipseIn: pinRect), with: .color(ring.opacity(0.95)))
+    }
+
+    // MARK: - VU LED Panel (v1.4a Signature)
+    //
+    // A wide dark LCD window sunken into the deck's lower metal region,
+    // populated with 24 thin amber LED bars driven by spectrumData. Each
+    // bar has a soft glow halo beneath and a crisp lit body. A faint
+    // horizontal "0 dB" guide sits at ~70% of bar height; bars crossing
+    // it get a subtler red tint at the top segment like a real VU meter.
+    private func drawVUPanel(
+        on ctx: GraphicsContext,
+        size: CGSize,
+        deckTopY: CGFloat,
+        binCount: Int,
+        amber: Color,
+        window: Color,
+        t: Float
+    ) {
+        let w = size.width, h = size.height
+        let vuRect = CGRect(
+            x: w * 0.10,
+            y: deckTopY + h * 0.36,
+            width: w * 0.80,
+            height: h * 0.18
+        )
+
+        // Sunken LCD-style window
+        let windowPath = Path(roundedRect: vuRect, cornerRadius: 4)
+        ctx.fill(windowPath, with: .color(window))
+        // Inner top-edge shadow for depth
+        var innerShadow = Path()
+        innerShadow.move(to: CGPoint(x: vuRect.minX + 3, y: vuRect.minY + 1))
+        innerShadow.addLine(to: CGPoint(x: vuRect.maxX - 3, y: vuRect.minY + 1))
+        ctx.stroke(innerShadow, with: .color(Color.black.opacity(0.75)), lineWidth: 0.8)
+        // Outer subtle frame hairline
+        ctx.stroke(windowPath, with: .color(Color.white.opacity(0.06)), lineWidth: 0.5)
+
+        // "VU" label (top-left, small mono caps)
+        ctx.draw(
+            Text("VU")
+                .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                .foregroundColor(Color.white.opacity(0.28)),
+            at: CGPoint(x: vuRect.minX + 14, y: vuRect.minY + 7)
+        )
+        // "dB" scale hint (top-right)
+        ctx.draw(
+            Text("dB")
+                .font(.system(size: 7, weight: .semibold, design: .monospaced))
+                .foregroundColor(Color.white.opacity(0.22)),
+            at: CGPoint(x: vuRect.maxX - 14, y: vuRect.minY + 7)
+        )
+
+        // Bar cluster geometry
+        let padX: CGFloat = vuRect.width * 0.045
+        let padTop: CGFloat = vuRect.height * 0.26   // leave room for labels
+        let padBottom: CGFloat = vuRect.height * 0.10
+        let innerX = vuRect.minX + padX
+        let innerW = vuRect.width - padX * 2
+        let innerTop = vuRect.minY + padTop
+        let innerBottom = vuRect.maxY - padBottom
+        let innerH = innerBottom - innerTop
+
+        let N = 24
+        let slotW = innerW / CGFloat(N)
+        let barW = slotW * 0.55
+
+        // Faint horizontal "0 dB" guide at 70% of bar height (above is hot)
+        let guideY = innerBottom - innerH * 0.70
+        var guide = Path()
+        guide.move(to: CGPoint(x: innerX, y: guideY))
+        guide.addLine(to: CGPoint(x: innerX + innerW, y: guideY))
+        ctx.stroke(guide, with: .color(Color.white.opacity(0.10)), lineWidth: 0.4)
+
+        // Lit bar gradient stops (amber → warm orange top)
+        let amberHot = Color(red: 242/255, green: 168/255, blue: 90/255)
+        let amberRed = Color(red: 230/255, green: 100/255, blue: 70/255)
+
+        let brightScale = max(0.8, min(1.2, Double(signatureDensityScale)))
+        let heightScale = max(0.85, min(1.15, Double(signatureOmegaScale)))
+
+        for i in 0..<N {
+            let binIdx = min(binCount - 1, (i * binCount) / N)
+            let binVal = CGFloat(spectrumData[binIdx])
+            // Gentle compression + noise floor so idle state still shows a breath
+            let wobble = CGFloat(sinf(t * 1.6 + Float(i) * 0.7)) * 0.02
+            let level = min(1.0, binVal * 1.35 * CGFloat(heightScale) + 0.04 + wobble)
+            let barH = max(innerH * 0.04, innerH * level)
+
+            let bx = innerX + CGFloat(i) * slotW + (slotW - barW) / 2
+            let by = innerBottom - barH
+            let barRect = CGRect(x: bx, y: by, width: barW, height: barH)
+
+            // Soft halo behind bar for LED glow (larger + dimmer)
+            let haloRect = barRect.insetBy(dx: -1.4, dy: -0.8)
+            ctx.fill(
+                Path(roundedRect: haloRect, cornerRadius: barW * 0.6),
+                with: .radialGradient(
+                    Gradient(colors: [amber.opacity(0.45 * brightScale), Color.clear]),
+                    center: CGPoint(x: barRect.midX, y: barRect.midY),
+                    startRadius: 0,
+                    endRadius: max(barW, barH) * 0.85
+                )
+            )
+
+            // Lit bar body with subtle top-hot gradient
+            let crossesGuide = by < guideY
+            let topColor = crossesGuide ? amberRed : amberHot
+            ctx.fill(
+                Path(roundedRect: barRect, cornerRadius: barW * 0.35),
+                with: .linearGradient(
+                    Gradient(stops: [
+                        .init(color: topColor.opacity(0.95 * brightScale), location: 0),
+                        .init(color: amber.opacity(0.92 * brightScale), location: 0.55),
+                        .init(color: amber.opacity(0.70 * brightScale), location: 1)
+                    ]),
+                    startPoint: CGPoint(x: barRect.midX, y: barRect.minY),
+                    endPoint: CGPoint(x: barRect.midX, y: barRect.maxY)
+                )
+            )
+
+            // Tiny bright cap at top of bar
+            let capH: CGFloat = max(0.8, barW * 0.5)
+            let capRect = CGRect(x: bx, y: by, width: barW, height: capH)
+            ctx.fill(
+                Path(roundedRect: capRect, cornerRadius: barW * 0.3),
+                with: .color(Color.white.opacity(0.28))
+            )
+        }
     }
 
     // MARK: - Capstan (deck 上的金属旋轮，6 齿铜圈 + 深灰中心)

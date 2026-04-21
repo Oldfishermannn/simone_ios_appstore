@@ -29,16 +29,9 @@ struct SpectrumCarouselView: View {
                             let visualizer = (channel == state.currentChannel)
                                 ? state.selectedVisualizer
                                 : channel.visualizer
-                            Group {
-                                if state.visualizationMode == .signature,
-                                   hasSignature(for: channel) {
-                                    signatureView(for: channel, spectrumData: spectrumData)
-                                } else {
-                                    visualizerView(for: visualizer, spectrumData: spectrumData)
-                                }
-                            }
-                            .containerRelativeFrame(.horizontal)
-                            .id(index)
+                            visualizerView(for: visualizer, spectrumData: spectrumData)
+                                .containerRelativeFrame(.horizontal)
+                                .id(index)
                         }
                     }
                     .scrollTargetLayout()
@@ -97,24 +90,6 @@ struct SpectrumCarouselView: View {
             try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             dotsVisible = false
-        }
-    }
-
-    // v1.4a Signature: per-channel totem dispatch. Only Lo-fi ships in part 3.
-    private func hasSignature(for channel: Channel) -> Bool {
-        if case .category(.lofi) = channel { return true }
-        return false
-    }
-
-    @ViewBuilder
-    private func signatureView(for channel: Channel, spectrumData: [Float]) -> some View {
-        if case .category(.lofi) = channel {
-            LofiSignatureView(
-                spectrumData: spectrumData,
-                density: density,
-                densityScale: state.signatureDensityScale,
-                omegaScale: state.signatureOmegaScale
-            )
         }
     }
 

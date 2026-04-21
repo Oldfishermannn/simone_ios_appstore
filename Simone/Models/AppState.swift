@@ -59,7 +59,7 @@ final class AppState {
         case signature = "Signature"
         case classic = "Classic"
     }
-    var visualizationMode: VisualizationMode = .signature {
+    var visualizationMode: VisualizationMode = .classic {
         didSet {
             UserDefaults.standard.set(visualizationMode.rawValue, forKey: "visualizationMode")
         }

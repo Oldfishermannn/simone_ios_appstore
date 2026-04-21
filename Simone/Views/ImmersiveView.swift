@@ -115,11 +115,7 @@ struct ImmersiveView: View {
                 .opacity(isSmall ? 0 : 1)
                 .allowsHitTesting(false)
 
-                // v1.4a Signature: Lo-fi totem bypasses morph pipeline (no
-                // expansion param). Carousel large + small branch handle dispatch.
-                if isSignatureLofi {
-                    crossfadeContent(geo: geo, specSize: specSize)
-                } else if supportsMorph(state.selectedVisualizer) {
+                if supportsMorph(state.selectedVisualizer) {
                     morphContent(geo: geo)
                 } else {
                     crossfadeContent(geo: geo, specSize: specSize)
@@ -290,19 +286,10 @@ struct ImmersiveView: View {
                 Spacer()
 
                 TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-                    if isSignatureLofi {
-                        LofiSignatureView(
-                            spectrumData: state.audioEngine.spectrumData,
-                            density: 1,
-                            densityScale: state.signatureDensityScale,
-                            omegaScale: state.signatureOmegaScale
-                        )
-                    } else {
-                        smallVisualizer(
-                            for: state.selectedVisualizer,
-                            spectrumData: state.audioEngine.spectrumData
-                        )
-                    }
+                    smallVisualizer(
+                        for: state.selectedVisualizer,
+                        spectrumData: state.audioEngine.spectrumData
+                    )
                 }
                 .frame(width: specSize, height: specSize)
                 .contentShape(Rectangle())
@@ -392,7 +379,14 @@ struct ImmersiveView: View {
     private func morphVisualizer(for style: VisualizerStyle, spectrumData: [Float], expansion: CGFloat) -> some View {
         switch style {
         case .lofiTape:
-            LofiTapeView(spectrumData: spectrumData, density: 2, expansion: expansion)
+            LofiTapeView(
+                spectrumData: spectrumData,
+                density: 2,
+                expansion: expansion,
+                signatureVU: isSignatureLofi,
+                signatureDensityScale: state.signatureDensityScale,
+                signatureOmegaScale: state.signatureOmegaScale
+            )
         case .oscilloscope:
             OscilloscopeView(spectrumData: spectrumData, density: 2, expansion: expansion)
         case .liquor:
