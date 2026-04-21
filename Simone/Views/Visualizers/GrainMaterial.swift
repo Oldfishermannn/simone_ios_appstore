@@ -70,7 +70,7 @@ struct GrainMaterial {
     static func lofi() -> GrainMaterial {
         GrainMaterial(
             count: 10,
-            tint: Color(red: 232/255, green: 200/255, blue: 188/255).opacity(0.22),
+            tint: Color(red: 232/255, green: 200/255, blue: 190/255).opacity(0.22),
             sizeRange: 0.8...1.6,
             fallSpeedRange: 5.0...9.0,
             seed: 0x10F1C0DECAFE0001

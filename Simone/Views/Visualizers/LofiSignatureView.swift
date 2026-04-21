@@ -33,8 +33,8 @@ struct LofiSignatureView: View {
     // OKLCH-minded but written as sRGB for Canvas interop.
     private let ink        = Color(red:  58/255, green:  48/255, blue:  46/255).opacity(0.92)
     private let inkFaint   = Color(red:  58/255, green:  48/255, blue:  46/255).opacity(0.36)
-    private let cream      = Color(red: 232/255, green: 200/255, blue: 188/255)  // 玉粉黛
-    private let creamSoft  = Color(red: 232/255, green: 200/255, blue: 188/255).opacity(0.55)
+    private let cream      = Color(red: 232/255, green: 200/255, blue: 190/255)  // 玉粉黛 #e8c8be
+    private let creamSoft  = Color(red: 232/255, green: 200/255, blue: 190/255).opacity(0.55)
     private let hub        = Color(red:  72/255, green:  58/255, blue:  54/255).opacity(0.88)
     private let ribbon     = Color(red:  40/255, green:  30/255, blue:  28/255).opacity(0.78)
 

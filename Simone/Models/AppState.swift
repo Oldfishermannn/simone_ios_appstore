@@ -532,5 +532,14 @@ final class AppState {
         }
 
         lyriaClient.sendConfig(buildFullConfig())
+
+        // v1.4a Part 3 — nudge Signature visuals in lockstep with the sound mutation.
+        // ±10% per tick, clamped so the drift never reads as broken. Grain density
+        // has a wider band than reel omega — dust is ambient, the reel is meaning-
+        // bearing and should feel tethered to tempo.
+        let nextDensity = signatureDensityScale + CGFloat.random(in: -0.10...0.10)
+        signatureDensityScale = max(0.82, min(1.18, nextDensity))
+        let nextOmega = signatureOmegaScale + CGFloat.random(in: -0.10...0.10)
+        signatureOmegaScale = max(0.85, min(1.15, nextOmega))
     }
 }
