@@ -50,6 +50,7 @@
 		99F3869BAA2870A7961E8F9C /* HorizonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 011B1EEA4AE69FA3586496C2 /* HorizonView.swift */; };
 		9D487B4F9A1DF78BD705E2AA /* PromptBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C943A16718E552C85DBB7619 /* PromptBuilderTests.swift */; };
 		A0B1C2D3E4F50617283940A1 /* LofiTapeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */; };
+		D1E2F3A4B5C6D7E8F9A0B102 /* LofiSignatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A102 /* LofiSignatureView.swift */; };
 		A1B2C3D4E5F60718293A4B51 /* LofiPadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */; };
 		A2A5B643BA227229887CB35C /* FountainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A40BC1215B61DAEA12C8A4C /* FountainView.swift */; };
 		D1E2F3A4B5C6D7E8F9A0B101 /* GrainMaterial.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A101 /* GrainMaterial.swift */; };
@@ -142,6 +143,7 @@
 		B297E75541715BF298B32801 /* OFL-Archivo.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Archivo.txt"; sourceTree = "<group>"; };
 		B2E2B4F8FBE1CDFA615DD2AA /* PrismView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismView.swift; sourceTree = "<group>"; };
 		B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiTapeView.swift; sourceTree = "<group>"; };
+		C1D2E3F4A5B6C7D8E9F0A102 /* LofiSignatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiSignatureView.swift; sourceTree = "<group>"; };
 		B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiPadView.swift; sourceTree = "<group>"; };
 		B622969586557E8AE6AF0564 /* VinylView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VinylView.swift; sourceTree = "<group>"; };
 		B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LofiBlindsView.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 				D7E8F9012A3B4C5D6E7F0819 /* LiquorView.swift */,
 				B6C7D8E9F0123A4B5C6D7E63 /* LofiBlindsView.swift */,
 				B5C6D7E8F9012A3B4C5D6E62 /* LofiPadView.swift */,
+				C1D2E3F4A5B6C7D8E9F0A102 /* LofiSignatureView.swift */,
 				B4C5D6E7F8091A2B3C4D5E61 /* LofiTapeView.swift */,
 				B7C8D9E0F1234A5B6C7D8E64 /* FireflyJarView.swift */,
 				B8C9D0E1F2345A6B7C8D9E65 /* LetterRackView.swift */,
@@ -467,6 +470,7 @@
 				A2B3C4D5E6F708192A3B4C52 /* LofiBlindsView.swift in Sources */,
 				A1B2C3D4E5F60718293A4B51 /* LofiPadView.swift in Sources */,
 				A0B1C2D3E4F50617283940A1 /* LofiTapeView.swift in Sources */,
+				D1E2F3A4B5C6D7E8F9A0B102 /* LofiSignatureView.swift in Sources */,
 				A3B4C5D6E7F819203A4B5C53 /* FireflyJarView.swift in Sources */,
 				A4B5C6D7E8F91A2B3C4D5E54 /* LetterRackView.swift in Sources */,
 				A5B6C7D8E9F01B2C3D4E5F55 /* DrawerView.swift in Sources */,
