@@ -25,8 +25,6 @@ struct ImmersiveView: View {
     private let crossfadeDuration: Double = 0.4
 
     // v1.3 · Ghost ring 首次 affordance
-    @State private var showGhostRingForCurrentChannel: Bool = false
-
     /// v1.3: big ↔ small automatically follows play/pause state.
     /// No user tap interaction — state.audioEngine.isPlaying drives setMode.
     @State private var isSmall: Bool = true
@@ -144,28 +142,11 @@ struct ImmersiveView: View {
         )
         .overlay(alignment: .bottomLeading) { detailsButton }
         .overlay(alignment: .bottomTrailing) { settingsButton }
-        .overlay(alignment: .center) {
-            if showGhostRingForCurrentChannel {
-                GeometryReader { geo in
-                    let size = min(geo.size.width, geo.size.height) * 0.72
-                    GhostRingView(size: size) {
-                        state.markGhostRingSeen(for: state.currentChannel)
-                        showGhostRingForCurrentChannel = false
-                    }
-                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
-                }
-                .allowsHitTesting(false)
-            }
-        }
         .ignoresSafeArea()
         .statusBarHidden(true)
         .onAppear {
             displayStyleName = state.selectedStyle?.name ?? ""
             displayStyle = state.selectedStyle
-            // v1.3 · 首次进该频道呼吸一次
-            if !state.hasSeenGhostRing(for: state.currentChannel) {
-                showGhostRingForCurrentChannel = true
-            }
         }
         .onChange(of: state.currentChannel) { old, new in
             // v1.3 · Crossfade：state 已 update 到 new，legacy 用 old.visualizer 构造。
@@ -178,12 +159,6 @@ struct ImmersiveView: View {
                 crossfadeLegacy = nil
             }
             slideOnChannelChange(from: old, to: new)
-            // v1.3 · 切到从未看过 ghost ring 的频道时触发（crossfade 后 +0.45s）
-            if !state.hasSeenGhostRing(for: new) {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                    showGhostRingForCurrentChannel = true
-                }
-            }
         }
         .onChange(of: state.selectedStyle?.id) { _, _ in
             // Direct preset tap (DetailsView) — sync when not animating.

@@ -18,7 +18,6 @@
 		1FE1E09F256FF315660F3F92 /* OFL-Fraunces.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA44938A444AA921CDA587C9 /* OFL-Fraunces.txt */; };
 		24D3365691580B669BF855F0 /* TerrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB5A8FFA3CC63049E1AF303 /* TerrainView.swift */; };
 		271377595B29CF5822B918F6 /* ImmersiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9ED180E337042882C7016AA /* ImmersiveView.swift */; };
-		F061C0A5E5D9B11A8B6BB001 /* GhostRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F061C0A5E5D9B11A8B6BB002 /* GhostRingView.swift */; };
 		2F375703031EEAAD4848277B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5691669D5AA081409BCD205 /* ContentView.swift */; };
 		34DA533D79EF8FB3F13CBF19 /* ImmersiveCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D790402405B648A16528DF /* ImmersiveCanvasView.swift */; };
 		36E7EA4D10AAF40367E4C547 /* WaveRippleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016F203749CE33E512B19635 /* WaveRippleView.swift */; };
@@ -165,7 +164,6 @@
 		C90FA1CBA43A0D41EDEF1B85 /* APIKeySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeySettingsView.swift; sourceTree = "<group>"; };
 		C943A16718E552C85DBB7619 /* PromptBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilderTests.swift; sourceTree = "<group>"; };
 		C9ED180E337042882C7016AA /* ImmersiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveView.swift; sourceTree = "<group>"; };
-		F061C0A5E5D9B11A8B6BB002 /* GhostRingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhostRingView.swift; sourceTree = "<group>"; };
 		CB75D286C86C9126CF4E106A /* SpectrumDataProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumDataProvider.swift; sourceTree = "<group>"; };
 		CEC257B30EE761954BAC0BD1 /* PulseBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseBubbleView.swift; sourceTree = "<group>"; };
 		D1D790402405B648A16528DF /* ImmersiveCanvasView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveCanvasView.swift; sourceTree = "<group>"; };
@@ -243,7 +241,6 @@
 				C90FA1CBA43A0D41EDEF1B85 /* APIKeySettingsView.swift */,
 				C5691669D5AA081409BCD205 /* ContentView.swift */,
 				2E8D1FD4A80AB66E94AF8B91 /* DetailsView.swift */,
-				F061C0A5E5D9B11A8B6BB002 /* GhostRingView.swift */,
 				C9ED180E337042882C7016AA /* ImmersiveView.swift */,
 				F061C0A5E5D9B11A8B6B9013 /* Modifiers */,
 				F65AC8031ADEE704B3F43BDC /* MiniPlayerView.swift */,
@@ -492,7 +489,6 @@
 				99F3869BAA2870A7961E8F9C /* HorizonView.swift in Sources */,
 				34DA533D79EF8FB3F13CBF19 /* ImmersiveCanvasView.swift in Sources */,
 				271377595B29CF5822B918F6 /* ImmersiveView.swift in Sources */,
-				F061C0A5E5D9B11A8B6BB001 /* GhostRingView.swift in Sources */,
 				457310387726C5CCC68A8FC2 /* KeychainHelper.swift in Sources */,
 				1F1DEAB6D866E4658E94EB18 /* LatticeView.swift in Sources */,
 				C4D5E6F708192A3B4C5D6E7F /* LiquorView.swift in Sources */,

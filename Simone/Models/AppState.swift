@@ -427,20 +427,6 @@ final class AppState {
         }
     }
 
-    // MARK: - Ghost Ring (v1.3)
-
-    private func ghostRingKey(for channel: Channel) -> String {
-        "hasSeenGhostRing_\(channel.rawKey)"
-    }
-
-    func hasSeenGhostRing(for channel: Channel) -> Bool {
-        UserDefaults.standard.bool(forKey: ghostRingKey(for: channel))
-    }
-
-    func markGhostRingSeen(for channel: Channel) {
-        UserDefaults.standard.set(true, forKey: ghostRingKey(for: channel))
-    }
-
     // MARK: - Sleep Timer
 
     func startSleepTimer(_ duration: SleepDuration) {
