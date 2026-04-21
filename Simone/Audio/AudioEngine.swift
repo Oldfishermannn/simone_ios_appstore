@@ -23,10 +23,19 @@ final class AudioEngine {
     private var softFadeInConsumed: Int = 0
     private let softFadeInLock = NSLock()
 
+    // v1.3 · Lock 无缝续接：与 softFadeIn 对称的尾部 ramp，用于 fallback loop 结束时
+    // 对末端音频线性淡出。语义：接下来播放的 softFadeOutTotal 个样本从 1.0 → 0 linear。
+    private var softFadeOutTotal: Int = 0
+    private var softFadeOutConsumed: Int = 0
+    private let softFadeOutLock = NSLock()
+
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private let bufferQueue = AudioBufferQueue()
     private var isDraining = false
+
+    // v1.3 · Lock 无缝续接
+    let splice = SplicePlayback()
 
     /// Tracks how many buffers are scheduled but not yet played
     private var scheduledBufferCount = 0
@@ -71,6 +80,18 @@ final class AudioEngine {
         try? AVAudioSession.sharedInstance().setActive(true)
         setupInterruptionObserver()
         #endif
+
+        // Splice hooks：把录音-播放-ramp 三个能力注入给 SplicePlayback
+        splice.enqueuePlayback = { [weak self] data in
+            self?.bufferQueue.enqueue(data)
+            self?.drainQueue()
+        }
+        splice.armFadeIn = { [weak self] duration in
+            self?.armSoftFadeIn(duration: duration)
+        }
+        splice.armFadeOut = { [weak self] duration in
+            self?.armSoftFadeOut(duration: duration)
+        }
 
         // Pre-warm the entire audio pipeline at init
         // so the first real playback has zero transient pop
@@ -173,6 +194,8 @@ final class AudioEngine {
 
     func handleAudioChunk(_ data: Data) {
         lastChunkReceivedAt = Date()
+        // v1.3 · 分叉录到 ring buffer（用于 Lock 无缝续接 fallback loop）
+        splice.recordIncoming(data)
         bufferQueue.enqueue(data)
 
         if !isDraining && bufferQueue.count >= bufferMin {
@@ -183,6 +206,11 @@ final class AudioEngine {
     }
 
     func clearQueue() {
+        splice.abortFallback()
+        softFadeOutLock.lock()
+        softFadeOutTotal = 0
+        softFadeOutConsumed = 0
+        softFadeOutLock.unlock()
         bufferQueue.clear()
         isDraining = false
         resetScheduledCount()
@@ -199,7 +227,22 @@ final class AudioEngine {
         softFadeInLock.unlock()
     }
 
+    /// v1.3 · Lock 无缝续接：对 fallback loop 收尾的最后一批音频线性淡出。
+    /// 作用于"尾部"的 softFadeOutTotal 个样本从 1.0 → 0.0。
+    func armSoftFadeOut(duration: TimeInterval) {
+        let samples = max(0, Int(duration * sampleRate))
+        softFadeOutLock.lock()
+        softFadeOutTotal = samples
+        softFadeOutConsumed = 0
+        softFadeOutLock.unlock()
+    }
+
     func flushScheduledBuffers() {
+        splice.abortFallback()
+        softFadeOutLock.lock()
+        softFadeOutTotal = 0
+        softFadeOutConsumed = 0
+        softFadeOutLock.unlock()
         bufferQueue.clear()
         isDraining = false
         resetScheduledCount()
@@ -349,6 +392,31 @@ final class AudioEngine {
         return count
     }
 
+    /// v1.3 · 对称软淡出：按样本顺序抹 ramp 从 1.0 → 0.0 到 buffer 末尾。
+    /// 返回 buffer 内被处理的样本数供调用方扣减预算。
+    private func applySoftFadeOut(
+        _ buffer: AVAudioPCMBuffer,
+        totalRampLength: Int,
+        alreadyRamped: Int
+    ) -> Int {
+        guard totalRampLength > 0 else { return 0 }
+        let bufferLen = Int(buffer.frameLength)
+        let remaining = totalRampLength - alreadyRamped
+        guard remaining > 0 else { return 0 }
+        let count = min(remaining, bufferLen)
+        // 末尾 count 个样本做 1.0 → 0.0 线性淡出
+        let start = bufferLen - count
+        for ch in 0..<Int(channels) {
+            guard let data = buffer.floatChannelData?[ch] else { continue }
+            for i in 0..<count {
+                let globalIndex = alreadyRamped + i
+                let gain = 1.0 - Float(globalIndex) / Float(totalRampLength)
+                data[start + i] *= gain
+            }
+        }
+        return count
+    }
+
     // MARK: - Private
 
     private func drainQueue() {
@@ -400,6 +468,25 @@ final class AudioEngine {
                     alreadyRamped: softFadeConsumed
                 )
                 softFadeConsumed += consumed
+            }
+
+            // v1.3 · 软淡出（对称 ramp，fallback loop 收尾）
+            softFadeOutLock.lock()
+            let softOutTotal = softFadeOutTotal
+            var softOutConsumed = softFadeOutConsumed
+            softFadeOutLock.unlock()
+            if softOutTotal > 0 && softOutConsumed < softOutTotal {
+                let consumed = applySoftFadeOut(
+                    pcmBuffer,
+                    totalRampLength: softOutTotal,
+                    alreadyRamped: softOutConsumed
+                )
+                softOutConsumed += consumed
+                softFadeOutLock.lock()
+                if softFadeOutTotal == softOutTotal {
+                    softFadeOutConsumed = min(softOutConsumed, softOutTotal)
+                }
+                softFadeOutLock.unlock()
             }
 
             // Fade-in/out on every buffer: ensures all transitions are smooth
