@@ -9,9 +9,15 @@ struct ImmersiveView: View {
     // immersive page overlay tracks the same horizontal gesture the carousel
     // already animates.
     @State private var nameSlideOffset: CGFloat = 0
+    @State private var nameSlideOffsetY: CGFloat = 0
     @State private var nameOpacity: Double = 1.0
     @State private var displayStyleName: String = ""
     @State private var displayStyle: MoodStyle? = nil
+
+    // v1.3 · 手势 state
+    @State private var bounceOffsetY: CGFloat = 0
+    @State private var bounceOffsetX: CGFloat = 0
+    private let swipeThreshold: CGFloat = 50
 
     /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
     /// Default is big; small mode shows a card-sized spectrum at top.
@@ -98,6 +104,22 @@ struct ImmersiveView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .contentShape(Rectangle())
+        .offset(x: bounceOffsetX, y: bounceOffsetY)
+        .gesture(
+            DragGesture(minimumDistance: 10)
+                .onEnded { value in
+                    let h = value.translation.width
+                    let v = value.translation.height
+                    if abs(h) > abs(v) {
+                        if h > swipeThreshold { switchChannelSwipe(by: -1) }
+                        else if h < -swipeThreshold { switchChannelSwipe(by: +1) }
+                    } else {
+                        if v > swipeThreshold { switchStyle(by: -1) }
+                        else if v < -swipeThreshold { switchStyle(by: +1) }
+                    }
+                }
+        )
         .overlay(alignment: .bottomLeading) { detailsButton }
         .overlay(alignment: .bottomTrailing) { settingsButton }
         .ignoresSafeArea()
@@ -145,6 +167,76 @@ struct ImmersiveView: View {
             withAnimation(.easeOut(duration: 0.18)) {
                 nameSlideOffset = 0
                 nameOpacity = 1
+            }
+        }
+    }
+
+    /// v1.3 · 纵滑切 style — 文字纵向滑出/滑入，visualizer 本体不动。
+    /// direction: +1 = 向上滑（切下一个）, -1 = 向下滑（切上一个）。
+    private func slideOnStyleChange(direction: Int) {
+        let slideOut: CGFloat = direction > 0 ? -60 : 60
+        let slideIn: CGFloat = direction > 0 ? 60 : -60
+
+        withAnimation(.easeIn(duration: 0.12)) {
+            nameSlideOffsetY = slideOut
+            nameOpacity = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            displayStyleName = state.selectedStyle?.name ?? ""
+            displayStyle = state.selectedStyle
+            nameSlideOffsetY = slideIn
+            withAnimation(.easeOut(duration: 0.18)) {
+                nameSlideOffsetY = 0
+                nameOpacity = 1
+            }
+        }
+    }
+
+    /// v1.3 · 纵滑：切到当前频道 orderedStyles 的上/下一个 style。
+    /// 撞头/撞尾 rubber-band 弹回。
+    private func switchStyle(by delta: Int) {
+        let list = state.orderedStyles(for: state.currentChannel)
+        guard !list.isEmpty else { return }
+        let currentId = state.selectedStyle?.id
+        let idx = list.firstIndex(where: { $0.id == currentId }) ?? 0
+        let newIdx = idx + delta
+        guard newIdx >= 0 && newIdx < list.count else {
+            rubberBand(vertical: true, delta: delta)
+            return
+        }
+        state.selectStyle(list[newIdx])
+        slideOnStyleChange(direction: delta)
+    }
+
+    /// v1.3 · 横滑：切到 Channel.all 的上/下一个 channel。
+    /// Crossfade 动画由 slideOnChannelChange + Task 7 双层渲染承担。
+    private func switchChannelSwipe(by delta: Int) {
+        let channels = Channel.all
+        let idx = channels.firstIndex(of: state.currentChannel) ?? 0
+        let newIdx = idx + delta
+        guard newIdx >= 0 && newIdx < channels.count else {
+            rubberBand(vertical: false, delta: delta)
+            return
+        }
+        state.switchToChannel(channels[newIdx])
+    }
+
+    /// v1.3 · 撞墙 rubber-band — spring 弹回。
+    private func rubberBand(vertical: Bool, delta: Int) {
+        let bounce: CGFloat = delta > 0 ? -30 : 30
+        if vertical {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                bounceOffsetY = bounce
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.spring()) { bounceOffsetY = 0 }
+            }
+        } else {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                bounceOffsetX = bounce
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.spring()) { bounceOffsetX = 0 }
             }
         }
     }
@@ -276,7 +368,7 @@ struct ImmersiveView: View {
         VStack(spacing: 10) {
             if let style = displayStyle {
                 musicDNA(style: style)
-                    .offset(x: nameSlideOffset)
+                    .offset(x: nameSlideOffset, y: nameSlideOffsetY)
                     .opacity(nameOpacity)
             }
 
@@ -288,7 +380,7 @@ struct ImmersiveView: View {
             Text(displayStyleName)
                 .fog(.displaySm)
                 .foregroundStyle(FogTokens.textPrimary)
-                .offset(x: nameSlideOffset)
+                .offset(x: nameSlideOffset, y: nameSlideOffsetY)
                 .opacity(nameOpacity)
         }
         .allowsHitTesting(false)
