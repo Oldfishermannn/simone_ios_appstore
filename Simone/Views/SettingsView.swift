@@ -59,8 +59,8 @@ struct SettingsView: View {
 
                     satelliteRow(
                         title: "Sleep",
-                        subtitle: sleepSubtitle,
-                        value: sleepDisplay,
+                        subtitle: "fade to silence",
+                        value: state.activeSleepDuration?.label.uppercased() ?? "OFF",
                         codex: nil,
                         tappable: true,
                         isLive: state.activeSleepDuration != nil,
@@ -151,10 +151,8 @@ struct SettingsView: View {
 
     // MARK: - Primary row (Auto Tune)
 
-    /// Auto Tune gets deliberately bigger type + a log-style state word
-    /// (OPEN / CLOSED) so it reads as a radio station sign, not a generic
-    /// iOS toggle. This is the most-toggled setting on the page; the weight
-    /// hierarchy reflects that.
+    /// v1.3: 主屏无激活态 UI (spec §6.2 D)。OPEN/CLOSED 状态文字已删，
+    /// 只留 live-state dot 做极轻提示。
     private var primaryRow: some View {
         Button {
             state.autoTuneEnabled.toggle()
@@ -167,16 +165,6 @@ struct SettingsView: View {
                         .foregroundStyle(FogTheme.inkPrimary)
 
                     Spacer(minLength: FogTheme.spaceLG)
-
-                    // State word — the only place accent is allowed to flicker.
-                    Text(state.autoTuneEnabled ? "OPEN" : "CLOSED")
-                        .font(FogTheme.mono(12, weight: .regular))
-                        .tracking(FogTheme.trackLabel)
-                        .foregroundStyle(
-                            state.autoTuneEnabled
-                                ? FogTheme.accent
-                                : FogTheme.inkSecondary.opacity(0.7)
-                        )
                 }
 
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -375,18 +363,6 @@ struct SettingsView: View {
         } else {
             state.startSleepTimer(durations.first!)
         }
-    }
-
-    private var sleepDisplay: String {
-        state.activeSleepDuration?.label.uppercased() ?? "OFF"
-    }
-
-    private var sleepSubtitle: String {
-        if let end = state.sleepTimerEnd {
-            let remaining = Int(max(0, end.timeIntervalSinceNow / 60))
-            return "\(remaining) min to silence"
-        }
-        return "fade to silence"
     }
 
     private var appVersion: String {
