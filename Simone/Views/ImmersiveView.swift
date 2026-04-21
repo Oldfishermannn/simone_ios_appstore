@@ -24,9 +24,8 @@ struct ImmersiveView: View {
     @State private var crossfadeOpacity: Double = 0.0
     private let crossfadeDuration: Double = 0.4
 
-    // v1.3 · Ghost ring 首次 affordance
-    /// v1.3: big ↔ small automatically follows play/pause state.
-    /// No user tap interaction — state.audioEngine.isPlaying drives setMode.
+    /// v1.3: big ↔ small 由用户单击 visualizer 手动切换。
+    /// 单击 visualizer 本体 → toggle。Play/Pause 按钮只控播放，不影响大小图。
     @State private var isSmall: Bool = true
 
     // MARK: - Lofi morph tween state
@@ -71,6 +70,12 @@ struct ImmersiveView: View {
         morphTo = toSmall ? 0.0 : 1.0
         morphStart = now
         withAnimation(toggleAnim) { isSmall = toSmall }
+    }
+
+    /// 单击 visualizer 切换大小图 — soft haptic 物件感反馈，不加 scale/ring/flash。
+    private func tapToggleSize() {
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        setMode(toSmall: !isSmall)
     }
 
     var body: some View {
@@ -166,12 +171,6 @@ struct ImmersiveView: View {
                 displayStyleName = state.selectedStyle?.name ?? ""
                 displayStyle = state.selectedStyle
             }
-        }
-        .onChange(of: state.audioEngine.isPlaying) { _, playing in
-            // Auto: play → big pose, pause → small pose.
-            // Reuses the morph tween so transition is continuous even if the
-            // user toggled mid-flight via tap.
-            setMode(toSmall: !playing)
         }
     }
 
@@ -285,6 +284,8 @@ struct ImmersiveView: View {
                     )
                 }
                 .frame(width: specSize, height: specSize)
+                .contentShape(Rectangle())
+                .onTapGesture { tapToggleSize() }
 
                 Spacer().frame(height: 44)
 
@@ -302,6 +303,8 @@ struct ImmersiveView: View {
             ZStack {
                 SpectrumCarouselView(state: state, showDots: false, density: 2)
                     .frame(width: geo.size.width, height: geo.size.height)
+                    .contentShape(Rectangle())
+                    .onTapGesture { tapToggleSize() }
 
                 VStack(spacing: 0) {
                     Spacer()
@@ -346,6 +349,8 @@ struct ImmersiveView: View {
                 )
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .contentShape(Rectangle())
+            .onTapGesture { tapToggleSize() }
 
             VStack(spacing: 0) {
                 Spacer()
