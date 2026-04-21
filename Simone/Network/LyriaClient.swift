@@ -27,6 +27,11 @@ final class LyriaClient {
     private var autoReconnect = true
     private var reconnectAttempts = 0
     private var isSetupComplete = false
+    /// v1.3 · reconnectAndRestore 主动 cancel 老 ws 时 set true；
+    /// handleDisconnect 检查此 flag 决定是否触发自动重连（flag=true 时 skip，
+    /// 因为本 session 已在主动重建中，避免嵌套重入）。
+    /// setupComplete 或新 ws 失败路径 set false 恢复正常流。
+    private var isIntentionallyRestarting = false
 
     // 记忆最后的参数，用于会话轮转后恢复
     private var lastPrompts: [WeightedPrompt]?
@@ -217,6 +222,10 @@ final class LyriaClient {
     }
 
     private func handleDisconnect(error: Error) {
+        // v1.3 · 如果是 reconnectAndRestore 主动 cancel 老 ws 触发的，skip 不重连
+        // （outer reconnectAndRestore 已在建新 ws，此处再重连 = 嵌套死循环）
+        if isIntentionallyRestarting { return }
+
         let wasPlaying = isPlaying
         isSetupComplete = false
 
@@ -248,15 +257,19 @@ final class LyriaClient {
     /// 会话轮转：重连后自动恢复 prompts/config/播放状态（不触发 onConnected → 不走 sendCurrentPrompts）
     /// v1.3 起对外开放，onPlaybackStalled 卡死自救也改走这条路径，统一会话轮转逻辑。
     func reconnectAndRestore() {
+        // v1.3 · 防重入：isIntentionallyRestarting flag 告诉 handleDisconnect
+        // 这是我主动 cancel 老 ws，不要再触发自动重连（否则嵌套导致 fallback 40s
+        // 被反复塞 playerNode → 频繁 flush → 听感"鬼畜一小段"）。
+        guard !isIntentionallyRestarting else { return }
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else { return }
 
-        // v1.3 · 先通知上层（AudioEngine 开始 fallback loop 盖空档）
+        isIntentionallyRestarting = true
+        connectionState = .reconnecting
+        isSetupComplete = false
+
         DispatchQueue.main.async { [weak self] in
             self?.onReconnectStarted?()
         }
-
-        connectionState = .reconnecting
-        isSetupComplete = false
 
         guard let url = URL(string: "\(Self.endpoint)?key=\(apiKey)") else { return }
 
@@ -284,6 +297,7 @@ final class LyriaClient {
                    let json = try? JSONSerialization.jsonObject(with: msgData) as? [String: Any],
                    json["setupComplete"] != nil {
                     self.isSetupComplete = true
+                    self.isIntentionallyRestarting = false
                     DispatchQueue.main.async {
                         self.connectionState = .connected
                         self.reconnectAttempts = 0
@@ -306,6 +320,8 @@ final class LyriaClient {
                 // 继续正常接收循环
                 self.receiveMessage()
             case .failure(let error):
+                // 新 ws 失败：清 flag，让 handleDisconnect 正常走自动重连路径
+                self.isIntentionallyRestarting = false
                 self.handleDisconnect(error: error)
             }
         }
