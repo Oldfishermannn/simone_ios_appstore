@@ -28,7 +28,9 @@ final class AudioEngine {
     var onPlaybackStalled: (() -> Void)?
     private var lastChunkReceivedAt: Date?
     private var watchdogTimer: Timer?
-    private let stallThreshold: TimeInterval = 10
+    // v1.3 · Lock 10min 跳风格修复：10s → 20s。Lyria chunk 偶尔 >10s 间隔但不是真 stall，
+    // 降低误触发频率，避免把自然的 chunk 抖动当成卡死而强制重连。
+    private let stallThreshold: TimeInterval = 20
 
     // Interruption observer token
     private var interruptionObserver: NSObjectProtocol?
