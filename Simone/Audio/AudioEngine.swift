@@ -37,6 +37,10 @@ final class AudioEngine {
     // v1.3 · Lock 无缝续接
     let splice = SplicePlayback()
 
+    // v1.3 · playerNode.volume ramp timer（armSoftFadeOut 用；per-sample ramp 对已 scheduled
+    // 的 fallback buffer 无效，必须用 node-level volume 实时衰减）
+    private var volumeRampTimer: Timer?
+
     /// Tracks how many buffers are scheduled but not yet played
     private var scheduledBufferCount = 0
     private let scheduleLock = NSLock()
@@ -210,6 +214,9 @@ final class AudioEngine {
 
     func clearQueue() {
         splice.abortFallback()
+        volumeRampTimer?.invalidate()
+        volumeRampTimer = nil
+        playerNode?.volume = 1.0
         softFadeOutLock.lock()
         softFadeOutTotal = 0
         softFadeOutConsumed = 0
@@ -230,18 +237,36 @@ final class AudioEngine {
         softFadeInLock.unlock()
     }
 
-    /// v1.3 · Lock 无缝续接：对 fallback loop 收尾的最后一批音频线性淡出。
-    /// 作用于"尾部"的 softFadeOutTotal 个样本从 1.0 → 0.0。
+    /// v1.3 · Lock 无缝续接：playerNode.volume ramp 1.0 → 0.0 over duration。
+    /// 用 node-level volume 而不是 per-sample ramp——因为 fallback 已全 scheduleBuffer，
+    /// per-sample ramp 对已 scheduled 的 buffer 无效（buffer PCM 内容已固定）。
     func armSoftFadeOut(duration: TimeInterval) {
-        let samples = max(0, Int(duration * sampleRate))
-        softFadeOutLock.lock()
-        softFadeOutTotal = samples
-        softFadeOutConsumed = 0
-        softFadeOutLock.unlock()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let node = self.playerNode else { return }
+            self.volumeRampTimer?.invalidate()
+            node.volume = 1.0
+            let steps = max(30, Int(duration * 60))
+            let interval = duration / Double(steps)
+            let delta: Float = -1.0 / Float(steps)
+            var currentStep = 0
+            self.volumeRampTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] timer in
+                guard let self, let node = self.playerNode else { timer.invalidate(); return }
+                currentStep += 1
+                if currentStep >= steps {
+                    node.volume = 0.0
+                    timer.invalidate()
+                    self.volumeRampTimer = nil
+                } else {
+                    node.volume = 1.0 + delta * Float(currentStep)
+                }
+            }
+        }
     }
 
     func flushScheduledBuffers() {
         splice.abortFallback()
+        volumeRampTimer?.invalidate()
+        volumeRampTimer = nil
         softFadeOutLock.lock()
         softFadeOutTotal = 0
         softFadeOutConsumed = 0
@@ -250,7 +275,8 @@ final class AudioEngine {
         isDraining = false
         resetScheduledCount()
         playerNode?.stop()
-        // Restart player so it's ready for new buffers
+        // v1.3 · reset volume 让新 chunk 能听见（armSoftFadeOut 把 volume ramp 到 0）
+        playerNode?.volume = 1.0
         playerNode?.play()
     }
 
