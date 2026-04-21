@@ -174,12 +174,14 @@ final class AppState {
         lyriaClient.onConnected = { [weak self] in
             self?.sendCurrentPrompts()
         }
-        // 卡死自救：AudioEngine 发现 10s 无新 chunk + buffer 空 → 触发重连
+        // 卡死自救：AudioEngine 发现 20s 无新 chunk + buffer 空 → 触发会话轮转
+        // v1.3 · Lock 10min 跳风格修复：改走 reconnectAndRestore（不走 onConnected
+        // → 不触发 sendCurrentPrompts → 不发新 prompt），统一会话轮转逻辑，
+        // 减少「Lyria 从零重新生成音乐」的听感跳变。
         audioEngine.onPlaybackStalled = { [weak self] in
             guard let self, self.audioEngine.isPlaying else { return }
             self.statusMessage = "Recovering stream..."
-            self.lyriaClient.disconnect()
-            self.lyriaClient.connect()
+            self.lyriaClient.reconnectAndRestore()
         }
         #if os(iOS)
         audioEngine.setupRemoteCommandCenter(

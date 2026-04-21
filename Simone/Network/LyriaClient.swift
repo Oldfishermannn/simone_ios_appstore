@@ -237,8 +237,9 @@ final class LyriaClient {
         }
     }
 
-    /// 会话轮转：重连后自动恢复 prompts/config/播放状态
-    private func reconnectAndRestore() {
+    /// 会话轮转：重连后自动恢复 prompts/config/播放状态（不触发 onConnected → 不走 sendCurrentPrompts）
+    /// v1.3 起对外开放，onPlaybackStalled 卡死自救也改走这条路径，统一会话轮转逻辑。
+    func reconnectAndRestore() {
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else { return }
 
         connectionState = .reconnecting
