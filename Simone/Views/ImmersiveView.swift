@@ -27,8 +27,8 @@ struct ImmersiveView: View {
     // v1.3 · Ghost ring 首次 affordance
     @State private var showGhostRingForCurrentChannel: Bool = false
 
-    /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
-    /// Default is big; small mode shows a card-sized spectrum at top.
+    /// v1.3: big ↔ small automatically follows play/pause state.
+    /// No user tap interaction — state.audioEngine.isPlaying drives setMode.
     @State private var isSmall: Bool = true
 
     // MARK: - Lofi morph tween state
