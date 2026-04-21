@@ -384,6 +384,63 @@ final class AppState {
         pinnedStyles.contains(where: { $0.id == style.id })
     }
 
+    // MARK: - Style Order (v1.3)
+
+    /// 每频道独立持久化 style 顺序。key pattern: `styleOrder_<channel.rawKey>`。
+    /// 老用户没有此 key 时走默认顺序（`stylesInCurrentChannel`），schema 可逆。
+    private func styleOrderKey(for channel: Channel) -> String {
+        "styleOrder_\(channel.rawKey)"
+    }
+
+    /// 返回当前频道的"用户排序后"style 列表。persisted 里存在的按 persisted 顺序，
+    /// 未在 persisted 里的（新 preset）追加到末尾。Favorites 频道用 id 持久化（跨 category）。
+    func orderedStyles(for channel: Channel) -> [MoodStyle] {
+        let defaults = styles(for: channel)
+        let persisted = UserDefaults.standard.stringArray(forKey: styleOrderKey(for: channel)) ?? []
+        guard !persisted.isEmpty else { return defaults }
+        let byId = Dictionary(uniqueKeysWithValues: defaults.map { ($0.id, $0) })
+        var result: [MoodStyle] = []
+        var seen = Set<String>()
+        for id in persisted {
+            if let s = byId[id] {
+                result.append(s)
+                seen.insert(id)
+            }
+        }
+        for s in defaults where !seen.contains(s.id) {
+            result.append(s)
+        }
+        return result
+    }
+
+    /// 持久化新顺序（id list）。
+    func reorderStyles(in channel: Channel, newOrder: [MoodStyle]) {
+        let ids = newOrder.map { $0.id }
+        UserDefaults.standard.set(ids, forKey: styleOrderKey(for: channel))
+    }
+
+    /// Helper：给定频道取默认 style 列表（不查 persisted order）。
+    private func styles(for channel: Channel) -> [MoodStyle] {
+        switch channel {
+        case .favorites:       return pinnedStyles
+        case .category(let c): return MoodStyle.presets(for: c)
+        }
+    }
+
+    // MARK: - Ghost Ring (v1.3)
+
+    private func ghostRingKey(for channel: Channel) -> String {
+        "hasSeenGhostRing_\(channel.rawKey)"
+    }
+
+    func hasSeenGhostRing(for channel: Channel) -> Bool {
+        UserDefaults.standard.bool(forKey: ghostRingKey(for: channel))
+    }
+
+    func markGhostRingSeen(for channel: Channel) {
+        UserDefaults.standard.set(true, forKey: ghostRingKey(for: channel))
+    }
+
     // MARK: - Sleep Timer
 
     func startSleepTimer(_ duration: SleepDuration) {
