@@ -22,8 +22,6 @@
 		2F375703031EEAAD4848277B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5691669D5AA081409BCD205 /* ContentView.swift */; };
 		34DA533D79EF8FB3F13CBF19 /* ImmersiveCanvasView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D790402405B648A16528DF /* ImmersiveCanvasView.swift */; };
 		36E7EA4D10AAF40367E4C547 /* WaveRippleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016F203749CE33E512B19635 /* WaveRippleView.swift */; };
-		3DF61ECBC0E729C9D9914806 /* VerticalPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134D6D57C81DDEE937CA39B0 /* VerticalPageView.swift */; };
-		422FDD340ED9F751F3701EE5 /* ChannelPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84074B0CC7DD19010B4DD8B4 /* ChannelPageView.swift */; };
 		453E552B8C92007029B47E34 /* RingPulseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06C9DD835ED09640EB4102B0 /* RingPulseView.swift */; };
 		457310387726C5CCC68A8FC2 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D507A7E2E4EE4C1B598C0F3 /* KeychainHelper.swift */; };
 		4BB2C421AA09A83D7187399C /* LyriaClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251E4193BD73FBA3F798227E /* LyriaClient.swift */; };
@@ -108,7 +106,6 @@
 		06C9DD835ED09640EB4102B0 /* RingPulseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RingPulseView.swift; sourceTree = "<group>"; };
 		08AFE505680E95BADF1399B0 /* RippleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RippleView.swift; sourceTree = "<group>"; };
 		11041D666D9750DDCF7854BF /* SimoneTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SimoneTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		134D6D57C81DDEE937CA39B0 /* VerticalPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerticalPageView.swift; sourceTree = "<group>"; };
 		16965D51275875EB67E8C74C /* StyleRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleRowView.swift; sourceTree = "<group>"; };
 		1C7C85DF0FDE49B5A95A60C9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1CB03C3E0027DA1E34444342 /* SilkWaveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilkWaveView.swift; sourceTree = "<group>"; };
@@ -137,7 +134,6 @@
 		746420BC6C0BE038E546B913 /* GlitchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlitchView.swift; sourceTree = "<group>"; };
 		80194874FBD4D2401255FFAC /* Channel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Channel.swift; sourceTree = "<group>"; };
 		F061C0A5E5D9B11A8B6BA002 /* Tier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tier.swift; sourceTree = "<group>"; };
-		84074B0CC7DD19010B4DD8B4 /* ChannelPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelPageView.swift; sourceTree = "<group>"; };
 		8BB5A8FFA3CC63049E1AF303 /* TerrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerrainView.swift; sourceTree = "<group>"; };
 		95786D6355DCB02999C093A8 /* Fraunces[SOFT,WONK,opsz,wght].ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fraunces[SOFT,WONK,opsz,wght].ttf"; sourceTree = "<group>"; };
 		95BFE1B3AFD7015A25189575 /* AudioBufferQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioBufferQueueTests.swift; sourceTree = "<group>"; };
@@ -245,7 +241,6 @@
 			isa = PBXGroup;
 			children = (
 				C90FA1CBA43A0D41EDEF1B85 /* APIKeySettingsView.swift */,
-				84074B0CC7DD19010B4DD8B4 /* ChannelPageView.swift */,
 				C5691669D5AA081409BCD205 /* ContentView.swift */,
 				2E8D1FD4A80AB66E94AF8B91 /* DetailsView.swift */,
 				F061C0A5E5D9B11A8B6BB002 /* GhostRingView.swift */,
@@ -256,7 +251,6 @@
 				52FB00288B34147AC47677E8 /* SettingsView.swift */,
 				6C4631B1A8C6EC69450E2E97 /* SpectrumCarouselView.swift */,
 				16965D51275875EB67E8C74C /* StyleRowView.swift */,
-				134D6D57C81DDEE937CA39B0 /* VerticalPageView.swift */,
 				7FA551E57F59F9976B132116 /* Visualizers */,
 			);
 			path = Views;
@@ -484,7 +478,6 @@
 				89DE4DCBA348FE3B66FA8BE5 /* CascadeView.swift in Sources */,
 				5A4CDFE84DE9F81BB18ED27A /* Channel.swift in Sources */,
 				F061C0A5E5D9B11A8B6BA001 /* Tier.swift in Sources */,
-				422FDD340ED9F751F3701EE5 /* ChannelPageView.swift in Sources */,
 				D4BCFD536CCF57555F6C8559 /* ConstellationView.swift in Sources */,
 				2F375703031EEAAD4848277B /* ContentView.swift in Sources */,
 				91F2FF5882950688BC4DF83F /* DetailsView.swift in Sources */,
@@ -539,7 +532,6 @@
 				4C1D301744921FBD39BEC748 /* StyleCategory.swift in Sources */,
 				CA9FF3A7A8420C0C7278F486 /* StyleRowView.swift in Sources */,
 				24D3365691580B669BF855F0 /* TerrainView.swift in Sources */,
-				3DF61ECBC0E729C9D9914806 /* VerticalPageView.swift in Sources */,
 				17380085E9BD8693861558D1 /* VinylView.swift in Sources */,
 				FEFC146E14AF24417D90E7EC /* VisualizerStyle.swift in Sources */,
 				690697ABF996DC0DFAFCD100 /* VortexView.swift in Sources */,
