@@ -43,6 +43,10 @@ final class SplicePlayback: @unchecked Sendable {
     /// 调用方（AudioEngine）提供 arm 软淡出 hook（新增对称 ramp）。
     var armFadeOut: ((TimeInterval) -> Void)?
 
+    /// 调用方（AudioEngine）提供 flush scheduled playerNode 队列 hook。
+    /// endFallbackLoop 在 fadeOut 完成后用它清掉 playerNode 内部残留的 fallback chunk。
+    var flushPlayback: (() -> Void)?
+
     // MARK: - Public API
 
     /// 每个 Lyria chunk 到达时调用，append 到 ring buffer。溢出循环覆盖。
@@ -108,15 +112,23 @@ final class SplicePlayback: @unchecked Sendable {
         }
     }
 
-    /// 标记退出 fallback + 安排 fade-out ramp + arm 新 chunk 的 fade-in。
-    /// AudioEngine 的 drainQueue 会自然消耗掉 ring buffer 剩下的 chunk，
-    /// 新 Lyria chunk 继续走 recordIncoming + 现有路径入 bufferQueue。
+    /// 标记退出 fallback + fadeOut ramp → crossfade 秒后 flush playerNode 清残留 fallback
+    /// + arm 新 chunk 的 fadeIn。
+    ///
+    /// 为什么要 flushPlayback：beginFallbackLoop 把 40s fallback 一次性 scheduleBuffer 到
+    /// AVAudioPlayerNode 内部队列；armFadeOut 只 ramp 前 crossfade 秒到 0，剩余 fallback
+    /// 会恢复满音量继续播。必须在 fadeOut 完成的瞬间 flush playerNode 才能让新 Lyria chunk
+    /// 立即接上（否则听感 = 循环老音频 ~38.5s 后才出现新风格）。
     func endFallbackLoop(crossfade: TimeInterval) {
         lock.lock()
         isFallbackActive = false
         lock.unlock()
         armFadeOut?(crossfade)
-        armFadeIn?(crossfade)
+        DispatchQueue.main.asyncAfter(deadline: .now() + crossfade) { [weak self] in
+            guard let self else { return }
+            self.flushPlayback?()
+            self.armFadeIn?(crossfade)
+        }
     }
 
     /// 用户手操（切频道/切 style/换 visualizer）立即打断 fallback。

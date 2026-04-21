@@ -92,6 +92,9 @@ final class AudioEngine {
         splice.armFadeOut = { [weak self] duration in
             self?.armSoftFadeOut(duration: duration)
         }
+        splice.flushPlayback = { [weak self] in
+            self?.flushScheduledBuffers()
+        }
 
         // Pre-warm the entire audio pipeline at init
         // so the first real playback has zero transient pop
@@ -392,8 +395,9 @@ final class AudioEngine {
         return count
     }
 
-    /// v1.3 · 对称软淡出：按样本顺序抹 ramp 从 1.0 → 0.0 到 buffer 末尾。
-    /// 返回 buffer 内被处理的样本数供调用方扣减预算。
+    /// v1.3 · 对称软淡出：与 softFadeIn 镜像——处理 buffer 的前 count 个样本，
+    /// gain 从 (1 - alreadyRamped/total) 递减到 ~0。跨 buffer 累加 alreadyRamped。
+    /// 返回被处理的样本数供调用方扣减预算。
     private func applySoftFadeOut(
         _ buffer: AVAudioPCMBuffer,
         totalRampLength: Int,
@@ -404,14 +408,12 @@ final class AudioEngine {
         let remaining = totalRampLength - alreadyRamped
         guard remaining > 0 else { return 0 }
         let count = min(remaining, bufferLen)
-        // 末尾 count 个样本做 1.0 → 0.0 线性淡出
-        let start = bufferLen - count
         for ch in 0..<Int(channels) {
             guard let data = buffer.floatChannelData?[ch] else { continue }
             for i in 0..<count {
                 let globalIndex = alreadyRamped + i
                 let gain = 1.0 - Float(globalIndex) / Float(totalRampLength)
-                data[start + i] *= gain
+                data[i] *= gain
             }
         }
         return count
