@@ -164,93 +164,95 @@ struct LofiTapeView: View {
                             radius: capstanR, angle: -CGFloat(t * omega),
                             metal: deckMetal, dark: deckDark)
 
-                // PLAY LED（红，bass 脉动）
-                let ledRowY: CGFloat = deckTopY + h * 0.11
-                let playX: CGFloat = w * 0.18
-                let playPulse: Double = 0.45 + Double(bassCG) * 0.55
-                let playHalo: CGFloat = 16 + bassCG * 8
-                ctx.fill(Path(ellipseIn: CGRect(
-                    x: playX - playHalo, y: ledRowY - playHalo,
-                    width: playHalo * 2, height: playHalo * 2
-                )), with: .radialGradient(
-                    Gradient(colors: [playLed.opacity(playPulse * 0.55), Color.clear]),
-                    center: CGPoint(x: playX, y: ledRowY),
-                    startRadius: 0, endRadius: playHalo
-                ))
-                ctx.fill(Path(ellipseIn: CGRect(
-                    x: playX - 3.2, y: ledRowY - 3.2, width: 6.4, height: 6.4
-                )), with: .color(playLed.opacity(0.92)))
-
-                // Power LED（蓝，恒亮小点）
-                let powerX: CGFloat = playX + 18
-                ctx.fill(Path(ellipseIn: CGRect(
-                    x: powerX - 9, y: ledRowY - 9, width: 18, height: 18
-                )), with: .radialGradient(
-                    Gradient(colors: [powerLed.opacity(0.30), Color.clear]),
-                    center: CGPoint(x: powerX, y: ledRowY),
-                    startRadius: 0, endRadius: 9
-                ))
-                ctx.fill(Path(ellipseIn: CGRect(
-                    x: powerX - 2.2, y: ledRowY - 2.2, width: 4.4, height: 4.4
-                )), with: .color(powerLed.opacity(0.88)))
-
-                // 右侧：3 个机械按键（PLAY / FF / STOP 圆钮）
-                let btnY: CGFloat = ledRowY
-                let btnR: CGFloat = 7.5
-                let btnGap: CGFloat = 24
-                let btnStartX: CGFloat = w - w * 0.16 - btnGap * 2
-                for i in 0..<3 {
-                    let bx = btnStartX + CGFloat(i) * btnGap
-                    let outerR: CGFloat = btnR + 2
+                // Classic-only deck controls (hidden in Signature to give the
+                // spectrum window the full lower deck real-estate).
+                if !signatureVU {
+                    // PLAY LED（红，bass 脉动）
+                    let ledRowY: CGFloat = deckTopY + h * 0.11
+                    let playX: CGFloat = w * 0.18
+                    let playPulse: Double = 0.45 + Double(bassCG) * 0.55
+                    let playHalo: CGFloat = 16 + bassCG * 8
                     ctx.fill(Path(ellipseIn: CGRect(
-                        x: bx - outerR, y: btnY - outerR,
-                        width: outerR * 2, height: outerR * 2
-                    )), with: .color(deckDarker))
-                    ctx.fill(Path(ellipseIn: CGRect(
-                        x: bx - btnR, y: btnY - btnR,
-                        width: btnR * 2, height: btnR * 2
+                        x: playX - playHalo, y: ledRowY - playHalo,
+                        width: playHalo * 2, height: playHalo * 2
                     )), with: .radialGradient(
-                        Gradient(colors: [deckMetal.opacity(0.95), deckDark]),
-                        center: CGPoint(x: bx - 1.5, y: btnY - 2),
-                        startRadius: 0, endRadius: btnR
+                        Gradient(colors: [playLed.opacity(playPulse * 0.55), Color.clear]),
+                        center: CGPoint(x: playX, y: ledRowY),
+                        startRadius: 0, endRadius: playHalo
                     ))
-                    var hl = Path()
-                    hl.addArc(center: CGPoint(x: bx, y: btnY), radius: btnR - 1,
-                              startAngle: .radians(.pi * 1.15),
-                              endAngle: .radians(.pi * 1.85),
-                              clockwise: false)
-                    ctx.stroke(hl, with: .color(Color.white.opacity(0.22)), lineWidth: 0.6)
+                    ctx.fill(Path(ellipseIn: CGRect(
+                        x: playX - 3.2, y: ledRowY - 3.2, width: 6.4, height: 6.4
+                    )), with: .color(playLed.opacity(0.92)))
+
+                    // Power LED（蓝，恒亮小点）
+                    let powerX: CGFloat = playX + 18
+                    ctx.fill(Path(ellipseIn: CGRect(
+                        x: powerX - 9, y: ledRowY - 9, width: 18, height: 18
+                    )), with: .radialGradient(
+                        Gradient(colors: [powerLed.opacity(0.30), Color.clear]),
+                        center: CGPoint(x: powerX, y: ledRowY),
+                        startRadius: 0, endRadius: 9
+                    ))
+                    ctx.fill(Path(ellipseIn: CGRect(
+                        x: powerX - 2.2, y: ledRowY - 2.2, width: 4.4, height: 4.4
+                    )), with: .color(powerLed.opacity(0.88)))
+
+                    // 右侧：3 个机械按键（PLAY / FF / STOP 圆钮）
+                    let btnY: CGFloat = ledRowY
+                    let btnR: CGFloat = 7.5
+                    let btnGap: CGFloat = 24
+                    let btnStartX: CGFloat = w - w * 0.16 - btnGap * 2
+                    for i in 0..<3 {
+                        let bx = btnStartX + CGFloat(i) * btnGap
+                        let outerR: CGFloat = btnR + 2
+                        ctx.fill(Path(ellipseIn: CGRect(
+                            x: bx - outerR, y: btnY - outerR,
+                            width: outerR * 2, height: outerR * 2
+                        )), with: .color(deckDarker))
+                        ctx.fill(Path(ellipseIn: CGRect(
+                            x: bx - btnR, y: btnY - btnR,
+                            width: btnR * 2, height: btnR * 2
+                        )), with: .radialGradient(
+                            Gradient(colors: [deckMetal.opacity(0.95), deckDark]),
+                            center: CGPoint(x: bx - 1.5, y: btnY - 2),
+                            startRadius: 0, endRadius: btnR
+                        ))
+                        var hl = Path()
+                        hl.addArc(center: CGPoint(x: bx, y: btnY), radius: btnR - 1,
+                                  startAngle: .radians(.pi * 1.15),
+                                  endAngle: .radians(.pi * 1.85),
+                                  clockwise: false)
+                        ctx.stroke(hl, with: .color(Color.white.opacity(0.22)), lineWidth: 0.6)
+                    }
+
+                    // Tape counter window
+                    let counterW: CGFloat = bayW * 0.18
+                    let counterH: CGFloat = h * 0.022
+                    let counterRect = CGRect(
+                        x: cx - counterW / 2,
+                        y: deckTopY + bayH + h * 0.025,
+                        width: counterW, height: counterH
+                    )
+                    ctx.fill(Path(roundedRect: counterRect, cornerRadius: 1.5),
+                                 with: .color(deckDarker))
+                    ctx.stroke(Path(roundedRect: counterRect, cornerRadius: 1.5),
+                                   with: .color(Color.black.opacity(0.5)), lineWidth: 0.5)
+                    for i in 1..<4 {
+                        let sx = counterRect.minX + counterRect.width * CGFloat(i) / 4
+                        var sep = Path()
+                        sep.move(to: CGPoint(x: sx, y: counterRect.minY + 2))
+                        sep.addLine(to: CGPoint(x: sx, y: counterRect.maxY - 2))
+                        ctx.stroke(sep, with: .color(Color.white.opacity(0.10)), lineWidth: 0.4)
+                    }
+                    ctx.draw(
+                        Text("0000")
+                            .font(.system(size: 8, weight: .medium, design: .monospaced))
+                            .foregroundColor(Color.white.opacity(0.32)),
+                        at: CGPoint(x: counterRect.midX, y: counterRect.midY)
+                    )
                 }
 
-                // Tape counter window
-                let counterW: CGFloat = bayW * 0.18
-                let counterH: CGFloat = h * 0.022
-                let counterRect = CGRect(
-                    x: cx - counterW / 2,
-                    y: deckTopY + bayH + h * 0.025,
-                    width: counterW, height: counterH
-                )
-                ctx.fill(Path(roundedRect: counterRect, cornerRadius: 1.5),
-                             with: .color(deckDarker))
-                ctx.stroke(Path(roundedRect: counterRect, cornerRadius: 1.5),
-                               with: .color(Color.black.opacity(0.5)), lineWidth: 0.5)
-                for i in 1..<4 {
-                    let sx = counterRect.minX + counterRect.width * CGFloat(i) / 4
-                    var sep = Path()
-                    sep.move(to: CGPoint(x: sx, y: counterRect.minY + 2))
-                    sep.addLine(to: CGPoint(x: sx, y: counterRect.maxY - 2))
-                    ctx.stroke(sep, with: .color(Color.white.opacity(0.10)), lineWidth: 0.4)
-                }
-                ctx.draw(
-                    Text("0000")
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
-                        .foregroundColor(Color.white.opacity(0.32)),
-                    at: CGPoint(x: counterRect.midX, y: counterRect.midY)
-                )
-
-                // v1.4a Signature: VU LED spectrum panel on deck's empty area.
-                // Vintage cassette-deck amber LED look — 24 thin vertical bars
-                // inside a sunken dark window with faint scale tick.
+                // v1.4a Signature: ridge spectrum panel sitting above the title.
                 if signatureVU {
                     drawVUPanel(
                         on: ctx,
@@ -523,12 +525,14 @@ struct LofiTapeView: View {
         t: Float
     ) {
         let w = size.width, h = size.height
-        // Positioned above the track title (bottomOverlay sits around h*0.76).
+        // Signature mode hides the LED/counter/buttons row, so the spectrum
+        // window gets the whole lower-deck real-estate between the cassette
+        // bay (~h*0.48) and the track title (bottomOverlay ~h*0.74).
         let vuRect = CGRect(
-            x: w * 0.10,
-            y: h * 0.54,
-            width: w * 0.80,
-            height: h * 0.14
+            x: w * 0.06,
+            y: h * 0.49,
+            width: w * 0.88,
+            height: h * 0.21
         )
 
         // Sunken LCD-style window
