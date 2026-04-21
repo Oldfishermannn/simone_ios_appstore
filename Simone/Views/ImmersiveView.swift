@@ -449,53 +449,21 @@ struct ImmersiveView: View {
     // MARK: - Transport (ported from DetailsView)
 
     private var transportControls: some View {
-        HStack(spacing: 40) {
-            Button {
-                switchChannel(by: -1)
-            } label: {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(FogTokens.textSecondary)
+        Button {
+            state.togglePlayPause()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(FogTokens.bgSurface.opacity(0.5))
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+                Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(FogTokens.textPrimary.opacity(0.8))
             }
-            .buttonStyle(.plain)
-
-            Button {
-                state.togglePlayPause()
-            } label: {
-                ZStack {
-                    // v1.2.1: chrome on cool axis. Dimmer fill, same hairline.
-                    Circle()
-                        .fill(FogTokens.bgSurface.opacity(0.5))
-                        .frame(width: 52, height: 52)
-                        .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
-                    Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(FogTokens.textPrimary.opacity(0.8))
-                }
-            }
-            .buttonStyle(.plain)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
-
-            Button {
-                switchChannel(by: +1)
-            } label: {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(FogTokens.textSecondary)
-            }
-            .buttonStyle(.plain)
         }
-    }
-
-    /// v1.2.1: transport 左右键语义从"上一/下一 style"改成"上一/下一 channel"。
-    /// Simone 是 mood radio — 这对按钮在电台语境里本来就是"换台"，比同频道内
-    /// 20 个预设里跳 style 层级更高、对用户更直觉。横滑手势同步移除。
-    private func switchChannel(by delta: Int) {
-        let channels = Channel.all
-        let idx = channels.firstIndex(of: state.currentChannel) ?? 0
-        let newIdx = max(0, min(channels.count - 1, idx + delta))
-        guard newIdx != idx else { return }
-        state.switchToChannel(channels[newIdx])
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
     }
 
     // MARK: - Legacy Crossfade visualizer (v1.3)
