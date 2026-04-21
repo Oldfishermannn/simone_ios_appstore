@@ -19,6 +19,11 @@ struct ImmersiveView: View {
     @State private var bounceOffsetX: CGFloat = 0
     private let swipeThreshold: CGFloat = 50
 
+    // v1.3 · Channel crossfade 400ms (legacy visualizer snapshot 淡出)
+    @State private var crossfadeLegacy: (VisualizerStyle, MoodStyle?, Channel)? = nil
+    @State private var crossfadeOpacity: Double = 0.0
+    private let crossfadeDuration: Double = 0.4
+
     /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
     /// Default is big; small mode shows a card-sized spectrum at top.
     @State private var isSmall: Bool = true
@@ -101,6 +106,20 @@ struct ImmersiveView: View {
                 } else {
                     crossfadeContent(geo: geo, specSize: specSize)
                 }
+
+                // v1.3 · 横滑 Crossfade legacy 层（切换瞬间覆盖 400ms 淡出）
+                if let legacy = crossfadeLegacy {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
+                        legacyVisualizer(
+                            style: legacy.0,
+                            spectrumData: state.audioEngine.spectrumData,
+                            geoSize: geo.size
+                        )
+                    }
+                    .opacity(crossfadeOpacity)
+                    .allowsHitTesting(false)
+                    .transition(.identity)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -129,6 +148,15 @@ struct ImmersiveView: View {
             displayStyle = state.selectedStyle
         }
         .onChange(of: state.currentChannel) { old, new in
+            // v1.3 · Crossfade：state 已 update 到 new，legacy 用 old.visualizer 构造。
+            crossfadeLegacy = (old.visualizer, displayStyle, old)
+            crossfadeOpacity = 1.0
+            withAnimation(.easeInOut(duration: crossfadeDuration)) {
+                crossfadeOpacity = 0.0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + crossfadeDuration + 0.05) {
+                crossfadeLegacy = nil
+            }
             slideOnChannelChange(from: old, to: new)
         }
         .onChange(of: state.selectedStyle?.id) { _, _ in
@@ -468,6 +496,17 @@ struct ImmersiveView: View {
         let newIdx = max(0, min(channels.count - 1, idx + delta))
         guard newIdx != idx else { return }
         state.switchToChannel(channels[newIdx])
+    }
+
+    // MARK: - Legacy Crossfade visualizer (v1.3)
+
+    /// v1.3 · Crossfade legacy 层 visualizer dispatch — 复用 morphVisualizer expansion=1.0
+    /// 渲染旧 channel 的全屏大图；仅在 400ms 淡出期间存在。所有 Channel.visualizer 当前
+    /// 实际返回值（lofiTape/oscilloscope/liquor/ember/matrix/nightWindow）都走 morph 路径。
+    @ViewBuilder
+    private func legacyVisualizer(style: VisualizerStyle, spectrumData: [Float], geoSize: CGSize) -> some View {
+        morphVisualizer(for: style, spectrumData: spectrumData, expansion: 1.0)
+            .frame(width: geoSize.width, height: geoSize.height)
     }
 
     // MARK: - Small-mode visualizer dispatch
