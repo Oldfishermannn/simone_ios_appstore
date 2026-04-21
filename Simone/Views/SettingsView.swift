@@ -82,6 +82,11 @@ struct SettingsView: View {
 
                 Spacer(minLength: FogTheme.spaceXL)
 
+                #if DEBUG
+                debugSpliceRow
+                    .padding(.top, FogTheme.spaceXL)
+                #endif
+
                 colophon
                     .padding(.top, FogTheme.space2XL)
 
@@ -417,6 +422,40 @@ struct SettingsView: View {
         case .vinylBooth:    return "VB"
         }
     }
+
+    // MARK: - Debug · Splice Playback Test
+
+    #if DEBUG
+    /// v1.3 · Debug：强制触发 Lyria reconnectAndRestore 验 splice fallback。
+    /// 仅 Debug 编译，Release build 不包含这段。
+    private var debugSpliceRow: some View {
+        VStack(alignment: .leading, spacing: FogTheme.spaceSM) {
+            Text("DEBUG · SPLICE PLAYBACK TEST")
+                .font(FogTheme.mono(9, weight: .regular))
+                .tracking(FogTheme.trackLabel)
+                .foregroundStyle(FogTheme.inkTertiary)
+
+            Button {
+                state.lyriaClient.reconnectAndRestore()
+            } label: {
+                HStack(spacing: 8) {
+                    Text("⚡")
+                        .font(FogTheme.mono(12, weight: .regular))
+                        .foregroundStyle(FogTheme.accent)
+                    Text("Simulate Lyria Disconnect")
+                        .font(FogTheme.mono(11, weight: .regular))
+                        .foregroundStyle(FogTheme.inkPrimary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            Text("Triggers reconnectAndRestore. Listen for: old audio fades 1.5s → ring buffer loop → new chunk fades in 1.5s. No hard cut, no 1s gap.")
+                .font(FogTheme.serifItalic(10, weight: .light))
+                .foregroundStyle(FogTheme.inkSecondary.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+    #endif
 
     private func openPrivacy() {
         guard let url = URL(string: "https://oldfishermannn.github.io/simone_ios_appstore/privacy.html") else { return }
