@@ -90,13 +90,16 @@ struct LiquorView: View {
         //   taper -0.03 杯口略宽于杯底 3%（经典 rocks glass 侧壁微外张）；
         //   fillLevel 0.62 酒装过半（威士忌通常装 1/3 ~ 1/2，但视觉上过半更有料）。
         // 大图 (e=1): 仍是威士忌杯形 — 保持 rocks glass 一致性，只是缩小左移。
+        // v1.3 iter2：CEO 反馈"像啤酒杯"，再夸张矮胖：
+        //   小图 width 0.52 宽 × height 0.26 矮 ≈ 0.50 比例（比 tumbler 还扁）
+        //   taper -0.06 杯口比杯底宽 6%（明显外张 = rocks glass 签名侧壁）
         let mainSpec = GlassSpec(
             cx: 0.50 + (0.32 - 0.50) * e,
-            cyBase: 0.92 + (0.86 - 0.92) * e,
-            width: 0.46 + (0.30 - 0.46) * e,
-            height: 0.36 + (0.30 - 0.36) * e,
-            fillLevel: 0.62 + (0.60 - 0.62) * e,
-            taper: -0.03 + (0.00 - (-0.03)) * e,
+            cyBase: 0.93 + (0.87 - 0.93) * e,
+            width: 0.52 + (0.34 - 0.52) * e,
+            height: 0.26 + (0.22 - 0.26) * e,
+            fillLevel: 0.55 + (0.55 - 0.55) * e,
+            taper: -0.06 + (-0.02 - (-0.06)) * e,
             seed: 0.0
         )
 

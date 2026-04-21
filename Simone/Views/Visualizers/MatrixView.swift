@@ -39,9 +39,9 @@ struct MatrixView: View {
         let xRatio  = 0.31 + (0.26 - 0.31) * e
         let wRatio  = 0.38 + (0.26 - 0.38) * e
         let hRatio  = 0.60 + (0.78 - 0.60) * e
-        // 楼底 margin：小图偏下（0.08 = 留 8% 底部夜空），大图贴地（0.02）
-        // 组成 skyline。morph 时楼随 expansion 从"偏下物件"沉落到"天际线基线"。
-        let groundMargin = 0.08 + (0.02 - 0.08) * e
+        // 楼底 margin：小图贴屏底（0.00），大图 0.02 天际线基线。
+        // v1.3 iter2 · CEO 反馈：楼要完全贴到屏幕底部，不要留夜空缝。
+        let groundMargin = 0.00 + (0.02 - 0.00) * e
         // bin 映射：小图用全 spectrum，大图聚焦主楼频段
         let binStartF = 0 + (10 - 0) * Double(e)
         let binEndF = Double(binCount - 1) + (30 - Double(binCount - 1)) * Double(e)
