@@ -12,9 +12,11 @@ import Foundation
 enum Channel: Hashable {
     case category(StyleCategory)
 
-    static var all: [Channel] {
-        StyleCategory.allCases.map { .category($0) }
-    }
+    /// Cached at type-load time. `static var` recomputed on every access —
+    /// ImmersiveView body reads `Channel.all` 3+ times per eval (count, [idx],
+    /// firstIndex) and TabView .page re-evaluates body on every state change,
+    /// so the allocation thrash was real.
+    static let all: [Channel] = StyleCategory.allCases.map { .category($0) }
 
     var displayName: String {
         switch self {
