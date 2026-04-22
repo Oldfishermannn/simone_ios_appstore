@@ -86,11 +86,12 @@ struct ImmersiveView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
 
-            // Transport row — 浮在 TabView 上，左右滑不动
+            // Transport row — 浮在 TabView 上，左右滑不动。位置固定（不跟
+            // isPlaying 上下移），点 play 按钮三个圈不再跳。
             VStack(spacing: 0) {
                 Spacer()
                 transportRow
-                Spacer().frame(height: isPlayingNow ? 48 : 80)
+                Spacer().frame(height: 80)
             }
             .allowsHitTesting(true)
         }
@@ -220,22 +221,54 @@ private struct ChannelPage: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // visualizer 全屏 morph
-                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
-                    visualizer(expansion: expansion(ctx.date))
+                // 每个 channel 自己的底色 — Rock 暖煤 / Electronic 深夜 /
+                // R&B 黑 / 其他冷 Fog。撑满 safe area，避免 visualizer 透出 bgDeep。
+                channelBaseTint
+                    .ignoresSafeArea()
+
+                // visualizer — 仅当前 channel 跑 TimelineView 30fps，邻居 page
+                // 用 expansion=0 静态帧（防 6 个 visualizer 同时高频 redraw 抢 CPU
+                // 把音频饿瘦）。TabView 横滑时邻居先静态显示，落定后切活。
+                if isActive {
+                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+                        visualizer(expansion: expansion(ctx.date))
+                    }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                } else {
+                    visualizer(expansion: 0)
+                        .frame(width: geo.size.width, height: geo.size.height)
                 }
-                .frame(width: geo.size.width, height: geo.size.height)
-                .contentShape(Rectangle())
-                .onTapGesture { onTapVisualizer() }
-                .gesture(verticalSwipe)
+                Color.clear
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onTapVisualizer() }
+                    .gesture(verticalSwipe)
 
                 VStack(spacing: 0) {
                     Spacer()
                     bottomOverlay
-                    Spacer().frame(height: 160)  // 给 transport row 让位
+                    Spacer().frame(height: 145)  // 给 transport row 让位（titlea 往下挪一点）
                 }
                 .allowsHitTesting(false)
             }
+        }
+    }
+
+    private var isActive: Bool { channel == state.currentChannel }
+
+    /// 每个频道自带 base 色 — RnB 小图也用纯黑（CEO 要求），其他频道用 mood-tinted。
+    private var channelBaseTint: Color {
+        switch channel {
+        case .category(.rock):
+            return Color(red: 28/255, green: 22/255, blue: 18/255)
+        case .category(.electronic):
+            return Color(red: 10/255, green: 10/255, blue: 14/255)
+        case .category(.rnb):
+            return Color.black
+        case .category(.jazz):
+            return Color(red: 14/255, green: 14/255, blue: 18/255)
+        default:
+            return FogTokens.bgDeep
         }
     }
 

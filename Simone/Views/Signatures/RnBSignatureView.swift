@@ -94,20 +94,31 @@ struct RnBSignatureView: View {
         // Caustic matches the liquid — deep amber spill, not pale wheat.
         let causticAmber = Color(red: 210/255, green: 140/255, blue:  58/255)
 
-        // --- 1. Backdrop — radial warm spill from off-frame top-right ---
+        // --- 1. Backdrop —
+        // 小图：纯黑（CEO 要求），玻璃杯像在虚空中。
+        // 大图：暖色 radial spill 用 deckAlpha 淡入 — photographic 暖感留给场景模式。
         gc.fill(
             Path(CGRect(origin: .zero, size: size)),
-            with: .radialGradient(
-                Gradient(stops: [
-                    .init(color: backdropMid.opacity(0.92), location: 0.0),
-                    .init(color: backdrop, location: 0.55),
-                    .init(color: Color(red: 5/255, green: 3/255, blue: 5/255), location: 1.0)
-                ]),
-                center: CGPoint(x: w * 1.05, y: h * -0.05),
-                startRadius: 0,
-                endRadius: max(w, h) * 1.35
-            )
+            with: .color(.black)
         )
+        if deckAlpha > 0.01 {
+            gc.drawLayer { ctx in
+                ctx.opacity = deckAlpha
+                ctx.fill(
+                    Path(CGRect(origin: .zero, size: size)),
+                    with: .radialGradient(
+                        Gradient(stops: [
+                            .init(color: backdropMid.opacity(0.92), location: 0.0),
+                            .init(color: backdrop, location: 0.55),
+                            .init(color: Color(red: 5/255, green: 3/255, blue: 5/255), location: 1.0)
+                        ]),
+                        center: CGPoint(x: w * 1.05, y: h * -0.05),
+                        startRadius: 0,
+                        endRadius: max(w, h) * 1.35
+                    )
+                )
+            }
+        }
 
         // --- 1b. Big-mode: photographic atmosphere, not scene props ---
         //
