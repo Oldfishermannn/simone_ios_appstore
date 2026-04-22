@@ -221,28 +221,29 @@ private struct ChannelPage: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // 每个 channel 自己的底色 — Rock 暖煤 / Electronic 深夜 /
-                // R&B 黑 / 其他冷 Fog。撑满 safe area，避免 visualizer 透出 bgDeep。
-                channelBaseTint
+                // 所有频道小图背景统一黑（CEO 要求 — visualizer 大图自己画 mood
+                // 暖色，小图全部坍塌到黑，安全区也吃黑不再透 bgDeep 冷蓝）。
+                Color.black
                     .ignoresSafeArea()
 
                 // visualizer — 仅当前 channel 跑 TimelineView 30fps，邻居 page
                 // 用 expansion=0 静态帧（防 6 个 visualizer 同时高频 redraw 抢 CPU
-                // 把音频饿瘦）。TabView 横滑时邻居先静态显示，落定后切活。
-                if isActive {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
-                        visualizer(expansion: expansion(ctx.date))
+                // 把音频饿瘦）。tap 直接挂在 visualizer 这层，不再另起 Color.clear
+                // overlay（那个 overlay 的 onTapGesture 会跟 transport row 的
+                // play button 抢手势，导致 play 不响）。
+                Group {
+                    if isActive {
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+                            visualizer(expansion: expansion(ctx.date))
+                        }
+                    } else {
+                        visualizer(expansion: 0)
                     }
-                    .frame(width: geo.size.width, height: geo.size.height)
-                } else {
-                    visualizer(expansion: 0)
-                        .frame(width: geo.size.width, height: geo.size.height)
                 }
-                Color.clear
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onTapVisualizer() }
-                    .gesture(verticalSwipe)
+                .frame(width: geo.size.width, height: geo.size.height)
+                .contentShape(Rectangle())
+                .onTapGesture { onTapVisualizer() }
+                .gesture(verticalSwipe)
 
                 VStack(spacing: 0) {
                     Spacer()
@@ -255,22 +256,6 @@ private struct ChannelPage: View {
     }
 
     private var isActive: Bool { channel == state.currentChannel }
-
-    /// 每个频道自带 base 色 — RnB 小图也用纯黑（CEO 要求），其他频道用 mood-tinted。
-    private var channelBaseTint: Color {
-        switch channel {
-        case .category(.rock):
-            return Color(red: 28/255, green: 22/255, blue: 18/255)
-        case .category(.electronic):
-            return Color(red: 10/255, green: 10/255, blue: 14/255)
-        case .category(.rnb):
-            return Color.black
-        case .category(.jazz):
-            return Color(red: 14/255, green: 14/255, blue: 18/255)
-        default:
-            return FogTokens.bgDeep
-        }
-    }
 
     // MARK: - Visualizer dispatch
 
