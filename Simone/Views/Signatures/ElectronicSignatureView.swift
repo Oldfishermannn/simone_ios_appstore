@@ -56,24 +56,25 @@ struct ElectronicSignatureView: View {
 
         ZStack {
             // Static scaffold — synth 主体（cabinet + 面板 + 旋钮 + 键盘）。
-            // synth 位置随 e 线性插值：小图居中、大图上移到顶部，让出底部空间。
+            // ⚠️ 不要加 .drawingGroup()：外层 ChannelPage 有 30fps TimelineView，
+            // 每帧 Canvas closure 重跑，drawingGroup 每次重新栅格化整屏 Metal
+            // 纹理（全屏像素拷贝），是音频卡顿主因之一。Canvas 自身已 GPU
+            // 加速，不需要再 wrap。
             Canvas { context, size in
                 drawStatic(ctx: context, size: size, e: e)
             }
-            .drawingGroup()
 
-            // Pedalboard layer — 大图专属（Ambient channel 同款 morph 模式）。
-            // 5 块 iconic guitar pedal 排在 synth 下方；deckAlpha 控制 compositor
-            // 级别淡入，小图完全不可见。
+            // Pedalboard layer — 大图专属。同样不用 drawingGroup（理由同上）。
+            // .opacity(deckAlpha) 仍然是 compositor 级别淡入。
             Canvas { context, size in
                 drawPedalboard(ctx: context, size: size, e: e)
             }
-            .drawingGroup()
             .opacity(deckAlpha)
             .allowsHitTesting(false)
 
-            // Dynamic overlay — CRT waveform + POWER LED.
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+            // Dynamic overlay — CRT waveform + POWER LED only。30fps→24fps
+            // 降一档，肉眼仍流畅，CPU 节省 20%。
+            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
                 Canvas { context, size in
                     drawDynamic(ctx: context, size: size, t: ctx.date.timeIntervalSince1970)
                 }
