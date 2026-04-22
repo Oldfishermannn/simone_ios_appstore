@@ -155,12 +155,14 @@ final class AppState {
             }
         }
 
-        // 冷启动默认 selectedStyle = 当前频道的第一个 style（按用户排序后的）。
-        // 老规矩是 hardcode lofi-chill，但用户上次离开在别的频道时，重启
-        // 显示 lofi-chill 与频道不一致——CEO 钦定改成频道首位。
+        // 冷启动默认 selectedStyle:
+        //   1. 上次离开时该频道选的 style（CEO 要求"频道有记忆"）
+        //   2. 否则该频道用户排序后的第一位（首次进入此频道）
+        //   3. 兜底 lofi-chill（防 preset 池被清空）
         // 直接赋值绕过 selectStyle 的播放副作用。
         if selectedStyle == nil {
-            selectedStyle = orderedStyles(for: currentChannel).first
+            selectedStyle = recalledStyle(for: currentChannel)
+                ?? orderedStyles(for: currentChannel).first
                 ?? MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
         }
 
@@ -213,7 +215,8 @@ final class AppState {
         }
     }
 
-    /// Switch to a channel: persist, rebind visualizer, queue up the first preset.
+    /// Switch to a channel: persist, rebind visualizer, queue up the recalled
+    /// style (or 用户排序的第一位 if first time on this channel).
     /// No-op if the channel is already active.
     ///
     /// 关键：横滑频道不自动启动播放。selectStyle → applySelection 在
@@ -221,6 +224,9 @@ final class AppState {
     /// 刻出声"的意图）。对频道横滑来说，用户并未按播放键，安静切换才
     /// 是电台感。所以：未连接时只更新 selectedStyle 不走 applySelection；
     /// 已连接时再把新 prompt 推给 Lyria 实现无缝切台。
+    ///
+    /// 频道记忆 (CEO 要求)：每个 channel 记上一次选过的 style，回切时
+    /// 直接召回；首次进入这个频道则用「用户排序后的第一位」。
     func switchToChannel(_ channel: Channel) {
         guard channel != currentChannel else { return }
         currentChannel = channel
@@ -229,12 +235,34 @@ final class AppState {
             currentCategory = c
         }
         styleHistory.removeAll()
-        guard let first = stylesInCurrentChannel.first else { return }
+
+        let target = recalledStyle(for: channel)
+            ?? orderedStyles(for: channel).first
+        guard let pick = target else { return }
+
         if lyriaClient.connectionState == .disconnected {
-            selectedStyle = first
+            selectedStyle = pick
         } else {
-            selectStyle(first)
+            selectStyle(pick)
         }
+    }
+
+    // MARK: - Per-channel last-selected memory
+
+    /// Per-channel "last played style" UserDefaults key.
+    private func lastStyleKey(for channel: Channel) -> String {
+        "lastStyle_\(channel.rawKey)"
+    }
+
+    /// 取当前 channel 上次选过的 style（必须仍在该频道 preset 池里）。
+    private func recalledStyle(for channel: Channel) -> MoodStyle? {
+        guard let id = UserDefaults.standard.string(forKey: lastStyleKey(for: channel)) else { return nil }
+        return styles(for: channel).first { $0.id == id }
+    }
+
+    /// 持久化 (channel, style) — 在 selectStyle 里调，也在频道切换时调。
+    private func rememberStyle(_ style: MoodStyle, in channel: Channel) {
+        UserDefaults.standard.set(style.id, forKey: lastStyleKey(for: channel))
     }
 
     // MARK: - Actions
@@ -242,6 +270,7 @@ final class AppState {
     func selectStyle(_ style: MoodStyle) {
         selectedStyle = style
         selectedVisualizer = currentChannel.visualizer
+        rememberStyle(style, in: currentChannel)
         resetEvolveState(for: style.category)
         applySelection()
     }
