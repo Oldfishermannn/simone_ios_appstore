@@ -12,14 +12,7 @@ final class AudioEngine {
 
     private let sampleRate: Double = 48000
     private let channels: AVAudioChannelCount = 2
-    // bufferMin 控制 isDraining=false 时第一次开始 drain 的门槛——同时
-    // 等价于"出声前累积多少 chunk 作 prebuffer"。以前 = 1：第一个 chunk
-    // 一到立即 schedule，出声最快但 player 队列水位极低，main thread 任何
-    // 抖动（v1.4a UI rewrite 后 SwiftUI Canvas 持续吃 main thread）都会让
-    // playerNode underrun → "播一会停一会" 的 stutter。
-    // 改 3：累 3 个 chunk（Lyria 每 chunk ~0.3-0.5s 音频，约 1-1.5s prebuffer）
-    // 才开始播。代价：首次出声延迟 +600-900ms。收益：抗 main thread 抖动。
-    private let bufferMin = 3
+    private let bufferMin = 1
     private let fadeSamples = 48 // 1ms at 48kHz — imperceptible but kills pops
 
     // v1.3 · Lock 10min 跳风格修复：reconnectAndRestore 后对接下来的音频做软淡入，
