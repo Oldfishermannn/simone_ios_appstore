@@ -51,14 +51,26 @@ struct ElectronicSignatureView: View {
     var expansion: CGFloat = 1.0
 
     var body: some View {
+        let e: CGFloat = max(0, min(1, expansion))
+        let deckAlpha = smoothstep(0.30, 0.88, Double(e))
+
         ZStack {
-            // Static scaffold — renders ONCE per size change, Metal-cached.
-            // Cabinet + wood + panel base + brushed metal + knobs + screws +
-            // keyboard + nameplate + CRT bezel/grid + brand + labels.
+            // Static scaffold — synth 主体（cabinet + 面板 + 旋钮 + 键盘）。
+            // synth 位置随 e 线性插值：小图居中、大图上移到顶部，让出底部空间。
             Canvas { context, size in
-                drawStatic(ctx: context, size: size)
+                drawStatic(ctx: context, size: size, e: e)
             }
             .drawingGroup()
+
+            // Pedalboard layer — 大图专属（Ambient channel 同款 morph 模式）。
+            // 5 块 iconic guitar pedal 排在 synth 下方；deckAlpha 控制 compositor
+            // 级别淡入，小图完全不可见。
+            Canvas { context, size in
+                drawPedalboard(ctx: context, size: size, e: e)
+            }
+            .drawingGroup()
+            .opacity(deckAlpha)
+            .allowsHitTesting(false)
 
             // Dynamic overlay — CRT waveform + POWER LED.
             TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
@@ -107,13 +119,17 @@ struct ElectronicSignatureView: View {
         let ledC: CGPoint
     }
 
-    private func layout(for size: CGSize) -> Layout {
+    private func layout(for size: CGSize, expansion e: CGFloat = 0) -> Layout {
         let W = size.width
         let H = size.height
         let synthW = min(W * 0.84, H * 1.55)
         let synthH = synthW * 0.54
         let synthX = (W - synthW) / 2
-        let synthY = (H - synthH) / 2
+        // 小图：synth 居中。大图：synth 上移让出底部空间给 pedalboard
+        // (~synthH * 0.55，pedalboard 高 ≈ synthH * 0.55，恰好填满)。
+        let centerY = (H - synthH) / 2
+        let bigY = max(H * 0.10, centerY - synthH * 0.55)
+        let synthY = centerY + (bigY - centerY) * max(0, min(1, e))
         let body = CGRect(x: synthX, y: synthY, width: synthW, height: synthH)
         let endW: CGFloat = body.width * 0.052
         let woodV: CGFloat = body.height * 0.045
@@ -138,8 +154,8 @@ struct ElectronicSignatureView: View {
     }
 
     // MARK: - Static scene (cacheable, drawn once per size)
-    private func drawStatic(ctx: GraphicsContext, size: CGSize) {
-        let L = layout(for: size)
+    private func drawStatic(ctx: GraphicsContext, size: CGSize, e: CGFloat) {
+        let L = layout(for: size, expansion: e)
 
         // 纯黑底色 — 全部环境光已移除，synth 悬浮在深夜房间里。
         ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(roomDeep))
@@ -157,7 +173,8 @@ struct ElectronicSignatureView: View {
     // 环境光已全删：panel lamp wash / 键盘 underglow / 房间 spill 都清掉。
     // 现在 dynamic 层只剩 CRT 波形 + POWER LED 这两处 synth 物件自身的"电"。
     private func drawDynamic(ctx: GraphicsContext, size: CGSize, t: TimeInterval) {
-        let L = layout(for: size)
+        let e: CGFloat = max(0, min(1, expansion))
+        let L = layout(for: size, expansion: e)
 
         // Audio extraction
         let third = max(1, spectrumData.count / 3)
@@ -173,13 +190,487 @@ struct ElectronicSignatureView: View {
         let bassLvl = min(1, max(0, rawBass * 1.4 + idle))
         let midLvl  = min(1, max(0, rawMid  * 1.4))
 
-        let e: CGFloat = max(0, min(1, expansion))
         let zc = CGFloat(smoothstep(0.30, 0.88, Double(e)))
 
         drawOscilloscopeDynamic(ctx: ctx, rect: L.scope, t: t, midLvl: midLvl, zc: zc)
         drawPowerLED(ctx: ctx, center: L.ledC, bassLvl: bassLvl)
     }
 
+
+    // MARK: - Pedalboard (大图专属，参考 Ambient channel small→big morph)
+    //
+    // 5 块 iconic guitar pedals 排在 synth 下方一排：
+    //   TS808 (绿) → Centavo (黄) → RAT (黑) → TimeLine (灰) → BigSky (蓝)
+    // synth body 已随 e 上移，pedalboard 紧跟 body.maxY 自然落到底部。
+    // 整层由 .opacity(deckAlpha) 在 compositor 层淡入，零 per-frame 成本。
+    private func drawPedalboard(ctx: GraphicsContext, size: CGSize, e: CGFloat) {
+        let L = layout(for: size, expansion: e)
+        let body = L.body
+
+        // 排布顺序（CEO v4.1）：绿 → 黄 → 黑 → 灰 → 蓝
+        // TS808(0.58) → Centavo(1.32) → RAT(0.72) → TimeLine(1.42) → BigSky(1.42)
+        let ratios: [CGFloat] = [0.58, 1.32, 0.72, 1.42, 1.42]
+        let sumR = ratios.reduce(0, +)
+        let gapFactor: CGFloat = 0.09
+        let gapCount: CGFloat = 4
+
+        let rowW = body.width * 0.92
+        let H = rowW / (sumR + gapCount * gapFactor)
+        let G = H * gapFactor
+
+        let rowTop = body.maxY + body.height * 0.14
+        let rowLeft = body.midX - rowW / 2
+
+        // Shared ground shadow under the whole pedalboard row
+        let boardShadow = CGRect(
+            x: rowLeft - H * 0.08,
+            y: rowTop + H * 0.96,
+            width: rowW + H * 0.16,
+            height: H * 0.22
+        )
+        ctx.fill(
+            Path(ellipseIn: boardShadow),
+            with: .radialGradient(
+                Gradient(colors: [Color.black.opacity(0.55), Color.black.opacity(0.0)]),
+                center: CGPoint(x: boardShadow.midX, y: boardShadow.midY),
+                startRadius: 1,
+                endRadius: boardShadow.width * 0.48
+            )
+        )
+
+        var x = rowLeft
+        let w0 = H * ratios[0]
+        drawPedalTS808(ctx: ctx, rect: CGRect(x: x, y: rowTop, width: w0, height: H))
+        x += w0 + G
+        let w1 = H * ratios[1]
+        drawPedalCentavo(ctx: ctx, rect: CGRect(x: x, y: rowTop, width: w1, height: H))
+        x += w1 + G
+        let w2 = H * ratios[2]
+        drawPedalRAT(ctx: ctx, rect: CGRect(x: x, y: rowTop, width: w2, height: H))
+        x += w2 + G
+        let w3 = H * ratios[3]
+        drawPedalTimeLine(ctx: ctx, rect: CGRect(x: x, y: rowTop, width: w3, height: H))
+        x += w3 + G
+        let w4 = H * ratios[4]
+        drawPedalBigSky(ctx: ctx, rect: CGRect(x: x, y: rowTop, width: w4, height: H))
+    }
+
+    // MARK: - Pedal chassis (shared beveled metal box + 4 corner screws)
+    private func drawPedalChassis(ctx: GraphicsContext, rect: CGRect, topColor: Color, botColor: Color) {
+        let r: CGFloat = max(1.5, min(rect.width, rect.height) * 0.05)
+        let sh = rect.offsetBy(dx: 1.5, dy: 2.5)
+        ctx.fill(Path(roundedRect: sh, cornerRadius: r), with: .color(Color.black.opacity(0.45)))
+        ctx.fill(
+            Path(roundedRect: rect, cornerRadius: r),
+            with: .linearGradient(
+                Gradient(colors: [topColor, botColor]),
+                startPoint: CGPoint(x: rect.midX, y: rect.minY),
+                endPoint: CGPoint(x: rect.midX, y: rect.maxY)
+            )
+        )
+        var topHL = Path()
+        topHL.move(to: CGPoint(x: rect.minX + r, y: rect.minY + 0.5))
+        topHL.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY + 0.5))
+        ctx.stroke(topHL, with: .color(Color.white.opacity(0.16)), lineWidth: 0.6)
+        var leftHL = Path()
+        leftHL.move(to: CGPoint(x: rect.minX + 0.5, y: rect.minY + r))
+        leftHL.addLine(to: CGPoint(x: rect.minX + 0.5, y: rect.maxY - r))
+        ctx.stroke(leftHL, with: .color(Color.white.opacity(0.08)), lineWidth: 0.6)
+        var rightSh = Path()
+        rightSh.move(to: CGPoint(x: rect.maxX - 0.5, y: rect.minY + r))
+        rightSh.addLine(to: CGPoint(x: rect.maxX - 0.5, y: rect.maxY - r))
+        ctx.stroke(rightSh, with: .color(Color.black.opacity(0.40)), lineWidth: 0.6)
+        var botSh = Path()
+        botSh.move(to: CGPoint(x: rect.minX + r, y: rect.maxY - 0.5))
+        botSh.addLine(to: CGPoint(x: rect.maxX - r, y: rect.maxY - 0.5))
+        ctx.stroke(botSh, with: .color(Color.black.opacity(0.40)), lineWidth: 0.6)
+        let screwR: CGFloat = max(0.7, min(rect.width, rect.height) * 0.035)
+        let inset: CGFloat = max(2, min(rect.width, rect.height) * 0.075)
+        for cx in [rect.minX + inset, rect.maxX - inset] {
+            for cy in [rect.minY + inset, rect.maxY - inset] {
+                drawPedalScrew(ctx: ctx, center: CGPoint(x: cx, y: cy), radius: screwR)
+            }
+        }
+    }
+
+    private func drawPedalScrew(ctx: GraphicsContext, center: CGPoint, radius r: CGFloat) {
+        let rect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+        ctx.fill(
+            Path(ellipseIn: rect),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color(red: 0.82, green: 0.84, blue: 0.86),
+                    Color(red: 0.38, green: 0.40, blue: 0.44)
+                ]),
+                center: CGPoint(x: center.x - r * 0.3, y: center.y - r * 0.3),
+                startRadius: 0.1, endRadius: r
+            )
+        )
+        var slot = Path()
+        slot.move(to: CGPoint(x: center.x - r * 0.55, y: center.y))
+        slot.addLine(to: CGPoint(x: center.x + r * 0.55, y: center.y))
+        slot.move(to: CGPoint(x: center.x, y: center.y - r * 0.55))
+        slot.addLine(to: CGPoint(x: center.x, y: center.y + r * 0.55))
+        ctx.stroke(slot, with: .color(Color.black.opacity(0.55)), lineWidth: max(0.3, r * 0.22))
+    }
+
+    private func drawPedalKnob(ctx: GraphicsContext, center: CGPoint, radius r: CGFloat, angle: CGFloat) {
+        let shR = CGRect(x: center.x - r + 0.6, y: center.y - r + 1.2, width: r * 2, height: r * 2)
+        ctx.fill(Path(ellipseIn: shR), with: .color(Color.black.opacity(0.35)))
+        let rect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+        ctx.fill(
+            Path(ellipseIn: rect),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color(red: 0.93, green: 0.94, blue: 0.96),
+                    Color(red: 0.52, green: 0.54, blue: 0.58),
+                    Color(red: 0.18, green: 0.18, blue: 0.20)
+                ]),
+                center: CGPoint(x: center.x - r * 0.38, y: center.y - r * 0.38),
+                startRadius: 0.2, endRadius: r * 1.05
+            )
+        )
+        ctx.stroke(Path(ellipseIn: rect), with: .color(Color.black.opacity(0.55)), lineWidth: max(0.3, r * 0.05))
+        let tip = CGPoint(
+            x: center.x + cos(angle) * r * 0.82,
+            y: center.y + sin(angle) * r * 0.82
+        )
+        var line = Path()
+        line.move(to: center)
+        line.addLine(to: tip)
+        ctx.stroke(line, with: .color(Color.black.opacity(0.88)), lineWidth: max(0.6, r * 0.18))
+    }
+
+    private func drawPedalFootswitch(ctx: GraphicsContext, center: CGPoint, radius r: CGFloat) {
+        let nutR = r * 1.12
+        var hex = Path()
+        for i in 0..<6 {
+            let ang = .pi / 3 * CGFloat(i) + .pi / 6
+            let p = CGPoint(x: center.x + cos(ang) * nutR, y: center.y + sin(ang) * nutR)
+            if i == 0 { hex.move(to: p) } else { hex.addLine(to: p) }
+        }
+        hex.closeSubpath()
+        ctx.fill(hex, with: .color(Color(red: 0.28, green: 0.28, blue: 0.30)))
+        ctx.stroke(hex, with: .color(Color.black.opacity(0.55)), lineWidth: 0.4)
+        let stompRect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+        ctx.fill(
+            Path(ellipseIn: stompRect),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color(red: 0.95, green: 0.96, blue: 0.98),
+                    Color(red: 0.60, green: 0.62, blue: 0.66),
+                    Color(red: 0.22, green: 0.22, blue: 0.24)
+                ]),
+                center: CGPoint(x: center.x - r * 0.42, y: center.y - r * 0.42),
+                startRadius: 0.2, endRadius: r * 1.1
+            )
+        )
+        ctx.stroke(Path(ellipseIn: stompRect), with: .color(Color.black.opacity(0.45)), lineWidth: max(0.3, r * 0.06))
+    }
+
+    private func drawPedalLED(ctx: GraphicsContext, center: CGPoint, radius r: CGFloat, color: Color) {
+        let bez = CGRect(x: center.x - r * 1.5, y: center.y - r * 1.5, width: r * 3, height: r * 3)
+        ctx.fill(Path(ellipseIn: bez), with: .color(Color(red: 0.14, green: 0.14, blue: 0.16)))
+        let rect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+        ctx.fill(
+            Path(ellipseIn: rect),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.92),
+                    color,
+                    color.opacity(0.5)
+                ]),
+                center: CGPoint(x: center.x - r * 0.3, y: center.y - r * 0.3),
+                startRadius: 0.1, endRadius: r
+            )
+        )
+    }
+
+    // MARK: - Individual pedals
+
+    private func drawPedalTS808(ctx: GraphicsContext, rect: CGRect) {
+        drawPedalChassis(
+            ctx: ctx, rect: rect,
+            topColor: Color(red: 0.22, green: 0.62, blue: 0.38),
+            botColor: Color(red: 0.12, green: 0.46, blue: 0.26)
+        )
+        let w = rect.width
+        let h = rect.height
+        drawPedalLED(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX, y: rect.minY + h * 0.13),
+            radius: max(0.8, w * 0.058),
+            color: Color(red: 0.98, green: 0.36, blue: 0.20)
+        )
+        let knobR = max(1.6, w * 0.12)
+        drawPedalKnob(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX - w * 0.24, y: rect.minY + h * 0.28),
+            radius: knobR, angle: .pi * 0.82
+        )
+        drawPedalKnob(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX + w * 0.24, y: rect.minY + h * 0.28),
+            radius: knobR, angle: .pi * 1.12
+        )
+        drawPedalKnob(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX, y: rect.minY + h * 0.46),
+            radius: knobR, angle: .pi * 0.70
+        )
+        let labelSize = max(3.5, w * 0.095)
+        let label = Text("TUBE SCREAMER")
+            .font(.system(size: labelSize, weight: .bold, design: .serif))
+            .foregroundStyle(Color(red: 0.96, green: 0.92, blue: 0.78))
+        ctx.draw(label, at: CGPoint(x: rect.midX, y: rect.minY + h * 0.63), anchor: .center)
+        drawPedalFootswitch(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX, y: rect.minY + h * 0.82),
+            radius: max(2.2, w * 0.18)
+        )
+    }
+
+    private func drawPedalBigSky(ctx: GraphicsContext, rect: CGRect) {
+        drawStrymonChassis(
+            ctx: ctx, rect: rect,
+            topColor: Color(red: 0.36, green: 0.76, blue: 0.88),
+            botColor: Color(red: 0.20, green: 0.56, blue: 0.72),
+            script: "BigSky",
+            scriptColor: Color(red: 0.98, green: 0.98, blue: 0.98)
+        )
+    }
+
+    private func drawPedalTimeLine(ctx: GraphicsContext, rect: CGRect) {
+        drawStrymonChassis(
+            ctx: ctx, rect: rect,
+            topColor: Color(red: 0.32, green: 0.34, blue: 0.36),
+            botColor: Color(red: 0.16, green: 0.18, blue: 0.20),
+            script: "TIMELINE",
+            scriptColor: Color(red: 0.94, green: 0.94, blue: 0.92)
+        )
+    }
+
+    private func drawStrymonChassis(
+        ctx: GraphicsContext, rect: CGRect,
+        topColor: Color, botColor: Color,
+        script: String, scriptColor: Color
+    ) {
+        drawPedalChassis(ctx: ctx, rect: rect, topColor: topColor, botColor: botColor)
+        let w = rect.width
+        let h = rect.height
+        let disp = CGRect(
+            x: rect.minX + w * 0.10,
+            y: rect.minY + h * 0.14,
+            width: w * 0.30,
+            height: h * 0.18
+        )
+        ctx.fill(
+            Path(roundedRect: disp, cornerRadius: 1.2),
+            with: .color(Color(red: 0.03, green: 0.03, blue: 0.05))
+        )
+        for i in 0..<3 {
+            let cx = disp.minX + disp.width * (0.2 + CGFloat(i) * 0.3)
+            let segH = max(2, disp.height * 0.52)
+            let segW = max(0.8, w * 0.018)
+            let seg = CGRect(
+                x: cx - segW / 2,
+                y: disp.midY - segH / 2,
+                width: segW,
+                height: segH
+            )
+            ctx.fill(
+                Path(roundedRect: seg, cornerRadius: 0.4),
+                with: .color(Color(red: 0.55, green: 0.88, blue: 1.0).opacity(0.80))
+            )
+        }
+        let encC = CGPoint(x: rect.minX + w * 0.72, y: rect.minY + h * 0.22)
+        let encR = max(2.0, h * 0.085)
+        let ringR = encR * 1.75
+        for i in 0..<12 {
+            let a = .pi * 2 / 12 * CGFloat(i) - .pi / 2
+            let dotR: CGFloat = max(0.3, encR * 0.12)
+            let p = CGPoint(x: encC.x + cos(a) * ringR, y: encC.y + sin(a) * ringR)
+            let isLit = i < 7
+            ctx.fill(
+                Path(ellipseIn: CGRect(x: p.x - dotR, y: p.y - dotR, width: dotR * 2, height: dotR * 2)),
+                with: .color(
+                    isLit
+                        ? Color(red: 0.72, green: 0.94, blue: 1.0).opacity(0.85)
+                        : Color.black.opacity(0.40)
+                )
+            )
+        }
+        drawPedalKnob(ctx: ctx, center: encC, radius: encR, angle: .pi * 0.35)
+        let smKR = max(1.2, h * 0.055)
+        let midY = rect.minY + h * 0.50
+        for i in 0..<5 {
+            let cx = rect.minX + w * (0.15 + CGFloat(i) * 0.175)
+            drawPedalKnob(
+                ctx: ctx,
+                center: CGPoint(x: cx, y: midY),
+                radius: smKR,
+                angle: .pi * (0.65 + Double(i) * 0.11)
+            )
+        }
+        let labelSize = max(3.5, h * 0.12)
+        let label = Text(script)
+            .font(.system(size: labelSize, weight: .semibold, design: .serif))
+            .italic()
+            .foregroundStyle(scriptColor)
+        ctx.draw(label, at: CGPoint(x: rect.midX, y: rect.minY + h * 0.68), anchor: .center)
+        let footR = max(1.8, h * 0.085)
+        let footY = rect.minY + h * 0.84
+        for i in 0..<3 {
+            let cx = rect.minX + w * (0.22 + CGFloat(i) * 0.28)
+            drawPedalLED(
+                ctx: ctx,
+                center: CGPoint(x: cx, y: footY - footR * 2.0),
+                radius: max(0.5, footR * 0.22),
+                color: i == 1 ? Color(red: 0.98, green: 0.38, blue: 0.18) : Color(red: 0.25, green: 0.25, blue: 0.27)
+            )
+            drawPedalFootswitch(
+                ctx: ctx,
+                center: CGPoint(x: cx, y: footY),
+                radius: footR
+            )
+        }
+    }
+
+    private func drawPedalRAT(ctx: GraphicsContext, rect: CGRect) {
+        drawPedalChassis(
+            ctx: ctx, rect: rect,
+            topColor: Color(red: 0.11, green: 0.11, blue: 0.12),
+            botColor: Color(red: 0.04, green: 0.04, blue: 0.05)
+        )
+        let w = rect.width
+        let h = rect.height
+        let knobR = max(1.4, w * 0.10)
+        let topY = rect.minY + h * 0.16
+        let xs: [CGFloat] = [0.22, 0.50, 0.78]
+        let angles: [Double] = [0.75, 0.95, 1.15]
+        for i in 0..<3 {
+            drawPedalKnob(
+                ctx: ctx,
+                center: CGPoint(x: rect.minX + w * xs[i], y: topY),
+                radius: knobR,
+                angle: .pi * CGFloat(angles[i])
+            )
+        }
+        let labels = ["DIST", "FILT", "VOL"]
+        let labelSize = max(2.5, w * 0.07)
+        for i in 0..<3 {
+            let boxW = w * 0.20
+            let boxH = h * 0.05
+            let boxC = CGPoint(x: rect.minX + w * xs[i], y: topY + knobR + boxH * 0.9)
+            let box = CGRect(x: boxC.x - boxW / 2, y: boxC.y - boxH / 2, width: boxW, height: boxH)
+            ctx.fill(Path(roundedRect: box, cornerRadius: 0.5), with: .color(Color(red: 0.93, green: 0.92, blue: 0.88)))
+            let t = Text(labels[i])
+                .font(.system(size: labelSize, weight: .heavy, design: .default))
+                .foregroundStyle(Color(red: 0.06, green: 0.06, blue: 0.08))
+            ctx.draw(t, at: boxC, anchor: .center)
+        }
+        drawPedalLED(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX, y: rect.minY + h * 0.46),
+            radius: max(0.6, w * 0.035),
+            color: Color(red: 0.95, green: 0.24, blue: 0.18)
+        )
+        let logoSize = max(7, w * 0.34)
+        let logo = Text("RAT")
+            .font(.system(size: logoSize, weight: .black, design: .serif))
+            .foregroundStyle(Color(red: 0.96, green: 0.96, blue: 0.94))
+        ctx.draw(logo, at: CGPoint(x: rect.midX, y: rect.minY + h * 0.60), anchor: .center)
+        drawPedalFootswitch(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX, y: rect.minY + h * 0.82),
+            radius: max(2.2, w * 0.18)
+        )
+    }
+
+    private func drawPedalCentavo(ctx: GraphicsContext, rect: CGRect) {
+        drawPedalChassis(
+            ctx: ctx, rect: rect,
+            topColor: Color(red: 0.90, green: 0.72, blue: 0.26),
+            botColor: Color(red: 0.66, green: 0.48, blue: 0.14)
+        )
+        let w = rect.width
+        let h = rect.height
+        let knobR = max(1.6, h * 0.105)
+        let topY = rect.minY + h * 0.28
+        let knobXs: [CGFloat] = [0.15, 0.33, 0.51]
+        let knobAngles: [Double] = [0.65, 0.82, 1.00]
+        for i in 0..<3 {
+            drawPedalKnob(
+                ctx: ctx,
+                center: CGPoint(x: rect.minX + w * knobXs[i], y: topY),
+                radius: knobR,
+                angle: .pi * CGFloat(knobAngles[i])
+            )
+        }
+        drawPedalLED(
+            ctx: ctx,
+            center: CGPoint(x: rect.minX + w * 0.15, y: topY + knobR * 2.0),
+            radius: max(0.5, h * 0.030),
+            color: Color(red: 1.0, green: 0.72, blue: 0.22)
+        )
+        drawCentaurSilhouette(
+            ctx: ctx,
+            rect: CGRect(
+                x: rect.minX + w * 0.60,
+                y: rect.minY + h * 0.18,
+                width: w * 0.34,
+                height: h * 0.48
+            )
+        )
+        let labelSize = max(3.5, h * 0.12)
+        let label = Text("CENTAVO")
+            .font(.system(size: labelSize, weight: .bold, design: .serif))
+            .foregroundStyle(Color(red: 0.18, green: 0.12, blue: 0.04))
+        ctx.draw(label, at: CGPoint(x: rect.minX + w * 0.30, y: rect.minY + h * 0.70), anchor: .center)
+        drawPedalFootswitch(
+            ctx: ctx,
+            center: CGPoint(x: rect.midX, y: rect.minY + h * 0.84),
+            radius: max(2.2, h * 0.12)
+        )
+    }
+
+    private func drawCentaurSilhouette(ctx: GraphicsContext, rect: CGRect) {
+        let ink = Color(red: 0.14, green: 0.10, blue: 0.03).opacity(0.88)
+        let bodyRect = CGRect(
+            x: rect.minX + rect.width * 0.12,
+            y: rect.midY - rect.height * 0.10,
+            width: rect.width * 0.70,
+            height: rect.height * 0.38
+        )
+        ctx.fill(Path(ellipseIn: bodyRect), with: .color(ink))
+        let headR = rect.width * 0.13
+        let headC = CGPoint(x: rect.minX + rect.width * 0.20, y: rect.minY + rect.height * 0.14)
+        ctx.fill(
+            Path(ellipseIn: CGRect(
+                x: headC.x - headR, y: headC.y - headR,
+                width: headR * 2, height: headR * 2
+            )),
+            with: .color(ink)
+        )
+        var neck = Path()
+        neck.move(to: CGPoint(x: headC.x + headR * 0.2, y: headC.y + headR * 0.5))
+        neck.addLine(to: CGPoint(x: bodyRect.minX + bodyRect.width * 0.15, y: bodyRect.minY + bodyRect.height * 0.30))
+        ctx.stroke(neck, with: .color(ink), lineWidth: max(0.8, headR * 0.65))
+        for i in 0..<4 {
+            let legX = bodyRect.minX + bodyRect.width * (0.22 + CGFloat(i) * 0.20)
+            var leg = Path()
+            leg.move(to: CGPoint(x: legX, y: bodyRect.maxY - 1))
+            leg.addLine(to: CGPoint(x: legX - rect.width * 0.015, y: rect.maxY - 1))
+            ctx.stroke(leg, with: .color(ink), lineWidth: max(0.7, rect.width * 0.028))
+        }
+        var tail = Path()
+        tail.move(to: CGPoint(x: bodyRect.maxX - 2, y: bodyRect.midY))
+        tail.addQuadCurve(
+            to: CGPoint(x: bodyRect.maxX + rect.width * 0.08, y: bodyRect.maxY - 1),
+            control: CGPoint(x: bodyRect.maxX + rect.width * 0.12, y: bodyRect.midY + rect.height * 0.10)
+        )
+        ctx.stroke(tail, with: .color(ink), lineWidth: max(0.7, rect.width * 0.022))
+    }
 
     // MARK: - Cabinet (wooden frame)
     private func drawCabinet(ctx: GraphicsContext, body: CGRect) {

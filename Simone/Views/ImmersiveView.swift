@@ -256,6 +256,7 @@ private struct ChannelPage: View {
                 .allowsHitTesting(false)
             }
         }
+        .ignoresSafeArea()  // 让 GeometryReader 的 geo.size 拿到全屏尺寸（含 status bar / home indicator 区），visualizer 不再被 safe area 切出黑边
     }
 
     private var isActive: Bool { channel == state.currentChannel }
