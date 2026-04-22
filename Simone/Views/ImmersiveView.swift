@@ -219,46 +219,44 @@ private struct ChannelPage: View {
     }
 
     var body: some View {
-        // GeometryReader 删了 — TabView .page 把 6 个 ChannelPage 同时实例化，
-        // 每个 GeometryReader 都强制一次 layout pass。改用 .frame(maxWidth/Height)
-        // 让 ZStack 自然吃满父容器，6× layout cost 砍到 0。这是 v1.4a UI rewrite
-        // 后音频/动画双卡的根本原因之一（另一处：Channel.all 改 static let）。
-        ZStack {
-            // 所有频道小图背景统一黑（CEO 要求 — visualizer 大图自己画 mood
-            // 暖色，小图全部坍塌到黑，安全区也吃黑不再透 bgDeep 冷蓝）。
-            Color.black
-                .ignoresSafeArea()
+        GeometryReader { geo in
+            ZStack {
+                // 所有频道小图背景统一黑（CEO 要求 — visualizer 大图自己画 mood
+                // 暖色，小图全部坍塌到黑，安全区也吃黑不再透 bgDeep 冷蓝）。
+                Color.black
+                    .ignoresSafeArea()
 
-            // visualizer — 只在当前 channel 上实例化 + 跑 TimelineView。
-            // 邻居 page 完全不画 visualizer (Color.clear 占位)，原因：
-            //   · RnB/Electronic Signature 各有自己的内部 TimelineView
-            //     (60fps / 30fps)，即使 expansion=0 静态帧也会一直 fire
-            //   · spectrum data 一变所有 page 都 re-render Canvas
-            //   · 6 个 visualizer 同时高频 redraw 把 audio buffer 饿瘦
-            // 代价：横滑切台时邻居先黑底 ~300ms 再实例化 visualizer，
-            // 比音频卡顿好。
-            Group {
-                if isActive {
-                    TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
-                        visualizer(expansion: expansion(ctx.date))
+                // visualizer — 只在当前 channel 上实例化 + 跑 TimelineView。
+                // 邻居 page 完全不画 visualizer (Color.clear 占位)，原因：
+                //   · RnB/Electronic Signature 各有自己的内部 TimelineView
+                //     (60fps / 30fps)，即使 expansion=0 静态帧也会一直 fire
+                //   · spectrum data 一变所有 page 都 re-render Canvas
+                //   · 6 个 visualizer 同时高频 redraw 把 audio buffer 饿瘦
+                // 代价：横滑切台时邻居先黑底 ~300ms 再实例化 visualizer，
+                // 比音频卡顿好。
+                Group {
+                    if isActive {
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+                            visualizer(expansion: expansion(ctx.date))
+                        }
+                    } else {
+                        Color.clear
                     }
-                } else {
-                    Color.clear
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .onTapGesture { onTapVisualizer() }
-            .gesture(verticalSwipe)
+                .frame(width: geo.size.width, height: geo.size.height)
+                .contentShape(Rectangle())
+                .onTapGesture { onTapVisualizer() }
+                .gesture(verticalSwipe)
 
-            VStack(spacing: 0) {
-                Spacer()
-                bottomOverlay
-                Spacer().frame(height: 145)  // 给 transport row 让位（titlea 往下挪一点）
+                VStack(spacing: 0) {
+                    Spacer()
+                    bottomOverlay
+                    Spacer().frame(height: 145)  // 给 transport row 让位（titlea 往下挪一点）
+                }
+                .allowsHitTesting(false)
             }
-            .allowsHitTesting(false)
         }
-        .ignoresSafeArea()
+        .ignoresSafeArea()  // 让 GeometryReader 的 geo.size 拿到全屏尺寸（含 status bar / home indicator 区），visualizer 不再被 safe area 切出黑边
     }
 
     private var isActive: Bool { channel == state.currentChannel }
