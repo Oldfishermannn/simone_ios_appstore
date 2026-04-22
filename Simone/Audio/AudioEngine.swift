@@ -61,20 +61,6 @@ final class AudioEngine {
     private let displayBins = 64
     private var fftSetup: vDSP_DFT_Setup?
     private var logBinMap: [ClosedRange<Int>] = []
-    // Pre-computed Hann window — 省掉每个 tap 在音频线程上重算 2048 次 cos()
-    private var hannWindow: [Float] = []
-    // FFT scratch buffers — 复用以避免每个 tap (~12Hz) 在音频线程 alloc 4×8KB 数组
-    private var fftRealIn: [Float] = []
-    private var fftImagIn: [Float] = []
-    private var fftRealOut: [Float] = []
-    private var fftImagOut: [Float] = []
-    private var fftLinearMags: [Float] = []
-    private var fftMapped: [Float] = []
-    private var fftSmoothed: [Float] = []
-    // Spectrum publish 节流 — 避免 12Hz 重发把主线程砸死。10Hz 已是 visualizer
-    // 视觉极限（人眼区分不出 100ms vs 83ms 帧抖动）。
-    private var lastSpectrumPublishAt: TimeInterval = 0
-    private let spectrumMinInterval: TimeInterval = 0.10
 
     init() {
         fftSetup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(fftSize), .FORWARD)
@@ -90,17 +76,6 @@ final class AudioEngine {
             let hi = max(lo, Int(pow(2.0, logMin + t1 * (logMax - logMin))) - 1)
             logBinMap.append(lo...min(hi, maxFreqBin))
         }
-        // 预算 Hann 窗 + scratch 数组（init 时一次性）
-        hannWindow = (0..<fftSize).map { i in
-            0.5 * (1.0 - cos(2.0 * .pi * Float(i) / Float(fftSize)))
-        }
-        fftRealIn = [Float](repeating: 0, count: fftSize)
-        fftImagIn = [Float](repeating: 0, count: fftSize)
-        fftRealOut = [Float](repeating: 0, count: fftSize)
-        fftImagOut = [Float](repeating: 0, count: fftSize)
-        fftLinearMags = [Float](repeating: 0, count: nyquist)
-        fftMapped = [Float](repeating: 0, count: displayBins)
-        fftSmoothed = [Float](repeating: 0, count: displayBins)
 
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
@@ -585,62 +560,60 @@ final class AudioEngine {
         let frameCount = Int(buffer.frameLength)
         guard frameCount >= fftSize else { return }
 
-        // 节流：超过 spectrumMinInterval (100ms) 才推一次。Lyria 把 4096-sample tap 砸到
-        // 音频线程 ~12Hz，每次都 publish 会让主线程 @Observable 重渲染所有 ChannelPage
-        // —— 视觉根本看不出 12 vs 10Hz 的差别，省掉的主线程时间能让动画顺滑。
-        let now = Date().timeIntervalSinceReferenceDate
-        guard now - lastSpectrumPublishAt >= spectrumMinInterval else { return }
-        lastSpectrumPublishAt = now
+        var realIn = [Float](repeating: 0, count: fftSize)
+        var imagIn = [Float](repeating: 0, count: fftSize)
+        var realOut = [Float](repeating: 0, count: fftSize)
+        var imagOut = [Float](repeating: 0, count: fftSize)
 
-        // 复用 scratch buffer（避免每 tap 在音频线程 alloc 4×8KB 数组）
-        // imagIn 永远是 0，不必清零（DFT 只读 real 输入）
         for i in 0..<fftSize {
-            fftRealIn[i] = channelData[i] * hannWindow[i]
+            let window = 0.5 * (1.0 - cos(2.0 * .pi * Float(i) / Float(fftSize)))
+            realIn[i] = channelData[i] * window
         }
 
-        vDSP_DFT_Execute(setup, &fftRealIn, &fftImagIn, &fftRealOut, &fftImagOut)
+        vDSP_DFT_Execute(setup, &realIn, &imagIn, &realOut, &imagOut)
 
         let nyquist = fftSize / 2
+        var linearMags = [Float](repeating: 0, count: nyquist)
         for i in 0..<nyquist {
-            fftLinearMags[i] = sqrt(fftRealOut[i] * fftRealOut[i] + fftImagOut[i] * fftImagOut[i])
+            linearMags[i] = sqrt(realOut[i] * realOut[i] + imagOut[i] * imagOut[i])
         }
 
+        var mapped = [Float](repeating: 0, count: displayBins)
         var globalMax: Float = 0
-        vDSP_maxv(fftLinearMags, 1, &globalMax, vDSP_Length(nyquist))
+        vDSP_maxv(linearMags, 1, &globalMax, vDSP_Length(nyquist))
         let normFactor: Float = globalMax > 0 ? 1.0 / globalMax : 0
 
         for i in 0..<displayBins {
             let range = logBinMap[i]
             var maxVal: Float = 0
             for bin in range {
-                maxVal = max(maxVal, fftLinearMags[bin])
+                maxVal = max(maxVal, linearMags[bin])
             }
-            fftMapped[i] = sqrt(maxVal * normFactor)
+            mapped[i] = sqrt(maxVal * normFactor)
         }
 
+        var smoothed = [Float](repeating: 0, count: displayBins)
         for i in 0..<displayBins {
             let lo = max(0, i - 1)
             let hi = min(displayBins - 1, i + 1)
-            fftSmoothed[i] = (fftMapped[lo] + fftMapped[i] * 2 + fftMapped[hi]) / 4.0
+            smoothed[i] = (mapped[lo] + mapped[i] * 2 + mapped[hi]) / 4.0
         }
 
-        // 把 smoothed 数据 copy 到一个本地数组传到 main（scratch 数组在音频线程，不能跨线程共享）
-        let snapshot = fftSmoothed
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            var newData = self.spectrumData
             // 不对称 IIR：attack 慢（视觉 fade-in，解决 play 恢复瞬间的割裂），
             // release 保留原速（暂停衰减动画已合适）。
-            // 就地更新 spectrumData（避免每帧 alloc 64-Float 新数组），单次 @Observable
-            // 触发由结尾的占位赋值统一发出。
             for i in 0..<self.displayBins {
-                let old = self.spectrumData[i]
-                let next = snapshot[i]
+                let old = newData[i]
+                let next = smoothed[i]
                 if next >= old {
-                    self.spectrumData[i] = old * 0.72 + next * 0.28
+                    newData[i] = old * 0.72 + next * 0.28
                 } else {
-                    self.spectrumData[i] = old * 0.4 + next * 0.6
+                    newData[i] = old * 0.4 + next * 0.6
                 }
             }
+            self.spectrumData = newData
         }
     }
 }

@@ -236,11 +236,7 @@ private struct ChannelPage: View {
                 // 比音频卡顿好。
                 Group {
                     if isActive {
-                        // 外层 TimelineView 30→20fps：morph 持续 0.55s，20fps × 0.55s ≈
-                        // 11 帧仍能撑 ease-out expo；morph 结束后 expansion 稳定，
-                        // 这条 timer 只是在喂 spectrum 重绘——降三分之一 main-thread
-                        // 负载给 audio buffer 调度让路。
-                        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { ctx in
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
                             visualizer(expansion: expansion(ctx.date))
                         }
                     } else {
