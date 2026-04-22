@@ -34,6 +34,22 @@ final class AudioEngine {
     private let bufferQueue = AudioBufferQueue()
     private var isDraining = false
 
+    // v1.4a fix(audio stutter): 把 chunk 解码 + scheduleBuffer 完全移出 main
+    // thread。LyriaClient WebSocket receive callback 走 URLSession main delegate
+    // queue → handleAudioChunk → drainQueue 原本全在 main thread 跑（PCM 解码 +
+    // applySoftFade 循环，每个 chunk ~5-15ms）。UI rewrite 后 main thread 持续
+    // 被 SwiftUI Canvas/TimelineView 吃，audio chunk 处理被推迟 → playerNode
+    // underrun → "播一会停一会"。
+    //
+    // 解决：所有动 bufferQueue/isDraining/scheduleBuffer 的入口（handleAudioChunk
+    // / clearQueue / flushScheduledBuffers / splice.enqueuePlayback callback）
+    // dispatch 到这条 serial queue 上跑。serial 保证 isDraining + bufferQueue
+    // 操作顺序，userInteractive QoS 给音频高优先级，不被 SwiftUI 抢。
+    private let scheduleQueue = DispatchQueue(
+        label: "com.simone.audio.scheduling",
+        qos: .userInteractive
+    )
+
     // v1.3 · Lock 无缝续接
     let splice = SplicePlayback()
 
@@ -87,8 +103,11 @@ final class AudioEngine {
 
         // Splice hooks：把录音-播放-ramp 三个能力注入给 SplicePlayback
         splice.enqueuePlayback = { [weak self] data in
-            self?.bufferQueue.enqueue(data)
-            self?.drainQueue()
+            guard let self else { return }
+            self.scheduleQueue.async {
+                self.bufferQueue.enqueue(data)
+                self.drainQueue()
+            }
         }
         splice.armFadeIn = { [weak self] duration in
             self?.armSoftFadeIn(duration: duration)
@@ -200,30 +219,45 @@ final class AudioEngine {
     }
 
     func handleAudioChunk(_ data: Data) {
-        lastChunkReceivedAt = Date()
-        // v1.3 · 分叉录到 ring buffer（用于 Lock 无缝续接 fallback loop）
-        splice.recordIncoming(data)
-        bufferQueue.enqueue(data)
+        // 整体 dispatch 到 scheduleQueue：解码 + scheduleBuffer 全部脱离 main
+        // thread，避免被 SwiftUI Canvas 抢走主线程时间导致 player underrun。
+        // 注意 lastChunkReceivedAt 也在这里写（watchdog 在 main thread Timer
+        // 读，原子读 Date 引用 OK，stallThreshold=20s 量级容忍微 race）。
+        scheduleQueue.async { [weak self] in
+            guard let self else { return }
+            self.lastChunkReceivedAt = Date()
+            // v1.3 · 分叉录到 ring buffer（用于 Lock 无缝续接 fallback loop）
+            self.splice.recordIncoming(data)
+            self.bufferQueue.enqueue(data)
 
-        if !isDraining && bufferQueue.count >= bufferMin {
-            drainQueue()
-        } else if isDraining {
-            drainQueue()
+            if !self.isDraining && self.bufferQueue.count >= self.bufferMin {
+                self.drainQueue()
+            } else if self.isDraining {
+                self.drainQueue()
+            }
         }
     }
 
     func clearQueue() {
-        splice.abortFallback()
-        volumeRampTimer?.invalidate()
-        volumeRampTimer = nil
-        playerNode?.volume = 1.0
-        softFadeOutLock.lock()
-        softFadeOutTotal = 0
-        softFadeOutConsumed = 0
-        softFadeOutLock.unlock()
-        bufferQueue.clear()
-        isDraining = false
-        resetScheduledCount()
+        // volumeRampTimer 是 Timer，必须 main thread 操作（Timer + RunLoop）。
+        // 其余（bufferQueue / isDraining / softFadeOut）必须在 scheduleQueue 跑
+        // 才能跟 handleAudioChunk 串行（避免 race：clear 跟新 chunk drain 交错）。
+        DispatchQueue.main.async { [weak self] in
+            self?.volumeRampTimer?.invalidate()
+            self?.volumeRampTimer = nil
+            self?.playerNode?.volume = 1.0
+        }
+        scheduleQueue.async { [weak self] in
+            guard let self else { return }
+            self.splice.abortFallback()
+            self.softFadeOutLock.lock()
+            self.softFadeOutTotal = 0
+            self.softFadeOutConsumed = 0
+            self.softFadeOutLock.unlock()
+            self.bufferQueue.clear()
+            self.isDraining = false
+            self.resetScheduledCount()
+        }
     }
 
     /// v1.3 · Lock 10min 跳风格修复：安排下一批音频的软淡入。
@@ -264,24 +298,31 @@ final class AudioEngine {
     }
 
     func flushScheduledBuffers() {
-        splice.abortFallback()
-        volumeRampTimer?.invalidate()
-        volumeRampTimer = nil
-        softFadeOutLock.lock()
-        softFadeOutTotal = 0
-        softFadeOutConsumed = 0
-        softFadeOutLock.unlock()
-        bufferQueue.clear()
-        isDraining = false
-        resetScheduledCount()
-        playerNode?.stop()
-        // v1.3 · reset volume 让新 chunk 能听见（armSoftFadeOut 把 volume ramp 到 0）
-        playerNode?.volume = 1.0
-        // Bug fix: 用户暂停状态下 applySelection 也走这条路径 reset queue；
-        // 强制 play() 会让暂停状态下切 style 自动恢复播放。只在用户真正
-        // 在播放时才接续。下一次 togglePlayPause 会显式 resume。
-        if isPlaying {
-            playerNode?.play()
+        // 拆两段：playerNode 操作和 Timer 操作必须 main thread；
+        // bufferQueue / isDraining 必须 scheduleQueue 串行 handleAudioChunk。
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.volumeRampTimer?.invalidate()
+            self.volumeRampTimer = nil
+            self.playerNode?.stop()
+            self.playerNode?.volume = 1.0
+            // Bug fix: 用户暂停状态下 applySelection 也走这条路径 reset queue；
+            // 强制 play() 会让暂停状态下切 style 自动恢复播放。只在用户真正
+            // 在播放时才接续。下一次 togglePlayPause 会显式 resume。
+            if self.isPlaying {
+                self.playerNode?.play()
+            }
+        }
+        scheduleQueue.async { [weak self] in
+            guard let self else { return }
+            self.splice.abortFallback()
+            self.softFadeOutLock.lock()
+            self.softFadeOutTotal = 0
+            self.softFadeOutConsumed = 0
+            self.softFadeOutLock.unlock()
+            self.bufferQueue.clear()
+            self.isDraining = false
+            self.resetScheduledCount()
         }
     }
 
