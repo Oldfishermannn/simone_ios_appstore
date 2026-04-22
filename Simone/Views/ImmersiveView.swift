@@ -226,18 +226,21 @@ private struct ChannelPage: View {
                 Color.black
                     .ignoresSafeArea()
 
-                // visualizer — 仅当前 channel 跑 TimelineView 30fps，邻居 page
-                // 用 expansion=0 静态帧（防 6 个 visualizer 同时高频 redraw 抢 CPU
-                // 把音频饿瘦）。tap 直接挂在 visualizer 这层，不再另起 Color.clear
-                // overlay（那个 overlay 的 onTapGesture 会跟 transport row 的
-                // play button 抢手势，导致 play 不响）。
+                // visualizer — 只在当前 channel 上实例化 + 跑 TimelineView。
+                // 邻居 page 完全不画 visualizer (Color.clear 占位)，原因：
+                //   · RnB/Electronic Signature 各有自己的内部 TimelineView
+                //     (60fps / 30fps)，即使 expansion=0 静态帧也会一直 fire
+                //   · spectrum data 一变所有 page 都 re-render Canvas
+                //   · 6 个 visualizer 同时高频 redraw 把 audio buffer 饿瘦
+                // 代价：横滑切台时邻居先黑底 ~300ms 再实例化 visualizer，
+                // 比音频卡顿好。
                 Group {
                     if isActive {
                         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
                             visualizer(expansion: expansion(ctx.date))
                         }
                     } else {
-                        visualizer(expansion: 0)
+                        Color.clear
                     }
                 }
                 .frame(width: geo.size.width, height: geo.size.height)

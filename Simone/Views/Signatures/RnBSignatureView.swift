@@ -44,7 +44,8 @@ struct RnBSignatureView: View {
     var shimmerBoost: CGFloat = 1.0
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
+        // 30fps 已足够（之前 60fps 是过度设计，audio engine 喂不上更新就卡）。
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
             let t = ctx.date.timeIntervalSince1970
             Canvas { gc, size in
                 render(gc: gc, size: size, t: t)
