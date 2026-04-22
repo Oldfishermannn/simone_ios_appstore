@@ -22,30 +22,13 @@ struct ImmersiveView: View {
     // TabView selection — 双向同步 state.currentChannel
     @State private var tabIndex: Int = 0
 
-    // Morph state (expansion 0..1)。isSmall ↔ isPlaying 驱动这条 timeline。
-    @State private var morphStart: Date = .distantPast
-    @State private var morphFrom: CGFloat = 0
-    @State private var morphTo: CGFloat = 0
+    // Morph state (expansion 0..1)。SwiftUI 原生 withAnimation 驱动——
+    // 替代之前的 TimelineView 30fps 常驻 ticker（idle 时也在烧 CPU 把
+    // .drawingGroup() canvas 重栅格化，是音频卡顿主因）。
+    // 现在：morph 期间 SwiftUI 自己 60fps 内插 expansion + 触发 body 重算；
+    // morph 完成后 expansion 静止 → ChannelPage 静止 → Canvas 不再重绘。
+    @State private var expansion: CGFloat = 0
     private let morphDuration: Double = 0.55
-
-    private func currentExpansion(now: Date) -> CGFloat {
-        let elapsed = now.timeIntervalSince(morphStart)
-        if elapsed <= 0 { return morphFrom }
-        if elapsed >= morphDuration { return morphTo }
-        let t = elapsed / morphDuration
-        let eased = 1.0 - pow(2.0, -10.0 * t)  // ease-out expo
-        return morphFrom + (morphTo - morphFrom) * CGFloat(eased)
-    }
-
-    private func setMode(toBig: Bool) {
-        let target: CGFloat = toBig ? 1.0 : 0.0
-        let now = Date()
-        let current = currentExpansion(now: now)
-        guard abs(current - target) > 0.001 else { return }
-        morphFrom = current
-        morphTo = target
-        morphStart = now
-    }
 
     /// 用于派生大小图当前姿态——TabView 切页时 transport row 的微调位置。
     private var isPlayingNow: Bool { state.audioEngine.isPlaying }
@@ -76,7 +59,7 @@ struct ImmersiveView: View {
                     ChannelPage(
                         channel: Channel.all[idx],
                         state: state,
-                        expansion: currentExpansion,
+                        expansion: expansion,
                         onTapVisualizer: { state.togglePlayPause() },
                         onSwipeStyle: { delta in switchStyle(by: delta) }
                     )
@@ -98,12 +81,9 @@ struct ImmersiveView: View {
         .ignoresSafeArea()
         .statusBarHidden(true)
         .onAppear {
-            // 初始化 tabIndex 对齐当前 channel；morph 起点对齐当前播放状态
+            // 初始化 tabIndex 对齐当前 channel；expansion 直接对齐播放状态（无动画）
             tabIndex = Channel.all.firstIndex(of: state.currentChannel) ?? 0
-            let initial: CGFloat = state.audioEngine.isPlaying ? 1.0 : 0.0
-            morphFrom = initial
-            morphTo = initial
-            morphStart = .distantPast
+            expansion = state.audioEngine.isPlaying ? 1.0 : 0.0
         }
         .onChange(of: tabIndex) { _, new in
             let target = Channel.all[new]
@@ -117,7 +97,12 @@ struct ImmersiveView: View {
             }
         }
         .onChange(of: state.audioEngine.isPlaying) { _, playing in
-            setMode(toBig: playing)
+            // SwiftUI 原生 ease-out — 期间 SwiftUI 自己内插 expansion，
+            // ChannelPage.body 自动 re-eval，Canvas 自动重绘；morph 完成后
+            // 自动停止，不再有 per-frame 工作。
+            withAnimation(.easeOut(duration: morphDuration)) {
+                expansion = playing ? 1.0 : 0.0
+            }
         }
     }
 
@@ -205,7 +190,7 @@ struct ImmersiveView: View {
 private struct ChannelPage: View {
     let channel: Channel
     @Bindable var state: AppState
-    let expansion: (Date) -> CGFloat
+    let expansion: CGFloat
     let onTapVisualizer: () -> Void
     let onSwipeStyle: (Int) -> Void
 
@@ -226,19 +211,18 @@ private struct ChannelPage: View {
                 Color.black
                     .ignoresSafeArea()
 
-                // visualizer — 只在当前 channel 上实例化 + 跑 TimelineView。
-                // 邻居 page 完全不画 visualizer (Color.clear 占位)，原因：
-                //   · RnB/Electronic Signature 各有自己的内部 TimelineView
-                //     (60fps / 30fps)，即使 expansion=0 静态帧也会一直 fire
-                //   · spectrum data 一变所有 page 都 re-render Canvas
-                //   · 6 个 visualizer 同时高频 redraw 把 audio buffer 饿瘦
-                // 代价：横滑切台时邻居先黑底 ~300ms 再实例化 visualizer，
-                // 比音频卡顿好。
+                // visualizer — 只在当前 channel 上实例化（邻居 page 不画）。
+                // 之前外面包了一层 TimelineView 30fps 常驻 — 它会在 idle 时
+                // 不停地把 .drawingGroup() canvas 重栅格化，是音频卡顿主因。
+                // 现在去掉外层 TimelineView：
+                //   · expansion 改用 SwiftUI 原生 withAnimation（ImmersiveView 那边）
+                //     → morph 期间自动驱动 body 重算，morph 完成后停下，不烧 CPU
+                //   · spectrum data 是 @Observable → 变化时自动触发 body 重算 → Canvas 重绘
+                //   · 需要纯时间动画的 visualizer (Ember/NightWindow/Lofi/Electronic dynamic)
+                //     自己有内部 TimelineView 或靠 spectrum tick
                 Group {
                     if isActive {
-                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
-                            visualizer(expansion: expansion(ctx.date))
-                        }
+                        visualizer(expansion: expansion)
                     } else {
                         Color.clear
                     }
