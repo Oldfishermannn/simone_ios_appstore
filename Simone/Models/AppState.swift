@@ -10,7 +10,8 @@ final class AppState {
     // Category navigation
     var currentCategory: StyleCategory = .lofi
 
-    // v1.1.1 top-level nav unit (Favorites + 10 categories).
+    // v1.1.1 top-level nav unit (5 genre channels + Favorites).
+    // v1.4a: Favorites removed — channels are now 6 StyleCategory genres.
     // currentCategory preserved as one-version fallback per reversibility policy.
     var currentChannel: Channel = .category(.lofi) {
         didSet { saveCurrentChannel() }
@@ -18,9 +19,6 @@ final class AppState {
 
     // Style history (for previous/next navigation)
     var styleHistory: [MoodStyle] = []
-
-    // Pinned (persisted)
-    var pinnedStyles: [MoodStyle] = []
 
     // Playback
     var isGenerating = false
@@ -50,35 +48,19 @@ final class AppState {
     }
     private var autoTuneTimer: Timer?
 
-    // v1.4a Part 3 — Signature axis. Classic keeps every existing visualizer
-    // exactly as shipped; Signature swaps the per-channel totem only where
-    // one is defined (Lo-fi today, 4 more channels later). Default Signature
-    // so new installs see the new art; Classic is the opt-back-in for users
-    // who already love the Cassette Deck / Pad / Blinds set.
+    // v1.4a Part 3 — Signature axis. Classic 已废，所有频道走 Signature。
+    // 旧的 toggle 在 v1.4a 全部 Signature 上线后被 CEO 砍掉（Eurorack v5 验过）。
+    // 留 enum + property 保持 schema 兼容（UserDefaults 旧 key 静默忽略）。
     enum VisualizationMode: String, CaseIterable {
         case signature = "Signature"
         case classic = "Classic"
     }
-    var visualizationMode: VisualizationMode = .classic {
-        didSet {
-            UserDefaults.standard.set(visualizationMode.rawValue, forKey: "visualizationMode")
-        }
-    }
+    let visualizationMode: VisualizationMode = .signature
 
     /// Evolve-driven multipliers for Signature visualizers. 1.0 = neutral.
     /// Nudged ±10% every evolve tick inside the Lo-fi channel; clamped tight.
     var signatureDensityScale: CGFloat = 1.0
     var signatureOmegaScale: CGFloat = 1.0
-
-    // v1.2 Favorites 评审期：三选一可视化（firefly / letters / drawer）
-    var favoritesVisualizer: VisualizerStyle = Channel.favoritesVisualizerPreference {
-        didSet {
-            UserDefaults.standard.set(favoritesVisualizer.rawValue, forKey: Channel.favoritesVisualizerKey)
-            if currentChannel == .favorites {
-                selectedVisualizer = favoritesVisualizer
-            }
-        }
-    }
 
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
@@ -135,30 +117,16 @@ final class AppState {
     let audioEngine = AudioEngine()
     let lyriaClient = LyriaClient()
 
-    private let pinnedKey = "pinnedStyles"
     private let currentChannelKey = "currentChannel"
 
     init() {
         // v1.1.1 migration: clean up legacy key from v1.1.0's reverted session rotation.
         UserDefaults.standard.removeObject(forKey: "sessionRotationEnabled")
 
-        // Load pinned styles from UserDefaults, re-tag any preset carried over from
-        // the old 10-genre taxonomy (blues/pop/classical/ambient/folk) by looking up
-        // the canonical definition in the new preset pool. User-generated presets
-        // (id prefix "gen-") keep their current category field.
-        if let data = UserDefaults.standard.data(forKey: pinnedKey),
-           let decoded = try? JSONDecoder().decode([MoodStyle].self, from: data) {
-            var needsRewrite = false
-            pinnedStyles = decoded.map { old in
-                if let canonical = MoodStyle.presets.first(where: { $0.id == old.id }),
-                   canonical.category != old.category {
-                    needsRewrite = true
-                    return canonical
-                }
-                return old
-            }
-            if needsRewrite { savePinnedStyles() }
-        }
+        // v1.4a migration: Favorites channel removed — drop the persisted
+        // pinned list and favorites visualizer preference key. Silent.
+        UserDefaults.standard.removeObject(forKey: "pinnedStyles")
+        UserDefaults.standard.removeObject(forKey: "favoritesVisualizer")
 
         // Restore Auto Tune preference.
         // v1.2.1 一次性迁移：v1.1.x 时代 Auto Tune 默认 ON，老用户升级后即使 v1.1.1
@@ -171,11 +139,9 @@ final class AppState {
         }
         autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
 
-        // Restore Signature/Classic visualization mode. Unset → Signature (new default).
-        if let raw = UserDefaults.standard.string(forKey: "visualizationMode"),
-           let mode = VisualizationMode(rawValue: raw) {
-            visualizationMode = mode
-        }
+        // v1.4a 全 Signature 上线后，旧 visualizationMode key 已废弃，清掉避免
+        // 老用户残留 "classic" 偏好被任何代码意外读到。
+        UserDefaults.standard.removeObject(forKey: "visualizationMode")
 
         // Restore last channel (no didSet side-effect during init)
         // v1.2: 频道收缩到 5 个，落在旧 channel 上则 fallback 到 lofi。
@@ -189,9 +155,13 @@ final class AppState {
             }
         }
 
-        // 冷启动默认选 Lo-fi Chill 作为展示（直接赋值绕过 selectStyle 的播放副作用）
+        // 冷启动默认 selectedStyle = 当前频道的第一个 style（按用户排序后的）。
+        // 老规矩是 hardcode lofi-chill，但用户上次离开在别的频道时，重启
+        // 显示 lofi-chill 与频道不一致——CEO 钦定改成频道首位。
+        // 直接赋值绕过 selectStyle 的播放副作用。
         if selectedStyle == nil {
-            selectedStyle = MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
+            selectedStyle = orderedStyles(for: currentChannel).first
+                ?? MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
         }
 
         lyriaClient.onAudioChunk = { [weak self] data in
@@ -236,10 +206,9 @@ final class AppState {
 
     // MARK: - Channel
 
-    /// Styles visible in the current channel (pinned for Favorites, preset pool for categories).
+    /// Styles visible in the current channel — always the category preset pool.
     var stylesInCurrentChannel: [MoodStyle] {
         switch currentChannel {
-        case .favorites:       return pinnedStyles
         case .category(let c): return MoodStyle.presets(for: c)
         }
     }
@@ -346,10 +315,10 @@ final class AppState {
         }
     }
 
-    /// Next style — cycles within the current channel (category preset pool, or pinned list for Favorites).
+    /// Next style — cycles within the current channel's category preset pool.
     func nextStyle() {
         let channelStyles = stylesInCurrentChannel
-        guard !channelStyles.isEmpty else { return }  // Favorites empty → no-op
+        guard !channelStyles.isEmpty else { return }
         if let current = selectedStyle {
             styleHistory.append(current)
         }
@@ -393,23 +362,6 @@ final class AppState {
         }
     }
 
-    // MARK: - Pin / Unpin
-
-    func pinStyle(_ style: MoodStyle) {
-        guard !pinnedStyles.contains(where: { $0.id == style.id }) else { return }
-        pinnedStyles.append(style)
-        savePinnedStyles()
-    }
-
-    func unpinStyle(_ style: MoodStyle) {
-        pinnedStyles.removeAll { $0.id == style.id }
-        savePinnedStyles()
-    }
-
-    func isPinned(_ style: MoodStyle) -> Bool {
-        pinnedStyles.contains(where: { $0.id == style.id })
-    }
-
     // MARK: - Style Order (v1.3)
 
     /// 每频道独立持久化 style 顺序。key pattern: `styleOrder_<channel.rawKey>`。
@@ -419,7 +371,7 @@ final class AppState {
     }
 
     /// 返回当前频道的"用户排序后"style 列表。persisted 里存在的按 persisted 顺序，
-    /// 未在 persisted 里的（新 preset）追加到末尾。Favorites 频道用 id 持久化（跨 category）。
+    /// 未在 persisted 里的（新 preset）追加到末尾。
     func orderedStyles(for channel: Channel) -> [MoodStyle] {
         let defaults = styles(for: channel)
         let persisted = UserDefaults.standard.stringArray(forKey: styleOrderKey(for: channel)) ?? []
@@ -448,7 +400,6 @@ final class AppState {
     /// Helper：给定频道取默认 style 列表（不查 persisted order）。
     private func styles(for channel: Channel) -> [MoodStyle] {
         switch channel {
-        case .favorites:       return pinnedStyles
         case .category(let c): return MoodStyle.presets(for: c)
         }
     }
@@ -476,12 +427,6 @@ final class AppState {
     }
 
     // MARK: - Private
-
-    private func savePinnedStyles() {
-        if let data = try? JSONEncoder().encode(pinnedStyles) {
-            UserDefaults.standard.set(data, forKey: pinnedKey)
-        }
-    }
 
     private func saveCurrentChannel() {
         UserDefaults.standard.set(currentChannel.rawKey, forKey: currentChannelKey)

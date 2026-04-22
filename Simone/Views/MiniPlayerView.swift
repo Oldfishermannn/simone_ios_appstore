@@ -6,7 +6,7 @@ struct MiniPlayerView: View {
     var body: some View {
         HStack(spacing: 10) {
             // v1.2.1: Mini spectrum thumbnail — was rose-on-warm-grey, now
-            // indigo-glow on bgDeep. Same shape, different temperature.
+            // indigo-glow on bgDeep. Same shape, different temperatu re.
             RoundedRectangle(cornerRadius: 8)
                 .fill(
                     RadialGradient(

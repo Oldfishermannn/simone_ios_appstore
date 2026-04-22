@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		02EFD611E85BB464212FF117 /* FloraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C427F742A90188BAED3B87EB /* FloraView.swift */; };
 		08852DDB83F31A4AF4F3A875 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FA9A410DEBEC3A63AE39244 /* WaveformView.swift */; };
+		E101F2E3A4B5C6D7E8F9B001 /* RnBSignatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E201F2E3A4B5C6D7E8F9B002 /* RnBSignatureView.swift */; };
+		E401F2E3A4B5C6D7E8F9B004 /* ElectronicSignatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E501F2E3A4B5C6D7E8F9B005 /* ElectronicSignatureView.swift */; };
 		0E43FBD54389D8586234B2FF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FB00288B34147AC47677E8 /* SettingsView.swift */; };
 		0E9D9C1EAF46E64C82DB51FD /* OscilloscopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BC765E6835D0DD6DA8C7D7 /* OscilloscopeView.swift */; };
 		15393F2A0233EA7B17141A5E /* EvolveVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A8C8FA89D7F493C32EAC820 /* EvolveVocabulary.swift */; };
@@ -142,6 +144,8 @@
 		9AF475AAE6BEBBA91DF7836A /* VisualizerStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualizerStyle.swift; sourceTree = "<group>"; };
 		9CCE3D2FC8D625E20719F260 /* Simone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Simone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9FA9A410DEBEC3A63AE39244 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
+		E201F2E3A4B5C6D7E8F9B002 /* RnBSignatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RnBSignatureView.swift; sourceTree = "<group>"; };
+		E501F2E3A4B5C6D7E8F9B005 /* ElectronicSignatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicSignatureView.swift; sourceTree = "<group>"; };
 		A051AB5DAB29F481270E3FF3 /* OrbitalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbitalView.swift; sourceTree = "<group>"; };
 		AA44938A444AA921CDA587C9 /* OFL-Fraunces.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "OFL-Fraunces.txt"; sourceTree = "<group>"; };
 		ADE35BACA0AC9A4AB7F37FA7 /* Archivo[wdth,wght].ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Archivo[wdth,wght].ttf"; sourceTree = "<group>"; };
@@ -248,11 +252,21 @@
 				F65AC8031ADEE704B3F43BDC /* MiniPlayerView.swift */,
 				33DA43F0A0298D89DE9E3DDB /* PlayControlView.swift */,
 				52FB00288B34147AC47677E8 /* SettingsView.swift */,
+				E301F2E3A4B5C6D7E8F9B003 /* Signatures */,
 				6C4631B1A8C6EC69450E2E97 /* SpectrumCarouselView.swift */,
 				16965D51275875EB67E8C74C /* StyleRowView.swift */,
 				7FA551E57F59F9976B132116 /* Visualizers */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		E301F2E3A4B5C6D7E8F9B003 /* Signatures */ = {
+			isa = PBXGroup;
+			children = (
+				E201F2E3A4B5C6D7E8F9B002 /* RnBSignatureView.swift */,
+				E501F2E3A4B5C6D7E8F9B005 /* ElectronicSignatureView.swift */,
+			);
+			path = Signatures;
 			sourceTree = "<group>";
 		};
 		4461DB602C1122A274B86CDC /* Audio */ = {
@@ -537,6 +551,8 @@
 				690697ABF996DC0DFAFCD100 /* VortexView.swift in Sources */,
 				36E7EA4D10AAF40367E4C547 /* WaveRippleView.swift in Sources */,
 				08852DDB83F31A4AF4F3A875 /* WaveformView.swift in Sources */,
+				E101F2E3A4B5C6D7E8F9B001 /* RnBSignatureView.swift in Sources */,
+				E401F2E3A4B5C6D7E8F9B004 /* ElectronicSignatureView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

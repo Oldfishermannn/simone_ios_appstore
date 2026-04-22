@@ -38,7 +38,6 @@ enum Tier: String, Codable, CaseIterable, Comparable {
 
 enum Feature {
     case selectSpecificStyle
-    case favoriteStyle
     case buildNewStyleFromTags
     case directInput
     case evolveDepthControls
@@ -53,7 +52,6 @@ enum Feature {
     var requiredTier: Tier {
         switch self {
         case .selectSpecificStyle,
-             .favoriteStyle,
              .buildNewStyleFromTags,
              .visualizerReorder:
             return .tune

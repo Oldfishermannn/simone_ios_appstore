@@ -277,7 +277,12 @@ final class AudioEngine {
         playerNode?.stop()
         // v1.3 · reset volume 让新 chunk 能听见（armSoftFadeOut 把 volume ramp 到 0）
         playerNode?.volume = 1.0
-        playerNode?.play()
+        // Bug fix: 用户暂停状态下 applySelection 也走这条路径 reset queue；
+        // 强制 play() 会让暂停状态下切 style 自动恢复播放。只在用户真正
+        // 在播放时才接续。下一次 togglePlayPause 会显式 resume。
+        if isPlaying {
+            playerNode?.play()
+        }
     }
 
     // MARK: - Interruption Handling
@@ -296,6 +301,14 @@ final class AudioEngine {
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
 
             if type == .ended {
+                // Bug fix: 用户已经在 Simone 内主动暂停时，不能因外部 app
+                // (e.g. 视频) 释放音频会话而触发 .ended 就自动续播。
+                // shouldResume 是系统建议恢复的位掩码；isPlaying 是我们
+                // 自己 track 的"用户曾按过 play"状态。两者都为真才 resume。
+                let optsRaw = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                let shouldResume = AVAudioSession.InterruptionOptions(rawValue: optsRaw)
+                    .contains(.shouldResume)
+                guard shouldResume, self.isPlaying else { return }
                 try? AVAudioSession.sharedInstance().setActive(true)
                 if let engine = self.engine, !engine.isRunning {
                     try? engine.start()

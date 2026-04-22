@@ -56,6 +56,25 @@ struct ImmersiveView: View {
         return false
     }
 
+    /// v1.4a Signature Part 5: R&B "Whiskey Tumbler" — intercepts .liquor
+    /// morph path so the dedicated signature renders in both small and big
+    /// pose. R&B default visualizer is .liquor (supportsMorph=true) so the
+    /// intercept sits inside morphVisualizer.
+    private var isSignatureRnB: Bool {
+        guard state.visualizationMode == .signature else { return false }
+        if case .category(.rnb) = state.currentChannel { return true }
+        return false
+    }
+
+    /// v1.4a Signature: Electronic "Eurorack Modular" — intercepts the
+    /// Electronic channel's morph pipeline so the dedicated synth module
+    /// renders in both small and big pose.
+    private var isSignatureElectronic: Bool {
+        guard state.visualizationMode == .signature else { return false }
+        if case .category(.electronic) = state.currentChannel { return true }
+        return false
+    }
+
     private func currentExpansion(now: Date) -> CGFloat {
         let elapsed = now.timeIntervalSince(morphStart)
         if elapsed <= 0 { return morphFrom }
@@ -153,8 +172,9 @@ struct ImmersiveView: View {
                     }
                 }
         )
-        .overlay(alignment: .bottomLeading) { detailsButton }
-        .overlay(alignment: .bottomTrailing) { settingsButton }
+        // V5.12: CEO「按钮移到和播放键同一水平线 · 同一大小」→ overlays
+        // dropped. Settings / Play / Details now render as a single
+        // centered row (see transportRow) inline with the transport bar.
         .ignoresSafeArea()
         .statusBarHidden(true)
         .onAppear {
@@ -301,7 +321,7 @@ struct ImmersiveView: View {
 
                 Spacer().frame(height: 0)
 
-                transportControls
+                transportRow
 
                 Spacer()
             }
@@ -321,7 +341,7 @@ struct ImmersiveView: View {
 
                     Spacer().frame(height: 32)
 
-                    transportControls
+                    transportRow
 
                     Spacer().frame(height: 48)
                 }
@@ -367,7 +387,7 @@ struct ImmersiveView: View {
 
                 Spacer().frame(height: isSmall ? 28 : 32)
 
-                transportControls
+                transportRow
 
                 Spacer().frame(height: isSmall ? 80 : 48)
             }
@@ -377,6 +397,15 @@ struct ImmersiveView: View {
 
     @ViewBuilder
     private func morphVisualizer(for style: VisualizerStyle, spectrumData: [Float], expansion: CGFloat) -> some View {
+        if isSignatureRnB {
+            // v1.4a Signature Part 5 — bypass .liquor morph with the
+            // dedicated whiskey tumbler signature. Sits in front of the
+            // switch so any R&B default (currently .liquor) is swapped.
+            RnBSignatureView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        } else if isSignatureElectronic {
+            // v1.4a Signature — Eurorack modular synth for Electronic.
+            ElectronicSignatureView(spectrumData: spectrumData, density: 2, expansion: expansion)
+        } else {
         switch style {
         case .lofiTape:
             LofiTapeView(
@@ -409,6 +438,7 @@ struct ImmersiveView: View {
             // 不走 morph 路径的 visualizer 已在上层被 supportsMorph 过滤掉
             EmptyView()
         }
+        }
     }
 
     // MARK: - Shared bottom overlay (name + DNA)
@@ -439,32 +469,44 @@ struct ImmersiveView: View {
 
     private var detailsButton: some View {
         Button(action: onTapDetails) {
-            Image(systemName: "list.bullet")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(FogTokens.textSecondary)
-                .frame(width: 28, height: 28)
-                .background(Circle().fill(FogTokens.bgSurface.opacity(0.55)))
-                .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+            ZStack {
+                Circle()
+                    .fill(FogTokens.bgSurface.opacity(0.5))
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(FogTokens.textSecondary)
+            }
         }
         .buttonStyle(.plain)
-        .padding(.leading, 12)
-        .padding(.bottom, 12)
         .accessibilityLabel("Details")
     }
 
     private var settingsButton: some View {
         Button(action: onTapSettings) {
-            Image(systemName: "gearshape")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(FogTokens.textSecondary)
-                .frame(width: 28, height: 28)
-                .background(Circle().fill(FogTokens.bgSurface.opacity(0.55)))
-                .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+            ZStack {
+                Circle()
+                    .fill(FogTokens.bgSurface.opacity(0.5))
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+                Image(systemName: "gearshape")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(FogTokens.textSecondary)
+            }
         }
         .buttonStyle(.plain)
-        .padding(.trailing, 12)
-        .padding(.bottom, 12)
         .accessibilityLabel("Settings")
+    }
+
+    // V5.12: Settings · Play · Details — centered row, same baseline,
+    // same 52pt circle. Replaces the two bottom-corner overlays.
+    private var transportRow: some View {
+        HStack(spacing: 32) {
+            settingsButton
+            transportControls
+            detailsButton
+        }
     }
 
     // MARK: - Transport (ported from DetailsView)

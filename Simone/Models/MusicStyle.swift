@@ -82,6 +82,14 @@ struct MoodStyle: Identifiable, Equatable, Codable, Transferable {
         MoodStyle(id: "drum-and-bass", name: "Drum & Bass", prompt: "Rolling drum and bass with fast breakbeat drums, deep sub bass, atmospheric pads, and clean synth stabs", category: .electronic),
         MoodStyle(id: "acid-techno", name: "Acid Techno", prompt: "Acid techno with squelchy 303 bassline, pulsing four-on-the-floor kick, crisp hi-hats, and evolving filter modulation", category: .electronic),
 
+        // MARK: Ambient (6) — v1.4a: new 6th genre, inherits NightWindow visualizer from former Favorites channel.
+        MoodStyle(id: "ambient-eno", name: "Ambient", prompt: "Eno-style ambient with slowly evolving pad layers, deep reverb tails, soft drones, and spacious silence between notes", category: .ambient),
+        MoodStyle(id: "ambient-drone", name: "Drone", prompt: "Deep meditative drone with overlapping sustained tones, subtle harmonic shifts, and organic texture movement", category: .ambient),
+        MoodStyle(id: "neoclassical", name: "Neoclassical", prompt: "Neoclassical ambient with sparse piano, bowed cello, warm tape saturation, and intimate room reverb", category: .ambient),
+        MoodStyle(id: "ambient-rain", name: "Rain Room", prompt: "Rain-soaked ambient with gentle pad swells, distant thunder, soft piano resonance, and steady rainfall texture", category: .ambient),
+        MoodStyle(id: "ambient-cinematic", name: "Cinematic", prompt: "Slow cinematic ambient with orchestral pads, distant brass, rising string swells, and wide stereo space", category: .ambient),
+        MoodStyle(id: "ambient-space", name: "Space", prompt: "Cosmic ambient with shimmering granular pads, deep low drones, delicate bell tones, and drifting stereo width", category: .ambient),
+
         // MARK: Midnight (10)
         MoodStyle(id: "trip-hop", name: "Trip Hop", prompt: "Trip hop with heavy downtempo beats, dark bass, scratchy vinyl samples, and moody atmospheric pads", category: .midnight),
         MoodStyle(id: "late-night-rnb", name: "Late Night R&B", prompt: "Late night R&B with airy synths, soft 808 bass, distant reverbed keys, and minimal crisp snare", category: .midnight),
