@@ -25,35 +25,22 @@ PLATFORM = "IOS"
 
 APP_STORE_NAME = "Simone — AI Mood Radio"
 SUBTITLE = "AI mood radio. Press play."
-PROMOTIONAL = "Evolve got deeper. Music drifts across instruments, density, and energy \u2014 Simone stays fresh for hours."
-DESCRIPTION = """Simone is an AI mood radio. Tune a station, press play, let it drift.
+PROMOTIONAL = "Evolve drifts across instruments, density, energy. Hours of music, never the same."
+DESCRIPTION = """An AI mood radio. Tune a station, press play, let it drift.
 
-Five stations \u2014 Lo-fi, Jazz, R&B, Rock, Electronic. Each with dozens of sub-styles. Swipe up/down to browse. Tap \u25c1 \u25b7 to change station. No playlists. No repeats. No ads. Just instrumental music, generated in real time by Google's Lyria AI, for the mood you're already in.
+Six stations \u2014 Lo-fi, Ambient, R&B, Jazz, Rock, Electronic \u2014 with dozens of sub-styles. Each with its own painted visualizer. Instrumental only, generated live by Google's Lyria AI. No playlists. No repeats. No ads.
 
-\u2014 WHAT YOU GET \u2014
+Evolve drifts across instruments, density, and energy. Set the pace: 30s / 1m / 5m / Lock. Never a jump cut. Stays fresh for hours.
 
-\u2022 Five always-on stations, each with its own painted visualizer.
-\u2022 Evolve \u2014 music drifts across instruments, density, and energy. Never a jump cut. Stays fresh for hours. Set the pace: 30s / 1m / 5m / Lock.
-\u2022 Sleep timer, background play, Now Playing artwork.
-\u2022 Free with a built-in trial key. Bring your own Gemini key for unlimited use (stored in iOS Keychain, never leaves your device).
-
-\u2014 PRIVACY \u2014
-
-No accounts. No tracking. No analytics. Direct connection to Google's Lyria API \u2014 nothing routes through our servers, because there are no servers.
-
-\u2014 NOTES \u2014
-
-Internet required. Built-in trial key is shared and rate-limited. Lyria is an experimental AI model \u2014 occasional instrumental quirks are part of the territory.
+No accounts. No tracking. Internet required.
 
 A calm radio, for any hour."""
-KEYWORDS = "ambient,lofi,chill,sleep,focus,study,relax,instrumental,background,generative,jazz,piano,bossa,cafe"
-WHATS_NEW = """Evolve got deeper.
+KEYWORDS = "ambient,lofi,chill,sleep,focus,study,relax,instrumental,background,generative,jazz,piano,radio,cafe"
+WHATS_NEW = """Evolve got deeper \u2014 drifts across instruments, density, energy.
 
-\u2022 Music now drifts across instruments, density, and energy \u2014 stays fresh for hours.
-\u2022 \u25c1 \u25b7 on the player changes station. Play/pause resizes the cover.
-\u2022 Smoother paging. No more surprise style jumps."""
+\u25c1 \u25b7 changes station. Smoother paging."""
 COPYRIGHT = "\u00a9 2026 Simone"
-REVIEW_NOTES = """Simone ships with a built-in trial Gemini API key. The app is fully functional on first launch without any setup \u2014 simply tap play on the home screen. If you'd like to test the BYOK (bring-your-own-key) flow, generate a free key at https://aistudio.google.com/apikey and paste it in Settings \u2192 API Key.
+REVIEW_NOTES = """Simone is fully functional on first launch \u2014 open the app and tap play. No accounts, no setup required.
 
 Music is generated live over WebSocket via Google's Lyria RealTime API (models/lyria-realtime-exp). An internet connection is required. No user accounts, no analytics, no tracking."""
 
