@@ -72,9 +72,9 @@ struct ElectronicSignatureView: View {
             .opacity(deckAlpha)
             .allowsHitTesting(false)
 
-            // Dynamic overlay — CRT waveform + POWER LED only。30fps→24fps
-            // 降一档，肉眼仍流畅，CPU 节省 20%。
-            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { ctx in
+            // Dynamic overlay — CRT waveform + POWER LED only。统一 30fps
+            // （之前为修晚高峰 Lyria 卡顿降到 24，复盘是 API 拥塞不是渲染问题）。
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
                 Canvas { context, size in
                     drawDynamic(ctx: context, size: size, t: ctx.date.timeIntervalSince1970)
                 }
