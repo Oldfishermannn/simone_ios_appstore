@@ -211,12 +211,20 @@ private struct ChannelPage: View {
 
     /// 这个 page 当前应该显示哪个 style：是当前频道→显示 selectedStyle；
     /// 不是当前频道（TabView 邻居 page）→显示该频道首位 style 占位。
-    private var displayStyle: MoodStyle? {
+    private var targetStyle: MoodStyle? {
         if channel == state.currentChannel {
             return state.selectedStyle
         }
         return state.orderedStyles(for: channel).first
     }
+
+    // v1.4a: 切 style 时文字纵向 slide-out → swap → slide-in（复刻 v1.3
+    // slideOnStyleChange，重写 ChannelPage 时漏掉，2026-04-23 补回）。
+    // displayedStyle 是真正喂给 Text 的 snapshot，跟 targetStyle 错开 120ms
+    // 让旧文字先滑出再 swap。
+    @State private var displayedStyle: MoodStyle? = nil
+    @State private var nameSlideY: CGFloat = 0
+    @State private var nameOpacity: Double = 1
 
     var body: some View {
         GeometryReader { geo in
@@ -257,6 +265,44 @@ private struct ChannelPage: View {
             }
         }
         .ignoresSafeArea()  // 让 GeometryReader 的 geo.size 拿到全屏尺寸（含 status bar / home indicator 区），visualizer 不再被 safe area 切出黑边
+        .onAppear { displayedStyle = targetStyle }
+        .onChange(of: state.selectedStyle?.id) { oldId, newId in
+            handleStyleChange(oldId: oldId, newId: newId)
+        }
+        .onChange(of: state.currentChannel) { _, _ in
+            // 切频道：直接 swap 占位 style，不跑 slide 动画（避免邻居 page 闪）。
+            displayedStyle = targetStyle
+        }
+    }
+
+    /// v1.4a: 复刻 v1.3 slideOnStyleChange — 旧文字向上(下)滑 60pt + 透明，
+    /// 120ms 后 swap 文本到滑入起点，再 180ms easeOut 回到 0。只对 active
+    /// page 生效；非 active page 的 targetStyle 不会因 selectedStyle 变化
+    /// 而变，直接 no-op。
+    private func handleStyleChange(oldId: String?, newId: String?) {
+        guard isActive, oldId != newId, oldId != nil else {
+            displayedStyle = targetStyle
+            return
+        }
+        let list = state.orderedStyles(for: state.currentChannel)
+        let oldIdx = list.firstIndex(where: { $0.id == oldId }) ?? 0
+        let newIdx = list.firstIndex(where: { $0.id == newId }) ?? 0
+        let goingDown = newIdx >= oldIdx  // 下一个 style → 文字向上滑出
+        let slideOut: CGFloat = goingDown ? -60 : 60
+        let slideIn: CGFloat = goingDown ? 60 : -60
+
+        withAnimation(.easeIn(duration: 0.12)) {
+            nameSlideY = slideOut
+            nameOpacity = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            displayedStyle = targetStyle
+            nameSlideY = slideIn
+            withAnimation(.easeOut(duration: 0.18)) {
+                nameSlideY = 0
+                nameOpacity = 1
+            }
+        }
     }
 
     private var isActive: Bool { channel == state.currentChannel }
@@ -295,13 +341,15 @@ private struct ChannelPage: View {
 
     private var bottomOverlay: some View {
         VStack(spacing: 10) {
-            if let style = displayStyle {
+            if let style = displayedStyle {
                 musicDNA(style: style)
             }
-            Text(displayStyle?.name ?? channel.displayName)
+            Text(displayedStyle?.name ?? channel.displayName)
                 .fog(.displaySm)
                 .foregroundStyle(FogTokens.textPrimary)
         }
+        .offset(y: nameSlideY)
+        .opacity(nameOpacity)
     }
 
     private func musicDNA(style: MoodStyle) -> some View {
