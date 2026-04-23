@@ -19,7 +19,7 @@ import requests
 
 BUNDLE_ID = "com.simone.ios"
 VERSION = "1.3.0"
-BUILD_NUMBER = "13"
+BUILD_NUMBER = "14"
 LOCALE = "en-US"
 PLATFORM = "IOS"
 
@@ -115,8 +115,10 @@ def update_app_info_subtitle(app_id):
     if not loc:
         sys.exit(f"No {LOCALE} appInfoLocalization on appInfo {info_id}")
     body = {"data": {"type": "appInfoLocalizations", "id": loc["id"],
-                     "attributes": {"subtitle": SUBTITLE}}}
+                     "attributes": {"name": APP_STORE_NAME,
+                                    "subtitle": SUBTITLE}}}
     call("PATCH", f"/appInfoLocalizations/{loc['id']}", json=body)
+    print(f"[appInfo] name: \"{APP_STORE_NAME}\"")
     print(f"[appInfo] subtitle set ({len(SUBTITLE)} chars): \"{SUBTITLE}\"")
 
 
@@ -160,15 +162,12 @@ def update_version_localization(version_id):
         loc_id = loc["id"]
         print(f"[loc] existing en-US: {loc_id}")
     body = {"data": {"type": "appStoreVersionLocalizations", "id": loc_id,
-                     "attributes": {"name": APP_STORE_NAME,
-                                    "subtitle": SUBTITLE,
-                                    "description": DESCRIPTION,
+                     "attributes": {"description": DESCRIPTION,
                                     "keywords": KEYWORDS,
                                     "promotionalText": PROMOTIONAL,
                                     "whatsNew": WHATS_NEW}}}
     call("PATCH", f"/appStoreVersionLocalizations/{loc_id}", json=body)
-    print(f"[loc] name={APP_STORE_NAME!r} subtitle {len(SUBTITLE)}c / "
-          f"desc {len(DESCRIPTION)}c / keywords {len(KEYWORDS)}c / "
+    print(f"[loc] desc {len(DESCRIPTION)}c / keywords {len(KEYWORDS)}c / "
           f"promo {len(PROMOTIONAL)}c / whatsNew {len(WHATS_NEW)}c")
 
 

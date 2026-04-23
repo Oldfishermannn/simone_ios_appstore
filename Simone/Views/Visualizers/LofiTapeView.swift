@@ -87,7 +87,7 @@ struct LofiTapeView: View {
         let bodyH: CGFloat = bodyW * 0.60
         let cx: CGFloat = w * 0.5
         let cy: CGFloat = h * (0.50 - 0.10 * e)
-        let tilt: CGFloat = -0.04 * (1 - e)
+        let tilt: CGFloat = 0
 
         // ─── DECK（按 deckAlpha 连续 fade-in；e=0 完全不画）───────
         let deckTopY: CGFloat = h * 0.42
