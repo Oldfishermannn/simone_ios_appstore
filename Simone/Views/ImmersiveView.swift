@@ -28,6 +28,14 @@ struct ImmersiveView: View {
     @State private var morphTo: CGFloat = 0
     private let morphDuration: Double = 0.55
 
+    // v1.4a: styleName overlay 动画 state 提升到顶层，由 switchStyle 直接控制。
+    // 之前在 ChannelPage 内用 onChange(of: state.selectedStyle) 触发，不稳——
+    // 这次走"先 animate out → asyncAfter swap state + selectStyle → animate in"
+    // 的命令式流程，确定性触发动画。
+    @State private var displayedStyle: MoodStyle? = nil
+    @State private var styleNameOffsetY: CGFloat = 0
+    @State private var styleNameOpacity: Double = 1
+
     private func currentExpansion(now: Date) -> CGFloat {
         let elapsed = now.timeIntervalSince(morphStart)
         if elapsed <= 0 { return morphFrom }
@@ -86,6 +94,16 @@ struct ImmersiveView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
 
+            // styleName + DNA overlay — 浮在 TabView 上，独占动画 state。
+            // 不放进 ChannelPage 是因为 onChange-based 动画订阅不稳；这里
+            // 用 switchStyle 命令式驱动，绝对触发。
+            VStack(spacing: 0) {
+                Spacer()
+                styleOverlay
+                Spacer().frame(height: 145)
+            }
+            .allowsHitTesting(false)
+
             // Transport row — 浮在 TabView 上，左右滑不动。位置固定（不跟
             // isPlaying 上下移），点 play 按钮三个圈不再跳。
             VStack(spacing: 0) {
@@ -104,6 +122,8 @@ struct ImmersiveView: View {
             morphFrom = initial
             morphTo = initial
             morphStart = .distantPast
+            // 初始化 styleName overlay 显示
+            displayedStyle = state.selectedStyle
         }
         .onChange(of: tabIndex) { _, new in
             let target = Channel.all[new]
@@ -115,14 +135,78 @@ struct ImmersiveView: View {
             if let idx = Channel.all.firstIndex(of: new), idx != tabIndex {
                 tabIndex = idx
             }
+            // 切频道：直接 swap displayedStyle，不跑 slide 动画。
+            displayedStyle = state.selectedStyle
+            styleNameOffsetY = 0
+            styleNameOpacity = 1
         }
         .onChange(of: state.audioEngine.isPlaying) { _, playing in
             setMode(toBig: playing)
         }
     }
 
+    // MARK: - Style overlay (styleName + DNA, 顶层独占动画)
+
+    private var styleOverlay: some View {
+        VStack(spacing: 10) {
+            if let style = displayedStyle {
+                musicDNA(style: style)
+            }
+            Text(displayedStyle?.name ?? state.currentChannel.displayName)
+                .fog(.displaySm)
+                .foregroundStyle(FogTokens.textPrimary)
+        }
+        .offset(y: styleNameOffsetY)
+        .opacity(styleNameOpacity)
+    }
+
+    private func musicDNA(style: MoodStyle) -> some View {
+        let tags = extractDNA(from: style)
+        return HStack(spacing: 0) {
+            ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
+                if index > 0 {
+                    Text(" · ")
+                        .font(FogTheme.mono(11, weight: .regular))
+                        .foregroundStyle(FogTheme.inkQuiet)
+                }
+                Text(tag)
+                    .font(FogTheme.mono(11, weight: .regular))
+                    .tracking(FogTheme.trackMeta)
+                    .foregroundStyle(FogTheme.inkSecondary.opacity(0.65))
+            }
+        }
+    }
+
+    private func extractDNA(from style: MoodStyle) -> [String] {
+        var tags: [String] = []
+        tags.append(style.category.displayName.lowercased())
+
+        let moodWords = ["warm", "melancholic", "dreamy", "dark", "ethereal", "intimate",
+                         "gentle", "smooth", "slow", "deep", "bright", "soft", "cozy",
+                         "raw", "cosmic", "hypnotic", "flowing", "lazy", "driving"]
+        let promptLower = style.prompt.lowercased()
+        for word in moodWords {
+            if promptLower.contains(word) { tags.append(word); break }
+        }
+
+        let instruments = ["piano", "guitar", "saxophone", "bass", "drums", "synth",
+                          "flute", "cello", "violin", "Rhodes", "harmonica", "harp",
+                          "organ", "trumpet", "vibraphone"]
+        for inst in instruments {
+            if promptLower.contains(inst.lowercased()) { tags.append(inst.lowercased()); break }
+        }
+
+        if state.bpm > 0 { tags.append("\(state.bpm)bpm") }
+        return tags
+    }
+
     // MARK: - Vertical style swipe
 
+    /// 命令式驱动 styleName overlay slide+fade：
+    /// 1. 先 withAnimation easeIn 0.12 把旧文字滑出 60pt + opacity 0
+    /// 2. 0.12s 后 selectStyle（真正切换）+ swap displayedStyle + 跳到滑入起点
+    /// 3. withAnimation easeOut 0.18 滑回 0 + opacity 1（新文字滑入）
+    /// delta > 0 = 上滑切下一个 → 旧文字向上消失 / 新文字从下滑入。
     private func switchStyle(by delta: Int) {
         let list = state.orderedStyles(for: state.currentChannel)
         guard !list.isEmpty else { return }
@@ -130,7 +214,24 @@ struct ImmersiveView: View {
         let idx = list.firstIndex(where: { $0.id == currentId }) ?? 0
         let newIdx = idx + delta
         guard newIdx >= 0 && newIdx < list.count else { return }
-        state.selectStyle(list[newIdx])
+        let newStyle = list[newIdx]
+
+        let outY: CGFloat = delta > 0 ? -60 : 60
+        let inY:  CGFloat = delta > 0 ? 60 : -60
+
+        withAnimation(.easeIn(duration: 0.12)) {
+            styleNameOffsetY = outY
+            styleNameOpacity = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            state.selectStyle(newStyle)
+            displayedStyle = newStyle
+            styleNameOffsetY = inY
+            withAnimation(.easeOut(duration: 0.18)) {
+                styleNameOffsetY = 0
+                styleNameOpacity = 1
+            }
+        }
     }
 
     // MARK: - Transport (settings · play · details on the same baseline)
@@ -209,23 +310,6 @@ private struct ChannelPage: View {
     let onTapVisualizer: () -> Void
     let onSwipeStyle: (Int) -> Void
 
-    /// 这个 page 当前应该显示哪个 style：是当前频道→显示 selectedStyle；
-    /// 不是当前频道（TabView 邻居 page）→显示该频道首位 style 占位。
-    private var targetStyle: MoodStyle? {
-        if channel == state.currentChannel {
-            return state.selectedStyle
-        }
-        return state.orderedStyles(for: channel).first
-    }
-
-    // v1.4a: 纵滑切 style 用 manual @State 控制 slide+fade，比
-    // SwiftUI .transition 可控（transition 的 removal edge 在新 view
-    // 创建时锁定，方向切换的第一次会用上一次的 edge → 不跟手）。
-    @State private var displayedStyle: MoodStyle? = nil
-    @State private var nameSlideY: CGFloat = 0
-    @State private var nameOpacity: Double = 1
-    @State private var swipeDirection: Int = 1
-
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -242,6 +326,8 @@ private struct ChannelPage: View {
                 //   · 6 个 visualizer 同时高频 redraw 把 audio buffer 饿瘦
                 // 代价：横滑切台时邻居先黑底 ~300ms 再实例化 visualizer，
                 // 比音频卡顿好。
+                // styleName overlay 提到 ImmersiveView 顶层，ChannelPage 只
+                // 负责 visualizer + 接 swipe gesture。
                 Group {
                     if isActive {
                         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
@@ -257,55 +343,9 @@ private struct ChannelPage: View {
                 // simultaneousGesture: 让竖直 drag 不被 TabView .page 的横滑
                 // gesture 优先吞掉。verticalSwipe 内部已 guard |v|>|h| 排横滑。
                 .simultaneousGesture(verticalSwipe)
-
-                VStack(spacing: 0) {
-                    Spacer()
-                    bottomOverlay
-                    Spacer().frame(height: 145)  // 给 transport row 让位（titlea 往下挪一点）
-                }
-                .allowsHitTesting(false)
             }
         }
         .ignoresSafeArea()  // 让 GeometryReader 的 geo.size 拿到全屏尺寸（含 status bar / home indicator 区），visualizer 不再被 safe area 切出黑边
-        .onAppear {
-            if displayedStyle == nil { displayedStyle = targetStyle }
-        }
-        // 用 MoodStyle (Equatable) 整体监听，绕开 @Observable optional
-        // chaining 订阅可能不稳的问题。
-        .onChange(of: state.selectedStyle) { old, _ in
-            guard isActive, old?.id != targetStyle?.id else {
-                displayedStyle = targetStyle
-                return
-            }
-            animateStyleSwap()
-        }
-        .onChange(of: state.currentChannel) { _, _ in
-            // 切频道：直接 swap 占位 style + 重置动画 state，邻居 page 不闪。
-            displayedStyle = targetStyle
-            nameSlideY = 0
-            nameOpacity = 1
-        }
-    }
-
-    /// 旧文字向上(下)滑出 60pt + 透明 120ms easeIn → swap 文本到滑入起点 →
-    /// 180ms easeOut 回到 0。方向 swipeDirection 在 verticalSwipe.onEnded
-    /// 里先记好。+1 上滑切下一个 → 旧文字向上消失，新文字从下滑入。
-    private func animateStyleSwap() {
-        let outY: CGFloat = swipeDirection > 0 ? -60 : 60
-        let inY:  CGFloat = swipeDirection > 0 ? 60 : -60
-
-        withAnimation(.easeIn(duration: 0.12)) {
-            nameSlideY = outY
-            nameOpacity = 0
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            displayedStyle = targetStyle
-            nameSlideY = inY
-            withAnimation(.easeOut(duration: 0.18)) {
-                nameSlideY = 0
-                nameOpacity = 1
-            }
-        }
     }
 
     private var isActive: Bool { channel == state.currentChannel }
@@ -340,61 +380,6 @@ private struct ChannelPage: View {
         }
     }
 
-    // MARK: - Bottom overlay
-
-    private var bottomOverlay: some View {
-        VStack(spacing: 10) {
-            if let style = displayedStyle {
-                musicDNA(style: style)
-            }
-            Text(displayedStyle?.name ?? channel.displayName)
-                .fog(.displaySm)
-                .foregroundStyle(FogTokens.textPrimary)
-        }
-        .offset(y: nameSlideY)
-        .opacity(nameOpacity)
-    }
-
-    private func musicDNA(style: MoodStyle) -> some View {
-        let tags = extractDNA(from: style)
-        return HStack(spacing: 0) {
-            ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
-                if index > 0 {
-                    Text(" · ")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkQuiet)
-                }
-                Text(tag)
-                    .font(FogTheme.mono(11, weight: .regular))
-                    .tracking(FogTheme.trackMeta)
-                    .foregroundStyle(FogTheme.inkSecondary.opacity(0.65))
-            }
-        }
-    }
-
-    private func extractDNA(from style: MoodStyle) -> [String] {
-        var tags: [String] = []
-        tags.append(style.category.displayName.lowercased())
-
-        let moodWords = ["warm", "melancholic", "dreamy", "dark", "ethereal", "intimate",
-                         "gentle", "smooth", "slow", "deep", "bright", "soft", "cozy",
-                         "raw", "cosmic", "hypnotic", "flowing", "lazy", "driving"]
-        let promptLower = style.prompt.lowercased()
-        for word in moodWords {
-            if promptLower.contains(word) { tags.append(word); break }
-        }
-
-        let instruments = ["piano", "guitar", "saxophone", "bass", "drums", "synth",
-                          "flute", "cello", "violin", "Rhodes", "harmonica", "harp",
-                          "organ", "trumpet", "vibraphone"]
-        for inst in instruments {
-            if promptLower.contains(inst.lowercased()) { tags.append(inst.lowercased()); break }
-        }
-
-        if state.bpm > 0 { tags.append("\(state.bpm)bpm") }
-        return tags
-    }
-
     // MARK: - Vertical-only swipe
 
     /// 上下滑切 style。threshold 较大且要求竖直分量 > 横向，避免误吃 TabView 的横滑。
@@ -404,9 +389,7 @@ private struct ChannelPage: View {
                 let h = value.translation.width
                 let v = value.translation.height
                 guard abs(v) > abs(h), abs(v) > 60 else { return }
-                let dir = v < 0 ? +1 : -1  // 上滑 = +1 = 下一个 style
-                swipeDirection = dir       // 先记方向，让 styleTransition 跟手
-                onSwipeStyle(dir)
+                onSwipeStyle(v < 0 ? +1 : -1)  // 上滑 = +1 = 下一个 style
             }
     }
 }
