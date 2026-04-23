@@ -130,11 +130,7 @@ struct ImmersiveView: View {
         let idx = list.firstIndex(where: { $0.id == currentId }) ?? 0
         let newIdx = idx + delta
         guard newIdx >= 0 && newIdx < list.count else { return }
-        // v1.4a: 用 withAnimation 包 selectStyle，让 ChannelPage.bottomOverlay
-        // 的 .id()+.transition() 触发 slide+fade 动画。
-        withAnimation(.easeInOut(duration: 0.32)) {
-            state.selectStyle(list[newIdx])
-        }
+        state.selectStyle(list[newIdx])
     }
 
     // MARK: - Transport (settings · play · details on the same baseline)
@@ -215,26 +211,20 @@ private struct ChannelPage: View {
 
     /// 这个 page 当前应该显示哪个 style：是当前频道→显示 selectedStyle；
     /// 不是当前频道（TabView 邻居 page）→显示该频道首位 style 占位。
-    private var displayStyle: MoodStyle? {
+    private var targetStyle: MoodStyle? {
         if channel == state.currentChannel {
             return state.selectedStyle
         }
         return state.orderedStyles(for: channel).first
     }
 
-    // v1.4a: 跟踪上一次纵滑方向，让 bottomOverlay transition 跟手
-    // (+1 = 上滑切下一个: 旧文字向上消失/新文字从下滑入；
-    //  -1 = 下滑切上一个: 旧文字向下消失/新文字从上滑入)。
+    // v1.4a: 纵滑切 style 用 manual @State 控制 slide+fade，比
+    // SwiftUI .transition 可控（transition 的 removal edge 在新 view
+    // 创建时锁定，方向切换的第一次会用上一次的 edge → 不跟手）。
+    @State private var displayedStyle: MoodStyle? = nil
+    @State private var nameSlideY: CGFloat = 0
+    @State private var nameOpacity: Double = 1
     @State private var swipeDirection: Int = 1
-
-    private var styleTransition: AnyTransition {
-        let outEdge: Edge = swipeDirection > 0 ? .top : .bottom
-        let inEdge:  Edge = swipeDirection > 0 ? .bottom : .top
-        return .asymmetric(
-            insertion: .move(edge: inEdge).combined(with: .opacity),
-            removal:   .move(edge: outEdge).combined(with: .opacity)
-        )
-    }
 
     var body: some View {
         GeometryReader { geo in
@@ -277,6 +267,45 @@ private struct ChannelPage: View {
             }
         }
         .ignoresSafeArea()  // 让 GeometryReader 的 geo.size 拿到全屏尺寸（含 status bar / home indicator 区），visualizer 不再被 safe area 切出黑边
+        .onAppear {
+            if displayedStyle == nil { displayedStyle = targetStyle }
+        }
+        // 用 MoodStyle (Equatable) 整体监听，绕开 @Observable optional
+        // chaining 订阅可能不稳的问题。
+        .onChange(of: state.selectedStyle) { old, _ in
+            guard isActive, old?.id != targetStyle?.id else {
+                displayedStyle = targetStyle
+                return
+            }
+            animateStyleSwap()
+        }
+        .onChange(of: state.currentChannel) { _, _ in
+            // 切频道：直接 swap 占位 style + 重置动画 state，邻居 page 不闪。
+            displayedStyle = targetStyle
+            nameSlideY = 0
+            nameOpacity = 1
+        }
+    }
+
+    /// 旧文字向上(下)滑出 60pt + 透明 120ms easeIn → swap 文本到滑入起点 →
+    /// 180ms easeOut 回到 0。方向 swipeDirection 在 verticalSwipe.onEnded
+    /// 里先记好。+1 上滑切下一个 → 旧文字向上消失，新文字从下滑入。
+    private func animateStyleSwap() {
+        let outY: CGFloat = swipeDirection > 0 ? -60 : 60
+        let inY:  CGFloat = swipeDirection > 0 ? 60 : -60
+
+        withAnimation(.easeIn(duration: 0.12)) {
+            nameSlideY = outY
+            nameOpacity = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            displayedStyle = targetStyle
+            nameSlideY = inY
+            withAnimation(.easeOut(duration: 0.18)) {
+                nameSlideY = 0
+                nameOpacity = 1
+            }
+        }
     }
 
     private var isActive: Bool { channel == state.currentChannel }
@@ -314,21 +343,16 @@ private struct ChannelPage: View {
     // MARK: - Bottom overlay
 
     private var bottomOverlay: some View {
-        // v1.4a: 用 .id() + .transition() 让 SwiftUI 在 displayStyle 切换时
-        // 自动跑 slide+fade（旧文字向上消失 / 新文字从下滑入）。配合
-        // ImmersiveView.switchStyle 的 withAnimation(.easeInOut) 触发。
-        // 比 onChange + 手动 offset 更稳：不依赖 @Observable 的 optional
-        // chaining 订阅，纯 SwiftUI view-identity 驱动。
         VStack(spacing: 10) {
-            if let style = displayStyle {
+            if let style = displayedStyle {
                 musicDNA(style: style)
             }
-            Text(displayStyle?.name ?? channel.displayName)
+            Text(displayedStyle?.name ?? channel.displayName)
                 .fog(.displaySm)
                 .foregroundStyle(FogTokens.textPrimary)
         }
-        .id(displayStyle?.id ?? "_placeholder_\(channel.rawKey)")
-        .transition(styleTransition)
+        .offset(y: nameSlideY)
+        .opacity(nameOpacity)
     }
 
     private func musicDNA(style: MoodStyle) -> some View {
