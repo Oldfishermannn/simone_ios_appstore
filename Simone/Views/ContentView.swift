@@ -8,6 +8,11 @@ struct ContentView: View {
     @State private var showDetails: Bool = false
     @State private var showSettings: Bool = false
 
+    // v1.3.0 · first-launch onboarding (Radio Manual). Version suffix lets us
+    // bump the key to force re-show on content change without orphaning old
+    // UserDefaults values from prior versions.
+    @AppStorage("hasSeenOnboarding_v1_3") private var hasSeenOnboarding: Bool = false
+
     var body: some View {
         ZStack {
             // v1.2.1: cool-axis base.
@@ -28,6 +33,12 @@ struct ContentView: View {
                 onTapSettings: { showSettings = true }
             )
             .ignoresSafeArea()
+
+            if !hasSeenOnboarding {
+                OnboardingView(onDismiss: { hasSeenOnboarding = true })
+                    .transition(.opacity)
+                    .zIndex(100)
+            }
         }
         .sheet(isPresented: $showDetails) {
             DetailsView(state: state)

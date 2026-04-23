@@ -18,11 +18,12 @@ import jwt
 import requests
 
 BUNDLE_ID = "com.simone.ios"
-VERSION = "1.2.1"
-BUILD_NUMBER = "11"
+VERSION = "1.3.0"
+BUILD_NUMBER = "12"
 LOCALE = "en-US"
 PLATFORM = "IOS"
 
+APP_STORE_NAME = "Simone — AI Mood Radio"
 SUBTITLE = "AI mood radio. Press play."
 PROMOTIONAL = "Evolve got deeper. Music drifts across instruments, density, and energy \u2014 Simone stays fresh for hours."
 DESCRIPTION = """Simone is an AI mood radio. Tune a station, press play, let it drift.
@@ -172,13 +173,16 @@ def update_version_localization(version_id):
         loc_id = loc["id"]
         print(f"[loc] existing en-US: {loc_id}")
     body = {"data": {"type": "appStoreVersionLocalizations", "id": loc_id,
-                     "attributes": {"description": DESCRIPTION,
+                     "attributes": {"name": APP_STORE_NAME,
+                                    "subtitle": SUBTITLE,
+                                    "description": DESCRIPTION,
                                     "keywords": KEYWORDS,
                                     "promotionalText": PROMOTIONAL,
                                     "whatsNew": WHATS_NEW}}}
     call("PATCH", f"/appStoreVersionLocalizations/{loc_id}", json=body)
-    print(f"[loc] description {len(DESCRIPTION)}c / keywords {len(KEYWORDS)}c "
-          f"/ promotional {len(PROMOTIONAL)}c / whatsNew {len(WHATS_NEW)}c")
+    print(f"[loc] name={APP_STORE_NAME!r} subtitle {len(SUBTITLE)}c / "
+          f"desc {len(DESCRIPTION)}c / keywords {len(KEYWORDS)}c / "
+          f"promo {len(PROMOTIONAL)}c / whatsNew {len(WHATS_NEW)}c")
 
 
 def update_review_notes(version_id):

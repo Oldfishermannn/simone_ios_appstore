@@ -140,6 +140,16 @@ struct ImmersiveView: View {
             styleNameOffsetY = 0
             styleNameOpacity = 1
         }
+        .onChange(of: state.selectedStyle) { _, new in
+            // 外部（DetailsView 点一行 / prev·next）改变 selectedStyle 时同步 displayedStyle。
+            // ImmersiveView 内部纵滑 switchStyle 自己顺序控 displayedStyle + state，
+            // 这里再 swap 一次幂等无害；动画效果由 switchStyle 命令式保证。
+            if displayedStyle?.id != new?.id {
+                displayedStyle = new
+                styleNameOffsetY = 0
+                styleNameOpacity = 1
+            }
+        }
         .onChange(of: state.audioEngine.isPlaying) { _, playing in
             setMode(toBig: playing)
         }
@@ -224,8 +234,11 @@ struct ImmersiveView: View {
             styleNameOpacity = 0
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            state.selectStyle(newStyle)
+            // 先 swap 本地再 setState，避免 selectStyle 触发
+            // onChange(of: selectedStyle) 把 offsetY/opacity 瞬间还原
+            // 破坏紧接着的 easeOut 入场动画。
             displayedStyle = newStyle
+            state.selectStyle(newStyle)
             styleNameOffsetY = inY
             withAnimation(.easeOut(duration: 0.18)) {
                 styleNameOffsetY = 0

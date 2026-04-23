@@ -16,6 +16,7 @@
 		15393F2A0233EA7B17141A5E /* EvolveVocabulary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A8C8FA89D7F493C32EAC820 /* EvolveVocabulary.swift */; };
 		17380085E9BD8693861558D1 /* VinylView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B622969586557E8AE6AF0564 /* VinylView.swift */; };
 		1D21D970A64103BC8C4C5A2C /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65AC8031ADEE704B3F43BDC /* MiniPlayerView.swift */; };
+		CADE89EF5D9949118D8D394C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8095F9F21C47879B8D61F8 /* OnboardingView.swift */; };
 		1F1DEAB6D866E4658E94EB18 /* LatticeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68F2E7CD5140703D789F6AB /* LatticeView.swift */; };
 		1FE1E09F256FF315660F3F92 /* OFL-Fraunces.txt in Resources */ = {isa = PBXBuildFile; fileRef = AA44938A444AA921CDA587C9 /* OFL-Fraunces.txt */; };
 		24D3365691580B669BF855F0 /* TerrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB5A8FFA3CC63049E1AF303 /* TerrainView.swift */; };
@@ -184,6 +185,7 @@
 		F061C0A5E5D9B11A8B6B9022 /* FogType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogType.swift; sourceTree = "<group>"; };
 		F4CD84A1A70E8AE6866CD124 /* ConstellationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConstellationView.swift; sourceTree = "<group>"; };
 		F65AC8031ADEE704B3F43BDC /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniPlayerView.swift; sourceTree = "<group>"; };
+		8E8095F9F21C47879B8D61F8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		FB72481B7544B4D6712314C0 /* RainfallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RainfallView.swift; sourceTree = "<group>"; };
 		FC18A906CEC1BFC13FCA76B1 /* APIKeyObfuscator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyObfuscator.swift; sourceTree = "<group>"; };
 		FF932CE07449AB9905863377 /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 				C9ED180E337042882C7016AA /* ImmersiveView.swift */,
 				F061C0A5E5D9B11A8B6B9013 /* Modifiers */,
 				F65AC8031ADEE704B3F43BDC /* MiniPlayerView.swift */,
+				8E8095F9F21C47879B8D61F8 /* OnboardingView.swift */,
 				33DA43F0A0298D89DE9E3DDB /* PlayControlView.swift */,
 				52FB00288B34147AC47677E8 /* SettingsView.swift */,
 				E301F2E3A4B5C6D7E8F9B003 /* Signatures */,
@@ -522,6 +525,7 @@
 				F061C0A5E5D9B11A8B6BA011 /* StoreKitManager.swift in Sources */,
 				6A9468756F35B0B44BDB8FB6 /* MatrixView.swift in Sources */,
 				1D21D970A64103BC8C4C5A2C /* MiniPlayerView.swift in Sources */,
+				CADE89EF5D9949118D8D394C /* OnboardingView.swift in Sources */,
 				AEDCE52FD41257F56771DE7E /* MusicStyle.swift in Sources */,
 				756D661B4FEC6F74119DC739 /* NebulaView.swift in Sources */,
 				82C30E7873BC82D62884C99C /* OrbitalView.swift in Sources */,
