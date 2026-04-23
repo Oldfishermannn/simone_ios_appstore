@@ -1,384 +1,174 @@
 import SwiftUI
 
+/// v1.4a UI cleanup — 主视图：6 频道 horizontal page swipe（TabView .page），
+/// 跟手丝滑替代 v1.3 的 onEnded DragGesture。每页一个 channel：渲染该
+/// 频道默认 visualizer（全部走 morph 管线，expansion 0 = 小图 / 1 = 大图）+
+/// bottomOverlay (style name + DNA)。Transport row（settings · play · details）
+/// 浮在 TabView 之上，左右滑不动。
+///
+/// 关键联动：isSmall ↔ isPlaying。
+///   播放 → 大图（expansion = 1）。
+///   暂停 → 小图（expansion = 0）。
+///   visualizer tap = togglePlayPause；transport play 按钮也 togglePlayPause。
+///   两侧入口都通过 state.audioEngine.isPlaying 的 onChange 驱动 morph，统一一处。
+///
+/// 纵滑切 style 用 page 内部的 vertical-only DragGesture 接住（不与 TabView
+/// 的 horizontal page swipe 冲突）。
 struct ImmersiveView: View {
     @Bindable var state: AppState
+    var onTapDetails: () -> Void = {}
+    var onTapSettings: () -> Void = {}
 
-    // Slide-on-channel-swipe plumbing — mirrors ContentView's pattern so the
-    // immersive page overlay tracks the same horizontal gesture the carousel
-    // already animates.
-    @State private var nameSlideOffset: CGFloat = 0
-    @State private var nameOpacity: Double = 1.0
-    @State private var displayStyleName: String = ""
-    @State private var displayStyle: MoodStyle? = nil
+    // TabView selection — 双向同步 state.currentChannel
+    @State private var tabIndex: Int = 0
 
-    /// v1.1.1: tap the spectrum to toggle big (full-screen) ↔ small (rounded card).
-    /// Default is big; small mode shows a card-sized spectrum at top.
-    @State private var isSmall: Bool = true
-
-    // MARK: - Lofi morph tween state
-    //
-    // Visualizers that expose an `expansion` parameter (currently only LofiTape)
-    // render as a single full-screen canvas — geometry morphs continuously from
-    // the bare-object pose (expansion=0) to the scene pose (expansion=1).
-    // SwiftUI's withAnimation does not interpolate plain @State Doubles into a
-    // Canvas draw closure, so we drive expansion ourselves off a timestamp and
-    // sample it every TimelineView frame.
+    // Morph state (expansion 0..1)。isSmall ↔ isPlaying 驱动这条 timeline。
     @State private var morphStart: Date = .distantPast
     @State private var morphFrom: CGFloat = 0
     @State private var morphTo: CGFloat = 0
     private let morphDuration: Double = 0.55
 
-    /// Exponential ease-out curve — strong deceleration, physical-feeling settle.
-    /// Used for the dual-layer crossfade on non-lofi channels; the lofi path
-    /// uses a matching pow-based ease so both feel identical.
-    private var toggleAnim: Animation {
-        .timingCurve(0.22, 1.0, 0.36, 1.0, duration: 0.52)
-    }
+    // v1.4a: styleName overlay 动画 state 提升到顶层，由 switchStyle 直接控制。
+    // 之前在 ChannelPage 内用 onChange(of: state.selectedStyle) 触发，不稳——
+    // 这次走"先 animate out → asyncAfter swap state + selectStyle → animate in"
+    // 的命令式流程，确定性触发动画。
+    @State private var displayedStyle: MoodStyle? = nil
+    @State private var styleNameOffsetY: CGFloat = 0
+    @State private var styleNameOpacity: Double = 1
 
     private func currentExpansion(now: Date) -> CGFloat {
         let elapsed = now.timeIntervalSince(morphStart)
         if elapsed <= 0 { return morphFrom }
         if elapsed >= morphDuration { return morphTo }
         let t = elapsed / morphDuration
-        // ease-out expo — matches the timingCurve used for non-lofi modifiers.
-        let eased = 1.0 - pow(2.0, -10.0 * t)
+        let eased = 1.0 - pow(2.0, -10.0 * t)  // ease-out expo
         return morphFrom + (morphTo - morphFrom) * CGFloat(eased)
     }
 
-    /// Begin a big↔small transition. Updates both the logical `isSmall` flag
-    /// (which drives non-lofi crossfade modifiers) and the morph tween state
-    /// (which drives the lofi expansion interpolation).
-    private func toggleMode() {
-        setMode(toSmall: !isSmall)
-    }
-
-    /// Drive mode transition to an absolute target. No-op if already there so
-    /// we can safely call this from audio-state change observers without
-    /// fighting the user's in-flight tap. Preserves mid-flight expansion so
-    /// rapid play/pause stays smooth.
-    private func setMode(toSmall: Bool) {
-        guard isSmall != toSmall else { return }
+    private func setMode(toBig: Bool) {
+        let target: CGFloat = toBig ? 1.0 : 0.0
         let now = Date()
         let current = currentExpansion(now: now)
+        guard abs(current - target) > 0.001 else { return }
         morphFrom = current
-        morphTo = toSmall ? 0.0 : 1.0
+        morphTo = target
         morphStart = now
-        withAnimation(toggleAnim) { isSmall = toSmall }
     }
 
+    /// 用于派生大小图当前姿态——TabView 切页时 transport row 的微调位置。
+    private var isPlayingNow: Bool { state.audioEngine.isPlaying }
+
     var body: some View {
-        GeometryReader { geo in
-            let specSize: CGFloat = min(geo.size.width - 60, 300)
+        ZStack {
+            // 底色 + big-mode dawn 渐变
+            FogTokens.bgDeep.ignoresSafeArea()
 
-            ZStack {
-                Color(red: 0.165, green: 0.165, blue: 0.18)
-                    .ignoresSafeArea()
+            LinearGradient(
+                stops: [
+                    .init(color: FogTokens.accentIndigo.opacity(0.07), location: 0.0),
+                    .init(color: FogTokens.bgDeep, location: 0.35),
+                    .init(color: FogTokens.bgDeep, location: 0.72),
+                    .init(color: FogTokens.bgSurface.opacity(0.85), location: 1.0),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .opacity(isPlayingNow ? 1 : 0)
+            .animation(.easeInOut(duration: morphDuration), value: isPlayingNow)
+            .allowsHitTesting(false)
 
-                if supportsMorph(state.selectedVisualizer) {
-                    morphContent(geo: geo)
-                } else {
-                    crossfadeContent(geo: geo, specSize: specSize)
+            // Horizontal pager — TabView .page 提供 native 跟手切换
+            TabView(selection: $tabIndex) {
+                ForEach(0..<Channel.all.count, id: \.self) { idx in
+                    ChannelPage(
+                        channel: Channel.all[idx],
+                        state: state,
+                        expansion: currentExpansion,
+                        onTapVisualizer: { state.togglePlayPause() },
+                        onSwipeStyle: { delta in switchStyle(by: delta) }
+                    )
+                    .tag(idx)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
+
+            // styleName + DNA overlay — 浮在 TabView 上，独占动画 state。
+            // 不放进 ChannelPage 是因为 onChange-based 动画订阅不稳；这里
+            // 用 switchStyle 命令式驱动，绝对触发。
+            VStack(spacing: 0) {
+                Spacer()
+                styleOverlay
+                Spacer().frame(height: 145)
+            }
+            .allowsHitTesting(false)
+
+            // Transport row — 浮在 TabView 上，左右滑不动。位置固定（不跟
+            // isPlaying 上下移），点 play 按钮三个圈不再跳。
+            VStack(spacing: 0) {
+                Spacer()
+                transportRow
+                Spacer().frame(height: 80)
+            }
+            .allowsHitTesting(true)
         }
         .ignoresSafeArea()
         .statusBarHidden(true)
         .onAppear {
-            displayStyleName = state.selectedStyle?.name ?? ""
-            displayStyle = state.selectedStyle
+            // 初始化 tabIndex 对齐当前 channel；morph 起点对齐当前播放状态
+            tabIndex = Channel.all.firstIndex(of: state.currentChannel) ?? 0
+            let initial: CGFloat = state.audioEngine.isPlaying ? 1.0 : 0.0
+            morphFrom = initial
+            morphTo = initial
+            morphStart = .distantPast
+            // 初始化 styleName overlay 显示
+            displayedStyle = state.selectedStyle
         }
-        .onChange(of: state.currentChannel) { old, new in
-            slideOnChannelChange(from: old, to: new)
+        .onChange(of: tabIndex) { _, new in
+            let target = Channel.all[new]
+            guard target != state.currentChannel else { return }
+            state.switchToChannel(target)
         }
-        .onChange(of: state.selectedStyle?.id) { _, _ in
-            // Direct preset tap (DetailsView) — sync when not animating.
-            if nameSlideOffset == 0 && nameOpacity == 1.0 {
-                displayStyleName = state.selectedStyle?.name ?? ""
-                displayStyle = state.selectedStyle
+        .onChange(of: state.currentChannel) { _, new in
+            // 外部改变 currentChannel（比如 AutoTune 不会切 channel，只是冗余防御）
+            if let idx = Channel.all.firstIndex(of: new), idx != tabIndex {
+                tabIndex = idx
+            }
+            // 切频道：直接 swap displayedStyle，不跑 slide 动画。
+            displayedStyle = state.selectedStyle
+            styleNameOffsetY = 0
+            styleNameOpacity = 1
+        }
+        .onChange(of: state.selectedStyle) { _, new in
+            // 外部（DetailsView 点一行 / prev·next）改变 selectedStyle 时同步 displayedStyle。
+            // ImmersiveView 内部纵滑 switchStyle 自己顺序控 displayedStyle + state，
+            // 这里再 swap 一次幂等无害；动画效果由 switchStyle 命令式保证。
+            if displayedStyle?.id != new?.id {
+                displayedStyle = new
+                styleNameOffsetY = 0
+                styleNameOpacity = 1
             }
         }
         .onChange(of: state.audioEngine.isPlaying) { _, playing in
-            // Auto: play → big pose, pause → small pose.
-            // Reuses the morph tween so transition is continuous even if the
-            // user toggled mid-flight via tap.
-            setMode(toSmall: !playing)
+            setMode(toBig: playing)
         }
     }
 
-    private func slideOnChannelChange(from old: Channel, to new: Channel) {
-        let channels = Channel.all
-        let oldIdx = channels.firstIndex(of: old) ?? 0
-        let newIdx = channels.firstIndex(of: new) ?? 0
-        let forward = newIdx >= oldIdx
+    // MARK: - Style overlay (styleName + DNA, 顶层独占动画)
 
-        let slideOut: CGFloat = forward ? -80 : 80
-        let slideIn: CGFloat = forward ? 80 : -80
-
-        withAnimation(.easeIn(duration: 0.12)) {
-            nameSlideOffset = slideOut
-            nameOpacity = 0
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            displayStyleName = state.selectedStyle?.name ?? ""
-            displayStyle = state.selectedStyle
-            nameSlideOffset = slideIn
-            withAnimation(.easeOut(duration: 0.18)) {
-                nameSlideOffset = 0
-                nameOpacity = 1
-            }
-        }
-    }
-
-    // MARK: - Crossfade content (non-lofi channels)
-
-    @ViewBuilder
-    private func crossfadeContent(geo: GeometryProxy, specSize: CGFloat) -> some View {
-        if isSmall {
-            VStack(spacing: 0) {
-                Spacer()
-
-                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { _ in
-                    smallVisualizer(
-                        for: state.selectedVisualizer,
-                        spectrumData: state.audioEngine.spectrumData
-                    )
-                }
-                .frame(width: specSize, height: specSize)
-                .contentShape(Rectangle())
-                .onTapGesture { toggleMode() }
-                .gesture(channelSwipe)
-
-                Spacer().frame(height: 44)
-
-                bottomOverlay
-
-                Spacer().frame(height: 0)
-
-                transportControls
-
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .transition(.opacity)
-        } else {
-            ZStack {
-                SpectrumCarouselView(state: state, showDots: false, density: 2)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .contentShape(Rectangle())
-                    .onTapGesture { toggleMode() }
-
-                VStack(spacing: 0) {
-                    Spacer()
-
-                    bottomOverlay
-
-                    Spacer().frame(height: 32)
-
-                    transportControls
-
-                    Spacer().frame(height: 48)
-                }
-            }
-            .transition(.opacity)
-        }
-    }
-
-    // MARK: - Unified morph content (single full-screen canvas, body-to-body morph)
-    //
-    // 适用于支持 expansion 参数的 5 个 visualizer —— LofiTape/Oscilloscope/
-    // Liquor/Ember/Matrix。每帧基于时间 tween 采样 expansion 驱动同一个画布，
-    // 不做双层 crossfade。
-
-    private func supportsMorph(_ style: VisualizerStyle) -> Bool {
-        switch style {
-        case .lofiTape, .oscilloscope, .liquor, .ember, .matrix,
-             .firefly, .letters, .drawer, .nightWindow, .vinylBooth:
-            return true
-        default:
-            return false
-        }
-    }
-
-    @ViewBuilder
-    private func morphContent(geo: GeometryProxy) -> some View {
-        ZStack {
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
-                morphVisualizer(
-                    for: state.selectedVisualizer,
-                    spectrumData: state.audioEngine.spectrumData,
-                    expansion: currentExpansion(now: ctx.date)
-                )
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .contentShape(Rectangle())
-            .onTapGesture { toggleMode() }
-            .gesture(channelSwipe)
-
-            VStack(spacing: 0) {
-                Spacer()
-
-                bottomOverlay
-
-                Spacer().frame(height: isSmall ? 28 : 32)
-
-                transportControls
-
-                Spacer().frame(height: isSmall ? 80 : 48)
-            }
-            .allowsHitTesting(true)
-        }
-    }
-
-    @ViewBuilder
-    private func morphVisualizer(for style: VisualizerStyle, spectrumData: [Float], expansion: CGFloat) -> some View {
-        switch style {
-        case .lofiTape:
-            LofiTapeView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .oscilloscope:
-            OscilloscopeView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .liquor:
-            LiquorView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .ember:
-            EmberView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .matrix:
-            MatrixView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .firefly:
-            FireflyJarView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .letters:
-            LetterRackView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .drawer:
-            DrawerView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .nightWindow:
-            NightWindowView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        case .vinylBooth:
-            VinylBoothView(spectrumData: spectrumData, density: 2, expansion: expansion)
-        default:
-            // 不走 morph 路径的 visualizer 已在上层被 supportsMorph 过滤掉
-            EmptyView()
-        }
-    }
-
-    // MARK: - Shared bottom overlay (name + DNA)
-
-    private var bottomOverlay: some View {
+    private var styleOverlay: some View {
         VStack(spacing: 10) {
-            if let style = displayStyle {
+            if let style = displayedStyle {
                 musicDNA(style: style)
-                    .offset(x: nameSlideOffset)
-                    .opacity(nameOpacity)
             }
-
-            Text(displayStyleName)
-                .font(FogTheme.display(24, weight: .light))
-                .tracking(FogTheme.trackDisplay)
-                .foregroundStyle(FogTheme.inkPrimary)
-                .offset(x: nameSlideOffset)
-                .opacity(nameOpacity)
+            Text(displayedStyle?.name ?? state.currentChannel.displayName)
+                .fog(.displaySm)
+                .foregroundStyle(FogTokens.textPrimary)
         }
-        .allowsHitTesting(false)
+        .offset(y: styleNameOffsetY)
+        .opacity(styleNameOpacity)
     }
-
-    // MARK: - Transport (ported from DetailsView)
-
-    private var transportControls: some View {
-        HStack(spacing: 40) {
-            Button {
-                state.previousStyle()
-            } label: {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                state.togglePlayPause()
-            } label: {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.08))
-                        .frame(width: 52, height: 52)
-                        .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 1))
-                    Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
-            }
-            .buttonStyle(.plain)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
-
-            Button {
-                state.nextStyle()
-            } label: {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(.white.opacity(0.6))
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    // MARK: - Small-mode visualizer dispatch
-
-    @ViewBuilder
-    private func smallVisualizer(for style: VisualizerStyle, spectrumData: [Float]) -> some View {
-        switch style {
-        case .horizon:      HorizonView(spectrumData: spectrumData, density: 1)
-        case .ringPulse:    RingPulseView(spectrumData: spectrumData, density: 1)
-        case .terrain:      TerrainView(spectrumData: spectrumData, density: 1)
-        case .rainfall:     RainfallView(spectrumData: spectrumData, density: 1)
-        case .helix:        HelixView(spectrumData: spectrumData, density: 1)
-        case .lattice:      LatticeView(spectrumData: spectrumData, density: 1)
-        case .prism:        PrismView(spectrumData: spectrumData, density: 1)
-        case .matrix:       MatrixView(spectrumData: spectrumData, density: 1)
-        case .flora:        FloraView(spectrumData: spectrumData, density: 1)
-        case .glitch:       GlitchView(spectrumData: spectrumData, density: 1)
-        case .oscilloscope: OscilloscopeView(spectrumData: spectrumData, density: 1)
-        case .ember:        EmberView(spectrumData: spectrumData, density: 1)
-        case .liquor:       LiquorView(spectrumData: spectrumData, density: 1)
-        case .lofiTape:     LofiTapeView(spectrumData: spectrumData, density: 1)
-        case .lofiPad:      LofiPadView(spectrumData: spectrumData, density: 1)
-        case .lofiBlinds:   LofiBlindsView(spectrumData: spectrumData, density: 1)
-        case .firefly:      FireflyJarView(spectrumData: spectrumData, density: 1)
-        case .letters:      LetterRackView(spectrumData: spectrumData, density: 1)
-        case .drawer:       DrawerView(spectrumData: spectrumData, density: 1)
-        case .nightWindow:  NightWindowView(spectrumData: spectrumData, density: 1)
-        case .vinylBooth:   VinylBoothView(spectrumData: spectrumData, density: 1)
-        }
-    }
-
-    // MARK: - Channel swipe (小图模式左右滑动换频道)
-
-    /// 横滑换频道：只在横向 dominant 且 > 30pt 时触发。
-    /// minimumDistance: 20 是关键 —— 低于这个阈值 SwiftUI 不认领 touch，
-    /// VerticalPageView 的纵向 pan 可以抢先。tap 用独立的 onTapGesture
-    /// 承载，tap 和 drag 因阈值差（20pt）天然互斥，不会重复触发。
-    private var channelSwipe: some Gesture {
-        DragGesture(minimumDistance: 20)
-            .onEnded { value in
-                let dx = value.translation.width
-                let dy = value.translation.height
-
-                // 只响应横向 dominant 的滑动。
-                guard abs(dx) > abs(dy) else { return }
-                guard abs(dx) > 30 else { return }
-
-                let channels = Channel.all
-                let currentIdx = channels.firstIndex(of: state.currentChannel) ?? 0
-                let newIdx: Int
-                if dx < 0 {
-                    newIdx = min(currentIdx + 1, channels.count - 1)
-                } else {
-                    newIdx = max(currentIdx - 1, 0)
-                }
-                guard newIdx != currentIdx else { return }
-                state.switchToChannel(channels[newIdx])
-            }
-    }
-
-    // MARK: - Music DNA
 
     private func musicDNA(style: MoodStyle) -> some View {
         let tags = extractDNA(from: style)
@@ -399,7 +189,6 @@ struct ImmersiveView: View {
 
     private func extractDNA(from style: MoodStyle) -> [String] {
         var tags: [String] = []
-
         tags.append(style.category.displayName.lowercased())
 
         let moodWords = ["warm", "melancholic", "dreamy", "dark", "ethereal", "intimate",
@@ -407,27 +196,213 @@ struct ImmersiveView: View {
                          "raw", "cosmic", "hypnotic", "flowing", "lazy", "driving"]
         let promptLower = style.prompt.lowercased()
         for word in moodWords {
-            if promptLower.contains(word) {
-                tags.append(word)
-                break
-            }
+            if promptLower.contains(word) { tags.append(word); break }
         }
 
         let instruments = ["piano", "guitar", "saxophone", "bass", "drums", "synth",
                           "flute", "cello", "violin", "Rhodes", "harmonica", "harp",
                           "organ", "trumpet", "vibraphone"]
         for inst in instruments {
-            if promptLower.contains(inst.lowercased()) {
-                tags.append(inst.lowercased())
-                break
-            }
+            if promptLower.contains(inst.lowercased()) { tags.append(inst.lowercased()); break }
         }
 
-        if state.bpm > 0 {
-            tags.append("\(state.bpm)bpm")
-        }
-
+        if state.bpm > 0 { tags.append("\(state.bpm)bpm") }
         return tags
     }
 
+    // MARK: - Vertical style swipe
+
+    /// 命令式驱动 styleName overlay slide+fade：
+    /// 1. 先 withAnimation easeIn 0.12 把旧文字滑出 60pt + opacity 0
+    /// 2. 0.12s 后 selectStyle（真正切换）+ swap displayedStyle + 跳到滑入起点
+    /// 3. withAnimation easeOut 0.18 滑回 0 + opacity 1（新文字滑入）
+    /// delta > 0 = 上滑切下一个 → 旧文字向上消失 / 新文字从下滑入。
+    private func switchStyle(by delta: Int) {
+        let list = state.orderedStyles(for: state.currentChannel)
+        guard !list.isEmpty else { return }
+        let currentId = state.selectedStyle?.id
+        let idx = list.firstIndex(where: { $0.id == currentId }) ?? 0
+        let newIdx = idx + delta
+        guard newIdx >= 0 && newIdx < list.count else { return }
+        let newStyle = list[newIdx]
+
+        let outY: CGFloat = delta > 0 ? -60 : 60
+        let inY:  CGFloat = delta > 0 ? 60 : -60
+
+        withAnimation(.easeIn(duration: 0.12)) {
+            styleNameOffsetY = outY
+            styleNameOpacity = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            // 先 swap 本地再 setState，避免 selectStyle 触发
+            // onChange(of: selectedStyle) 把 offsetY/opacity 瞬间还原
+            // 破坏紧接着的 easeOut 入场动画。
+            displayedStyle = newStyle
+            state.selectStyle(newStyle)
+            styleNameOffsetY = inY
+            withAnimation(.easeOut(duration: 0.18)) {
+                styleNameOffsetY = 0
+                styleNameOpacity = 1
+            }
+        }
+    }
+
+    // MARK: - Transport (settings · play · details on the same baseline)
+
+    private var transportRow: some View {
+        HStack(spacing: 32) {
+            settingsButton
+            playButton
+            detailsButton
+        }
+    }
+
+    private var settingsButton: some View {
+        Button(action: onTapSettings) {
+            ZStack {
+                Circle()
+                    .fill(FogTokens.bgSurface.opacity(0.5))
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+                Image(systemName: "gearshape")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(FogTokens.textSecondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
+    }
+
+    private var detailsButton: some View {
+        Button(action: onTapDetails) {
+            ZStack {
+                Circle()
+                    .fill(FogTokens.bgSurface.opacity(0.5))
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(FogTokens.textSecondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Details")
+    }
+
+    /// Play 按钮 = togglePlayPause；播放状态变化由 onChange(isPlaying) 自动 morph
+    /// 小图↔大图——所以"按播放键也会切换大小图"由 isPlaying 联动一处实现，
+    /// 不需要这里再写 setMode。
+    private var playButton: some View {
+        Button {
+            state.togglePlayPause()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(FogTokens.bgSurface.opacity(0.5))
+                    .frame(width: 52, height: 52)
+                    .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
+                Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(FogTokens.textPrimary.opacity(0.8))
+            }
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: state.audioEngine.isPlaying)
+    }
+}
+
+// MARK: - ChannelPage —— TabView 的单个 page
+
+/// 单个频道页：全屏 morph visualizer + 底部 style name/DNA。
+/// visualizer tap = togglePlayPause（让 ImmersiveView 的 onChange 驱动 morph）。
+/// 上下纵滑切 style（不与 TabView 的横滑冲突，threshold 大于 horizontal）。
+private struct ChannelPage: View {
+    let channel: Channel
+    @Bindable var state: AppState
+    let expansion: (Date) -> CGFloat
+    let onTapVisualizer: () -> Void
+    let onSwipeStyle: (Int) -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                // 所有频道小图背景统一黑（CEO 要求 — visualizer 大图自己画 mood
+                // 暖色，小图全部坍塌到黑，安全区也吃黑不再透 bgDeep 冷蓝）。
+                Color.black
+                    .ignoresSafeArea()
+
+                // visualizer — 只在当前 channel 上实例化 + 跑 TimelineView。
+                // 邻居 page 完全不画 visualizer (Color.clear 占位)，原因：
+                //   · RnB/Electronic Signature 各有自己的内部 TimelineView
+                //     (60fps / 30fps)，即使 expansion=0 静态帧也会一直 fire
+                //   · spectrum data 一变所有 page 都 re-render Canvas
+                //   · 6 个 visualizer 同时高频 redraw 把 audio buffer 饿瘦
+                // 代价：横滑切台时邻居先黑底 ~300ms 再实例化 visualizer，
+                // 比音频卡顿好。
+                // styleName overlay 提到 ImmersiveView 顶层，ChannelPage 只
+                // 负责 visualizer + 接 swipe gesture。
+                Group {
+                    if isActive {
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { ctx in
+                            visualizer(expansion: expansion(ctx.date))
+                        }
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
+                .contentShape(Rectangle())
+                .onTapGesture { onTapVisualizer() }
+                // simultaneousGesture: 让竖直 drag 不被 TabView .page 的横滑
+                // gesture 优先吞掉。verticalSwipe 内部已 guard |v|>|h| 排横滑。
+                .simultaneousGesture(verticalSwipe)
+            }
+        }
+        .ignoresSafeArea()  // 让 GeometryReader 的 geo.size 拿到全屏尺寸（含 status bar / home indicator 区），visualizer 不再被 safe area 切出黑边
+    }
+
+    private var isActive: Bool { channel == state.currentChannel }
+
+    // MARK: - Visualizer dispatch
+
+    @ViewBuilder
+    private func visualizer(expansion: CGFloat) -> some View {
+        let spectrum = state.audioEngine.spectrumData
+        switch channel {
+        case .category(.lofi):
+            LofiTapeView(
+                spectrumData: spectrum,
+                density: 2,
+                expansion: expansion,
+                signatureVU: true,  // v1.4a Signature 永远 ON
+                signatureDensityScale: state.signatureDensityScale,
+                signatureOmegaScale: state.signatureOmegaScale
+            )
+        case .category(.jazz):
+            OscilloscopeView(spectrumData: spectrum, density: 2, expansion: expansion)
+        case .category(.rnb):
+            RnBSignatureView(spectrumData: spectrum, density: 2, expansion: expansion)
+        case .category(.electronic):
+            ElectronicSignatureView(spectrumData: spectrum, density: 2, expansion: expansion)
+        case .category(.rock):
+            EmberView(spectrumData: spectrum, density: 2, expansion: expansion)
+        case .category(.ambient):
+            NightWindowView(spectrumData: spectrum, density: 2, expansion: expansion)
+        default:
+            EmberView(spectrumData: spectrum, density: 2, expansion: expansion)
+        }
+    }
+
+    // MARK: - Vertical-only swipe
+
+    /// 上下滑切 style。threshold 较大且要求竖直分量 > 横向，避免误吃 TabView 的横滑。
+    private var verticalSwipe: some Gesture {
+        DragGesture(minimumDistance: 30)
+            .onEnded { value in
+                let h = value.translation.width
+                let v = value.translation.height
+                guard abs(v) > abs(h), abs(v) > 60 else { return }
+                onSwipeStyle(v < 0 ? +1 : -1)  // 上滑 = +1 = 下一个 style
+            }
+    }
 }

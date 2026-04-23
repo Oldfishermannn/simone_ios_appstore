@@ -15,10 +15,31 @@ final class AudioEngine {
     private let bufferMin = 1
     private let fadeSamples = 48 // 1ms at 48kHz — imperceptible but kills pops
 
+    // v1.3 · Lock 10min 跳风格修复：reconnectAndRestore 后对接下来的音频做软淡入，
+    // 降低用户对「Lyria 重新生成新音乐」跳变的感知。
+    // softFadeInTotal 是整段淡入的总长度（ramp 分母），softFadeInConsumed 是已处理的样本数，
+    // 两者共同维持跨 drainQueue / 跨 buffer 的连续线性 ramp。
+    private var softFadeInTotal: Int = 0
+    private var softFadeInConsumed: Int = 0
+    private let softFadeInLock = NSLock()
+
+    // v1.3 · Lock 无缝续接：与 softFadeIn 对称的尾部 ramp，用于 fallback loop 结束时
+    // 对末端音频线性淡出。语义：接下来播放的 softFadeOutTotal 个样本从 1.0 → 0 linear。
+    private var softFadeOutTotal: Int = 0
+    private var softFadeOutConsumed: Int = 0
+    private let softFadeOutLock = NSLock()
+
     private var engine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private let bufferQueue = AudioBufferQueue()
     private var isDraining = false
+
+    // v1.3 · Lock 无缝续接
+    let splice = SplicePlayback()
+
+    // v1.3 · playerNode.volume ramp timer（armSoftFadeOut 用；per-sample ramp 对已 scheduled
+    // 的 fallback buffer 无效，必须用 node-level volume 实时衰减）
+    private var volumeRampTimer: Timer?
 
     /// Tracks how many buffers are scheduled but not yet played
     private var scheduledBufferCount = 0
@@ -28,7 +49,9 @@ final class AudioEngine {
     var onPlaybackStalled: (() -> Void)?
     private var lastChunkReceivedAt: Date?
     private var watchdogTimer: Timer?
-    private let stallThreshold: TimeInterval = 10
+    // v1.3 · Lock 10min 跳风格修复：10s → 20s。Lyria chunk 偶尔 >10s 间隔但不是真 stall，
+    // 降低误触发频率，避免把自然的 chunk 抖动当成卡死而强制重连。
+    private let stallThreshold: TimeInterval = 20
 
     // Interruption observer token
     private var interruptionObserver: NSObjectProtocol?
@@ -61,6 +84,21 @@ final class AudioEngine {
         try? AVAudioSession.sharedInstance().setActive(true)
         setupInterruptionObserver()
         #endif
+
+        // Splice hooks：把录音-播放-ramp 三个能力注入给 SplicePlayback
+        splice.enqueuePlayback = { [weak self] data in
+            self?.bufferQueue.enqueue(data)
+            self?.drainQueue()
+        }
+        splice.armFadeIn = { [weak self] duration in
+            self?.armSoftFadeIn(duration: duration)
+        }
+        splice.armFadeOut = { [weak self] duration in
+            self?.armSoftFadeOut(duration: duration)
+        }
+        splice.flushPlayback = { [weak self] in
+            self?.flushScheduledBuffers()
+        }
 
         // Pre-warm the entire audio pipeline at init
         // so the first real playback has zero transient pop
@@ -163,6 +201,8 @@ final class AudioEngine {
 
     func handleAudioChunk(_ data: Data) {
         lastChunkReceivedAt = Date()
+        // v1.3 · 分叉录到 ring buffer（用于 Lock 无缝续接 fallback loop）
+        splice.recordIncoming(data)
         bufferQueue.enqueue(data)
 
         if !isDraining && bufferQueue.count >= bufferMin {
@@ -173,18 +213,76 @@ final class AudioEngine {
     }
 
     func clearQueue() {
+        splice.abortFallback()
+        volumeRampTimer?.invalidate()
+        volumeRampTimer = nil
+        playerNode?.volume = 1.0
+        softFadeOutLock.lock()
+        softFadeOutTotal = 0
+        softFadeOutConsumed = 0
+        softFadeOutLock.unlock()
         bufferQueue.clear()
         isDraining = false
         resetScheduledCount()
     }
 
+    /// v1.3 · Lock 10min 跳风格修复：安排下一批音频的软淡入。
+    /// 典型用法：LyriaClient.reconnectAndRestore 成功重连后调用，duration≈0.5s，
+    /// 新 session 第一批 chunk 渐入，降低跳变感知。
+    func armSoftFadeIn(duration: TimeInterval) {
+        let samples = max(0, Int(duration * sampleRate))
+        softFadeInLock.lock()
+        softFadeInTotal = samples
+        softFadeInConsumed = 0
+        softFadeInLock.unlock()
+    }
+
+    /// v1.3 · Lock 无缝续接：playerNode.volume ramp 1.0 → 0.0 over duration。
+    /// 用 node-level volume 而不是 per-sample ramp——因为 fallback 已全 scheduleBuffer，
+    /// per-sample ramp 对已 scheduled 的 buffer 无效（buffer PCM 内容已固定）。
+    func armSoftFadeOut(duration: TimeInterval) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let node = self.playerNode else { return }
+            self.volumeRampTimer?.invalidate()
+            node.volume = 1.0
+            let steps = max(30, Int(duration * 60))
+            let interval = duration / Double(steps)
+            let delta: Float = -1.0 / Float(steps)
+            var currentStep = 0
+            self.volumeRampTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] timer in
+                guard let self, let node = self.playerNode else { timer.invalidate(); return }
+                currentStep += 1
+                if currentStep >= steps {
+                    node.volume = 0.0
+                    timer.invalidate()
+                    self.volumeRampTimer = nil
+                } else {
+                    node.volume = 1.0 + delta * Float(currentStep)
+                }
+            }
+        }
+    }
+
     func flushScheduledBuffers() {
+        splice.abortFallback()
+        volumeRampTimer?.invalidate()
+        volumeRampTimer = nil
+        softFadeOutLock.lock()
+        softFadeOutTotal = 0
+        softFadeOutConsumed = 0
+        softFadeOutLock.unlock()
         bufferQueue.clear()
         isDraining = false
         resetScheduledCount()
         playerNode?.stop()
-        // Restart player so it's ready for new buffers
-        playerNode?.play()
+        // v1.3 · reset volume 让新 chunk 能听见（armSoftFadeOut 把 volume ramp 到 0）
+        playerNode?.volume = 1.0
+        // Bug fix: 用户暂停状态下 applySelection 也走这条路径 reset queue；
+        // 强制 play() 会让暂停状态下切 style 自动恢复播放。只在用户真正
+        // 在播放时才接续。下一次 togglePlayPause 会显式 resume。
+        if isPlaying {
+            playerNode?.play()
+        }
     }
 
     // MARK: - Interruption Handling
@@ -203,6 +301,14 @@ final class AudioEngine {
                   let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
 
             if type == .ended {
+                // Bug fix: 用户已经在 Simone 内主动暂停时，不能因外部 app
+                // (e.g. 视频) 释放音频会话而触发 .ended 就自动续播。
+                // shouldResume 是系统建议恢复的位掩码；isPlaying 是我们
+                // 自己 track 的"用户曾按过 play"状态。两者都为真才 resume。
+                let optsRaw = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+                let shouldResume = AVAudioSession.InterruptionOptions(rawValue: optsRaw)
+                    .contains(.shouldResume)
+                guard shouldResume, self.isPlaying else { return }
                 try? AVAudioSession.sharedInstance().setActive(true)
                 if let engine = self.engine, !engine.isRunning {
                     try? engine.start()
@@ -300,6 +406,58 @@ final class AudioEngine {
         }
     }
 
+    /// v1.3 · 软淡入：把 softFadeInRemainingSamples 预算按样本顺序抹在 buffer 前缀上。
+    /// 返回 buffer 真正消耗掉的 ramp 样本数，供外部调用方扣减全局预算。
+    /// - Parameters:
+    ///   - buffer: 目标 PCM buffer
+    ///   - totalRampLength: 整段淡入的总长度（用于算线性比例，跨 buffer 保持连续）
+    ///   - alreadyRamped: 这段淡入之前已经处理过的样本数
+    /// - Returns: 本 buffer 内被处理的样本数
+    private func applySoftFadeIn(
+        _ buffer: AVAudioPCMBuffer,
+        totalRampLength: Int,
+        alreadyRamped: Int
+    ) -> Int {
+        guard totalRampLength > 0 else { return 0 }
+        let bufferLen = Int(buffer.frameLength)
+        let remaining = totalRampLength - alreadyRamped
+        guard remaining > 0 else { return 0 }
+        let count = min(remaining, bufferLen)
+        for ch in 0..<Int(channels) {
+            guard let data = buffer.floatChannelData?[ch] else { continue }
+            for i in 0..<count {
+                let globalIndex = alreadyRamped + i
+                let gain = Float(globalIndex) / Float(totalRampLength)
+                data[i] *= gain
+            }
+        }
+        return count
+    }
+
+    /// v1.3 · 对称软淡出：与 softFadeIn 镜像——处理 buffer 的前 count 个样本，
+    /// gain 从 (1 - alreadyRamped/total) 递减到 ~0。跨 buffer 累加 alreadyRamped。
+    /// 返回被处理的样本数供调用方扣减预算。
+    private func applySoftFadeOut(
+        _ buffer: AVAudioPCMBuffer,
+        totalRampLength: Int,
+        alreadyRamped: Int
+    ) -> Int {
+        guard totalRampLength > 0 else { return 0 }
+        let bufferLen = Int(buffer.frameLength)
+        let remaining = totalRampLength - alreadyRamped
+        guard remaining > 0 else { return 0 }
+        let count = min(remaining, bufferLen)
+        for ch in 0..<Int(channels) {
+            guard let data = buffer.floatChannelData?[ch] else { continue }
+            for i in 0..<count {
+                let globalIndex = alreadyRamped + i
+                let gain = 1.0 - Float(globalIndex) / Float(totalRampLength)
+                data[i] *= gain
+            }
+        }
+        return count
+    }
+
     // MARK: - Private
 
     private func drainQueue() {
@@ -313,6 +471,13 @@ final class AudioEngine {
 
         let wasUnderrun = isUnderrun
         let chunks = bufferQueue.drainAll()
+
+        // v1.3 · 软淡入：一次性快照当前 total/consumed，drain 循环内累加，收尾回写。
+        // total 跨 drainQueue 保持不变（ramp 分母），consumed 跨 drain 累计（保证线性连续）。
+        softFadeInLock.lock()
+        let softFadeTotal = softFadeInTotal
+        var softFadeConsumed = softFadeInConsumed
+        softFadeInLock.unlock()
 
         for (idx, chunk) in chunks.enumerated() {
             let numBytes = chunk.count - (chunk.count % (Int(channels) * 2))
@@ -336,6 +501,35 @@ final class AudioEngine {
                 }
             }
 
+            // v1.3 · 软淡入必须先于 applyFadeIn，避免短 fadeSamples 的 1ms ramp 被软 ramp 压成 0。
+            if softFadeTotal > 0 && softFadeConsumed < softFadeTotal {
+                let consumed = applySoftFadeIn(
+                    pcmBuffer,
+                    totalRampLength: softFadeTotal,
+                    alreadyRamped: softFadeConsumed
+                )
+                softFadeConsumed += consumed
+            }
+
+            // v1.3 · 软淡出（对称 ramp，fallback loop 收尾）
+            softFadeOutLock.lock()
+            let softOutTotal = softFadeOutTotal
+            var softOutConsumed = softFadeOutConsumed
+            softFadeOutLock.unlock()
+            if softOutTotal > 0 && softOutConsumed < softOutTotal {
+                let consumed = applySoftFadeOut(
+                    pcmBuffer,
+                    totalRampLength: softOutTotal,
+                    alreadyRamped: softOutConsumed
+                )
+                softOutConsumed += consumed
+                softFadeOutLock.lock()
+                if softFadeOutTotal == softOutTotal {
+                    softFadeOutConsumed = min(softOutConsumed, softOutTotal)
+                }
+                softFadeOutLock.unlock()
+            }
+
             // Fade-in/out on every buffer: ensures all transitions are smooth
             // - Normal playback: buffer boundaries go through 0 seamlessly (1ms dip, inaudible)
             // - Underrun: both edges fade to/from 0, no pop
@@ -346,6 +540,16 @@ final class AudioEngine {
             player.scheduleBuffer(pcmBuffer) { [weak self] in
                 self?.decrementScheduled()
             }
+        }
+
+        // 回写已消耗的样本数；ramp 结束后（consumed >= total）后续 buffer 走全增益
+        if softFadeTotal > 0 {
+            softFadeInLock.lock()
+            // 只在没被 armSoftFadeIn 重置的前提下累加（比较 total 是否还是那批）
+            if softFadeInTotal == softFadeTotal {
+                softFadeInConsumed = min(softFadeConsumed, softFadeTotal)
+            }
+            softFadeInLock.unlock()
         }
     }
 

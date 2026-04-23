@@ -10,7 +10,8 @@ final class AppState {
     // Category navigation
     var currentCategory: StyleCategory = .lofi
 
-    // v1.1.1 top-level nav unit (Favorites + 10 categories).
+    // v1.1.1 top-level nav unit (5 genre channels + Favorites).
+    // v1.4a: Favorites removed — channels are now 6 StyleCategory genres.
     // currentCategory preserved as one-version fallback per reversibility policy.
     var currentChannel: Channel = .category(.lofi) {
         didSet { saveCurrentChannel() }
@@ -18,9 +19,6 @@ final class AppState {
 
     // Style history (for previous/next navigation)
     var styleHistory: [MoodStyle] = []
-
-    // Pinned (persisted)
-    var pinnedStyles: [MoodStyle] = []
 
     // Playback
     var isGenerating = false
@@ -33,9 +31,10 @@ final class AppState {
         case auto1m = "1 min"
         case auto5m = "5 min"
     }
-    // Default Lock: don't touch a landed soundscape unless the user opts in.
-    // 30s is the fastest tier — 10s felt twitchy on Lyria's settle time.
-    var evolveMode: EvolveMode = .locked {
+    // v1.2.1 default: auto1m — CEO 验收"撑 30 分钟不疲劳"需要持续 evolve，
+    // 1min tick × 三维度调制（每次只动 1-2 维度）在 30 分钟内触发约 30 次
+    // 微调，足够抗疲劳又不打破沉浸感。Lock 挡保留作为用户手动选项。
+    var evolveMode: EvolveMode = .auto1m {
         didSet { restartEvolveTimer() }
     }
     private var evolveTimer: Timer?
@@ -49,15 +48,19 @@ final class AppState {
     }
     private var autoTuneTimer: Timer?
 
-    // v1.2 Favorites 评审期：三选一可视化（firefly / letters / drawer）
-    var favoritesVisualizer: VisualizerStyle = Channel.favoritesVisualizerPreference {
-        didSet {
-            UserDefaults.standard.set(favoritesVisualizer.rawValue, forKey: Channel.favoritesVisualizerKey)
-            if currentChannel == .favorites {
-                selectedVisualizer = favoritesVisualizer
-            }
-        }
+    // v1.4a Part 3 — Signature axis. Classic 已废，所有频道走 Signature。
+    // 旧的 toggle 在 v1.4a 全部 Signature 上线后被 CEO 砍掉（Eurorack v5 验过）。
+    // 留 enum + property 保持 schema 兼容（UserDefaults 旧 key 静默忽略）。
+    enum VisualizationMode: String, CaseIterable {
+        case signature = "Signature"
+        case classic = "Classic"
     }
+    let visualizationMode: VisualizationMode = .signature
+
+    /// Evolve-driven multipliers for Signature visualizers. 1.0 = neutral.
+    /// Nudged ±10% every evolve tick inside the Lo-fi channel; clamped tight.
+    var signatureDensityScale: CGFloat = 1.0
+    var signatureOmegaScale: CGFloat = 1.0
 
     // Sleep Timer
     enum SleepDuration: Int, CaseIterable {
@@ -79,7 +82,10 @@ final class AppState {
 
 
     // Config
-    var temperature: Float = 1.1
+    // v1.2.1 · Lock 挡 temperature 从 1.1 → 0.8（RFC §8 Decision 1 = A 方案）。
+    // Lyria 内部熵降低，Lock 听感更"实心"；evolve 不再抖 temperature，
+    // 变化由三维度调制承担（RFC §1.2 根因 A）。
+    var temperature: Float = 0.8
     var guidance: Float = 4.0
     var bpm: Int = 0           // 0 = model decides
     var density: Float = -1    // -1 = model decides
@@ -94,6 +100,13 @@ final class AppState {
     var energy: Float = 0.5    // 0..1
     var mood: Float = 0.5      // 0..1
 
+    // v1.2.1 · 三维度调制后台状态（RFC §2.1–§2.4）。
+    // **不暴露 UI**（CEO 决策 #2），仅 evolve() 读写。不持久化（RFC §R5 特征不是 bug）。
+    private var activeAccents: Set<String> = []
+    private var activeOptionals: Set<String> = []
+    private var currentDensity: Float = 0.6
+    private var currentEnergy: Float = 0.55
+
     /// Apply current config to server
     func applyConfig() {
         guard lyriaClient.connectionState == .connected else { return }
@@ -104,33 +117,31 @@ final class AppState {
     let audioEngine = AudioEngine()
     let lyriaClient = LyriaClient()
 
-    private let pinnedKey = "pinnedStyles"
     private let currentChannelKey = "currentChannel"
 
     init() {
         // v1.1.1 migration: clean up legacy key from v1.1.0's reverted session rotation.
         UserDefaults.standard.removeObject(forKey: "sessionRotationEnabled")
 
-        // Load pinned styles from UserDefaults, re-tag any preset carried over from
-        // the old 10-genre taxonomy (blues/pop/classical/ambient/folk) by looking up
-        // the canonical definition in the new preset pool. User-generated presets
-        // (id prefix "gen-") keep their current category field.
-        if let data = UserDefaults.standard.data(forKey: pinnedKey),
-           let decoded = try? JSONDecoder().decode([MoodStyle].self, from: data) {
-            var needsRewrite = false
-            pinnedStyles = decoded.map { old in
-                if let canonical = MoodStyle.presets.first(where: { $0.id == old.id }),
-                   canonical.category != old.category {
-                    needsRewrite = true
-                    return canonical
-                }
-                return old
-            }
-            if needsRewrite { savePinnedStyles() }
-        }
+        // v1.4a migration: Favorites channel removed — drop the persisted
+        // pinned list and favorites visualizer preference key. Silent.
+        UserDefaults.standard.removeObject(forKey: "pinnedStyles")
+        UserDefaults.standard.removeObject(forKey: "favoritesVisualizer")
 
-        // Restore Auto Tune preference
+        // Restore Auto Tune preference.
+        // v1.2.1 一次性迁移：v1.1.x 时代 Auto Tune 默认 ON，老用户升级后即使 v1.1.1
+        // 改默认 OFF，UserDefaults 里的 true 仍会保留，听到第 25 min 触发 nextStyle()
+        // 导致"听着听着换风格"。这里一次性重置为 false，用户想开自己去 Settings 再开。
+        let autoTuneMigrationKey = "autoTuneMigrationV121Done"
+        if !UserDefaults.standard.bool(forKey: autoTuneMigrationKey) {
+            UserDefaults.standard.set(false, forKey: "autoTuneEnabled")
+            UserDefaults.standard.set(true, forKey: autoTuneMigrationKey)
+        }
         autoTuneEnabled = UserDefaults.standard.bool(forKey: "autoTuneEnabled")
+
+        // v1.4a 全 Signature 上线后，旧 visualizationMode key 已废弃，清掉避免
+        // 老用户残留 "classic" 偏好被任何代码意外读到。
+        UserDefaults.standard.removeObject(forKey: "visualizationMode")
 
         // Restore last channel (no didSet side-effect during init)
         // v1.2: 频道收缩到 5 个，落在旧 channel 上则 fallback 到 lofi。
@@ -144,9 +155,15 @@ final class AppState {
             }
         }
 
-        // 冷启动默认选 Lo-fi Chill 作为展示（直接赋值绕过 selectStyle 的播放副作用）
+        // 冷启动默认 selectedStyle:
+        //   1. 上次离开时该频道选的 style（CEO 要求"频道有记忆"）
+        //   2. 否则该频道用户排序后的第一位（首次进入此频道）
+        //   3. 兜底 lofi-chill（防 preset 池被清空）
+        // 直接赋值绕过 selectStyle 的播放副作用。
         if selectedStyle == nil {
-            selectedStyle = MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
+            selectedStyle = recalledStyle(for: currentChannel)
+                ?? orderedStyles(for: currentChannel).first
+                ?? MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
         }
 
         lyriaClient.onAudioChunk = { [weak self] data in
@@ -155,12 +172,24 @@ final class AppState {
         lyriaClient.onConnected = { [weak self] in
             self?.sendCurrentPrompts()
         }
-        // 卡死自救：AudioEngine 发现 10s 无新 chunk + buffer 空 → 触发重连
+        // v1.3 · Lock 10min 无缝续接修复（升级版）：
+        // - reconnectAndRestore 起点：立即从 ring buffer 开始播，覆盖 Lyria 重连空档
+        // - onReconnected 成功：endFallbackLoop 做 1.5s crossfade 淡入新 session
+        //   （原 0.5s armSoftFadeIn 由 endFallbackLoop 内部 armFadeIn hook 统一接管）
+        lyriaClient.onReconnectStarted = { [weak self] in
+            self?.audioEngine.splice.beginFallbackLoop()
+        }
+        lyriaClient.onReconnected = { [weak self] in
+            self?.audioEngine.splice.endFallbackLoop(crossfade: 1.5)
+        }
+        // 卡死自救：AudioEngine 发现 20s 无新 chunk + buffer 空 → 触发会话轮转
+        // v1.3 · Lock 10min 跳风格修复：改走 reconnectAndRestore（不走 onConnected
+        // → 不触发 sendCurrentPrompts → 不发新 prompt），统一会话轮转逻辑，
+        // 减少「Lyria 从零重新生成音乐」的听感跳变。
         audioEngine.onPlaybackStalled = { [weak self] in
             guard let self, self.audioEngine.isPlaying else { return }
             self.statusMessage = "Recovering stream..."
-            self.lyriaClient.disconnect()
-            self.lyriaClient.connect()
+            self.lyriaClient.reconnectAndRestore()
         }
         #if os(iOS)
         audioEngine.setupRemoteCommandCenter(
@@ -179,15 +208,15 @@ final class AppState {
 
     // MARK: - Channel
 
-    /// Styles visible in the current channel (pinned for Favorites, preset pool for categories).
+    /// Styles visible in the current channel — always the category preset pool.
     var stylesInCurrentChannel: [MoodStyle] {
         switch currentChannel {
-        case .favorites:       return pinnedStyles
         case .category(let c): return MoodStyle.presets(for: c)
         }
     }
 
-    /// Switch to a channel: persist, rebind visualizer, queue up the first preset.
+    /// Switch to a channel: persist, rebind visualizer, queue up the recalled
+    /// style (or 用户排序的第一位 if first time on this channel).
     /// No-op if the channel is already active.
     ///
     /// 关键：横滑频道不自动启动播放。selectStyle → applySelection 在
@@ -195,6 +224,9 @@ final class AppState {
     /// 刻出声"的意图）。对频道横滑来说，用户并未按播放键，安静切换才
     /// 是电台感。所以：未连接时只更新 selectedStyle 不走 applySelection；
     /// 已连接时再把新 prompt 推给 Lyria 实现无缝切台。
+    ///
+    /// 频道记忆 (CEO 要求)：每个 channel 记上一次选过的 style，回切时
+    /// 直接召回；首次进入这个频道则用「用户排序后的第一位」。
     func switchToChannel(_ channel: Channel) {
         guard channel != currentChannel else { return }
         currentChannel = channel
@@ -203,12 +235,34 @@ final class AppState {
             currentCategory = c
         }
         styleHistory.removeAll()
-        guard let first = stylesInCurrentChannel.first else { return }
+
+        let target = recalledStyle(for: channel)
+            ?? orderedStyles(for: channel).first
+        guard let pick = target else { return }
+
         if lyriaClient.connectionState == .disconnected {
-            selectedStyle = first
+            selectedStyle = pick
         } else {
-            selectStyle(first)
+            selectStyle(pick)
         }
+    }
+
+    // MARK: - Per-channel last-selected memory
+
+    /// Per-channel "last played style" UserDefaults key.
+    private func lastStyleKey(for channel: Channel) -> String {
+        "lastStyle_\(channel.rawKey)"
+    }
+
+    /// 取当前 channel 上次选过的 style（必须仍在该频道 preset 池里）。
+    private func recalledStyle(for channel: Channel) -> MoodStyle? {
+        guard let id = UserDefaults.standard.string(forKey: lastStyleKey(for: channel)) else { return nil }
+        return styles(for: channel).first { $0.id == id }
+    }
+
+    /// 持久化 (channel, style) — 在 selectStyle 里调，也在频道切换时调。
+    private func rememberStyle(_ style: MoodStyle, in channel: Channel) {
+        UserDefaults.standard.set(style.id, forKey: lastStyleKey(for: channel))
     }
 
     // MARK: - Actions
@@ -216,7 +270,20 @@ final class AppState {
     func selectStyle(_ style: MoodStyle) {
         selectedStyle = style
         selectedVisualizer = currentChannel.visualizer
+        rememberStyle(style, in: currentChannel)
+        resetEvolveState(for: style.category)
         applySelection()
+    }
+
+    /// v1.2.1 · 切台时重置三维度状态（RFC 附录 B）。
+    /// accent 取池内前 2 件、optional 取池内前 1 件，density/energy 回默认中值。
+    /// 保证 Lock 挡下仍有 active 乐器被拼进 evolve prompt（如果 evolve 触发）。
+    private func resetEvolveState(for category: StyleCategory) {
+        let pool = category.instrumentPool
+        activeAccents = Set(pool.accent.prefix(2))
+        activeOptionals = Set(pool.optional.prefix(1))
+        currentDensity = 0.6
+        currentEnergy = 0.55
     }
 
     func togglePlayPause() {
@@ -277,10 +344,10 @@ final class AppState {
         }
     }
 
-    /// Next style — cycles within the current channel (category preset pool, or pinned list for Favorites).
+    /// Next style — cycles within the current channel's category preset pool.
     func nextStyle() {
         let channelStyles = stylesInCurrentChannel
-        guard !channelStyles.isEmpty else { return }  // Favorites empty → no-op
+        guard !channelStyles.isEmpty else { return }
         if let current = selectedStyle {
             styleHistory.append(current)
         }
@@ -324,21 +391,46 @@ final class AppState {
         }
     }
 
-    // MARK: - Pin / Unpin
+    // MARK: - Style Order (v1.3)
 
-    func pinStyle(_ style: MoodStyle) {
-        guard !pinnedStyles.contains(where: { $0.id == style.id }) else { return }
-        pinnedStyles.append(style)
-        savePinnedStyles()
+    /// 每频道独立持久化 style 顺序。key pattern: `styleOrder_<channel.rawKey>`。
+    /// 老用户没有此 key 时走默认顺序（`stylesInCurrentChannel`），schema 可逆。
+    private func styleOrderKey(for channel: Channel) -> String {
+        "styleOrder_\(channel.rawKey)"
     }
 
-    func unpinStyle(_ style: MoodStyle) {
-        pinnedStyles.removeAll { $0.id == style.id }
-        savePinnedStyles()
+    /// 返回当前频道的"用户排序后"style 列表。persisted 里存在的按 persisted 顺序，
+    /// 未在 persisted 里的（新 preset）追加到末尾。
+    func orderedStyles(for channel: Channel) -> [MoodStyle] {
+        let defaults = styles(for: channel)
+        let persisted = UserDefaults.standard.stringArray(forKey: styleOrderKey(for: channel)) ?? []
+        guard !persisted.isEmpty else { return defaults }
+        let byId = Dictionary(uniqueKeysWithValues: defaults.map { ($0.id, $0) })
+        var result: [MoodStyle] = []
+        var seen = Set<String>()
+        for id in persisted {
+            if let s = byId[id] {
+                result.append(s)
+                seen.insert(id)
+            }
+        }
+        for s in defaults where !seen.contains(s.id) {
+            result.append(s)
+        }
+        return result
     }
 
-    func isPinned(_ style: MoodStyle) -> Bool {
-        pinnedStyles.contains(where: { $0.id == style.id })
+    /// 持久化新顺序（id list）。
+    func reorderStyles(in channel: Channel, newOrder: [MoodStyle]) {
+        let ids = newOrder.map { $0.id }
+        UserDefaults.standard.set(ids, forKey: styleOrderKey(for: channel))
+    }
+
+    /// Helper：给定频道取默认 style 列表（不查 persisted order）。
+    private func styles(for channel: Channel) -> [MoodStyle] {
+        switch channel {
+        case .category(let c): return MoodStyle.presets(for: c)
+        }
     }
 
     // MARK: - Sleep Timer
@@ -364,12 +456,6 @@ final class AppState {
     }
 
     // MARK: - Private
-
-    private func savePinnedStyles() {
-        if let data = try? JSONEncoder().encode(pinnedStyles) {
-            UserDefaults.standard.set(data, forKey: pinnedKey)
-        }
-    }
 
     private func saveCurrentChannel() {
         UserDefaults.standard.set(currentChannel.rawKey, forKey: currentChannelKey)
@@ -483,27 +569,86 @@ final class AppState {
         }
     }
 
+    /// v1.2.1 · 三维度调制 evolve（RFC §2.4）。
+    /// 每 tick 只挑 1-2 个维度动，避免突变；Lock 挡由 restartEvolveTimer 过滤（return）。
+    /// Temperature / guidance / brightness 不再由 evolve 抖动（交给手动 config）。
     private func evolve() {
         guard let style = selectedStyle,
               lyriaClient.connectionState == .connected else { return }
 
-        // Prompt-level mutation: per-category vocab variant (primary signal).
-        let prompts = PromptBuilder.evolveVariant(style: style)
+        // 1. 随机挑 1-2 个维度
+        let picked = EvolveDimension.allCases.shuffled().prefix(Int.random(in: 1...2))
+
+        // 2. 分别调制
+        for dim in picked {
+            switch dim {
+            case .instruments:
+                evolveInstruments(category: style.category, mode: evolveMode)
+            case .density:
+                currentDensity = ScalarWalk.next(currentDensity)
+            case .energy:
+                currentEnergy = ScalarWalk.next(currentEnergy)
+            }
+        }
+
+        // 3. 重建 prompt（不 append！长度有界）
+        let prompts = PromptBuilder.build(
+            style: style,
+            activeAccents: activeAccents,
+            activeOptionals: activeOptionals,
+            density: currentDensity,
+            energy: currentEnergy
+        )
         lyriaClient.sendPrompts(prompts)
 
-        // Config-level perturbation: reduced amplitude — prompt variant is the main lever.
-        let newTemp = max(0.1, min(3.0, temperature + Float.random(in: -0.1...0.1)))
-        let newGuidance = max(0.0, min(6.0, guidance + Float.random(in: -0.25...0.25)))
-        temperature = newTemp
-        guidance = newGuidance
+        // 4. 同步 density 到 Lyria 原生 config（描述词 + 数值双保险）
+        density = currentDensity
+        lyriaClient.sendConfig(["density": currentDensity])
 
-        if density >= 0 {
-            density = max(0.0, min(1.0, density + Float.random(in: -0.08...0.08)))
-        }
-        if brightness >= 0 {
-            brightness = max(0.0, min(1.0, brightness + Float.random(in: -0.08...0.08)))
-        }
+        // 5. v1.4a Signature: drift density/omega scales for Lo-fi totem.
+        let nextDensity = signatureDensityScale + CGFloat.random(in: -0.10...0.10)
+        signatureDensityScale = max(0.82, min(1.18, nextDensity))
+        let nextOmega = signatureOmegaScale + CGFloat.random(in: -0.10...0.10)
+        signatureOmegaScale = max(0.85, min(1.15, nextOmega))
+    }
 
-        lyriaClient.sendConfig(buildFullConfig())
+    /// 乐器池加减：按挡位决定动 accent 还是 optional（RFC §2.1）。
+    private func evolveInstruments(category: StyleCategory, mode: EvolveMode) {
+        let pool = category.instrumentPool
+        switch mode {
+        case .locked:
+            return  // Lock 挡不变 active（restartEvolveTimer 已拦截，此处冗余防御）
+        case .auto30s:
+            // 只动 optional，±1 件，上限 2
+            toggleOne(from: pool.optional, in: &activeOptionals, maxSize: 2)
+        case .auto1m:
+            // 70% 动 accent（上限 3），30% 动 optional
+            if Float.random(in: 0...1) < 0.7 {
+                toggleOne(from: pool.accent, in: &activeAccents, maxSize: 3)
+            } else {
+                toggleOne(from: pool.optional, in: &activeOptionals, maxSize: 2)
+            }
+        case .auto5m:
+            // 整组 reshuffle：accent 抽 2、optional 抽 1
+            activeAccents = Set(pool.accent.shuffled().prefix(2))
+            activeOptionals = Set(pool.optional.shuffled().prefix(1))
+        }
+    }
+
+    /// 有状态的 ±1 加减：满了强制减、空了强制加、否则 50/50。
+    private func toggleOne(from pool: [String], in active: inout Set<String>, maxSize: Int) {
+        let shouldAdd: Bool
+        if active.count >= maxSize { shouldAdd = false }
+        else if active.isEmpty { shouldAdd = true }
+        else { shouldAdd = Bool.random() }
+
+        if shouldAdd {
+            let candidates = pool.filter { !active.contains($0) }
+            guard let pick = candidates.randomElement() else { return }
+            active.insert(pick)
+        } else {
+            guard let drop = active.randomElement() else { return }
+            active.remove(drop)
+        }
     }
 }

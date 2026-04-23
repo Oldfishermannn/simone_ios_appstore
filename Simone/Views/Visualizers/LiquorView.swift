@@ -64,30 +64,42 @@ struct LiquorView: View {
         let t = Float(Date().timeIntervalSince1970).truncatingRemainder(dividingBy: 240)
 
         // ─── 背景径向暖光晕（淡入）────────────────────────────
+        // v1.2.1 收敛：原 0.65 opacity × 0.85 radius 的大面积暖黄覆盖了 60-70%
+        // 屏幕，和 Rock/Ember 的冷暗底在横切频道时亮度落差过大（眼睛不适）。
+        // 按 Fog 原则 #3「暖意点缀、底色冷雾」压回：opacity 0.35、radius 0.55，
+        // 让暖只在右下酒杯附近生效，屏幕大半回到冷雾底。
         if sceneAlpha > 0.01 {
             context.drawLayer { ctx in
                 ctx.opacity = sceneAlpha
                 ctx.fill(Path(CGRect(origin: .zero, size: size)),
                          with: .radialGradient(
                             Gradient(stops: [
-                                .init(color: bgWarm.opacity(0.65), location: 0),
-                                .init(color: bg, location: 0.7),
+                                .init(color: bgWarm.opacity(0.35), location: 0),
+                                .init(color: bg.opacity(0.88), location: 0.5),
                                 .init(color: bg, location: 1)
                             ]),
-                            center: CGPoint(x: w * 0.75, y: h * 0.92),
-                            startRadius: 0, endRadius: max(w, h) * 0.85
+                            center: CGPoint(x: w * 0.78, y: h * 0.94),
+                            startRadius: 0, endRadius: max(w, h) * 0.55
                          ))
             }
         }
 
         // 主杯几何（用于 coaster/decanter 几何关联）
+        // 小图 (e=0): 威士忌 rocks glass 样式 — 矮胖、直筒微外张、贴下。
+        //   cyBase 0.92 贴底；height 0.36 ~ width 0.46 约 0.78 比例（威士忌杯典型）；
+        //   taper -0.03 杯口略宽于杯底 3%（经典 rocks glass 侧壁微外张）；
+        //   fillLevel 0.62 酒装过半（威士忌通常装 1/3 ~ 1/2，但视觉上过半更有料）。
+        // 大图 (e=1): 仍是威士忌杯形 — 保持 rocks glass 一致性，只是缩小左移。
+        // v1.3 iter2：CEO 反馈"像啤酒杯"，再夸张矮胖：
+        //   小图 width 0.52 宽 × height 0.26 矮 ≈ 0.50 比例（比 tumbler 还扁）
+        //   taper -0.06 杯口比杯底宽 6%（明显外张 = rocks glass 签名侧壁）
         let mainSpec = GlassSpec(
             cx: 0.50 + (0.32 - 0.50) * e,
-            cyBase: 0.82 + (0.84 - 0.82) * e,
-            width: 0.50 + (0.30 - 0.50) * e,
-            height: 0.60 + (0.45 - 0.60) * e,
-            fillLevel: 0.60 + (0.62 - 0.60) * e,
-            taper: 0.06 + (0.08 - 0.06) * e,
+            cyBase: 0.78 + (0.84 - 0.78) * e,
+            width: 0.52 + (0.34 - 0.52) * e,
+            height: 0.26 + (0.22 - 0.26) * e,
+            fillLevel: 0.55 + (0.55 - 0.55) * e,
+            taper: -0.06 + (-0.02 - (-0.06)) * e,
             seed: 0.0
         )
 
@@ -332,9 +344,20 @@ struct LiquorView: View {
         let liquidLeftX = cx - gw * 0.5 + levelTaperX
         let liquidRightX = cx + gw * 0.5 - levelTaperX
 
+        // v1.3 iter3: 液体底部跟随 silhouette 圆角（cornerR 与 silhouette 共享）
+        let liquidCornerR: CGFloat = min(gw, gh) * 0.14
+
         var liquidPath = Path()
-        liquidPath.move(to: botLeft)
-        liquidPath.addLine(to: botRight)
+        liquidPath.move(to: CGPoint(x: botLeft.x, y: cyBase - liquidCornerR))
+        liquidPath.addQuadCurve(
+            to: CGPoint(x: botLeft.x + liquidCornerR, y: cyBase),
+            control: botLeft
+        )
+        liquidPath.addLine(to: CGPoint(x: botRight.x - liquidCornerR, y: cyBase))
+        liquidPath.addQuadCurve(
+            to: CGPoint(x: botRight.x, y: cyBase - liquidCornerR),
+            control: botRight
+        )
         liquidPath.addLine(to: CGPoint(x: liquidRightX, y: levelY))
         let waveSegments = 24
         let baseWaveAmp = CGFloat(bassCG) * gh * 0.012 + 0.6
@@ -395,20 +418,23 @@ struct LiquorView: View {
         }
         context.stroke(meniscus, with: .color(highlight.opacity(0.55)), lineWidth: 0.9)
 
-        var glassPath = Path()
-        glassPath.move(to: botLeft)
-        glassPath.addLine(to: topLeft)
-        context.stroke(glassPath, with: .color(glass.opacity(0.5)), lineWidth: 1)
-
-        var glassPath2 = Path()
-        glassPath2.move(to: botRight)
-        glassPath2.addLine(to: topRight)
-        context.stroke(glassPath2, with: .color(glass.opacity(0.5)), lineWidth: 1)
-
-        var bottomPath = Path()
-        bottomPath.move(to: botLeft)
-        bottomPath.addLine(to: botRight)
-        context.stroke(bottomPath, with: .color(glass.opacity(0.7)), lineWidth: 1.5)
+        // v1.3 iter3: rocks glass silhouette — 底角圆润 + 连续 U 形轮廓。
+        // 圆角半径取短边 14%，rocks glass 底部传统厚玻璃的视觉语言。
+        let cornerR: CGFloat = min(gw, gh) * 0.14
+        var silhouette = Path()
+        silhouette.move(to: topLeft)
+        silhouette.addLine(to: CGPoint(x: botLeft.x, y: cyBase - cornerR))
+        silhouette.addQuadCurve(
+            to: CGPoint(x: botLeft.x + cornerR, y: cyBase),
+            control: botLeft
+        )
+        silhouette.addLine(to: CGPoint(x: botRight.x - cornerR, y: cyBase))
+        silhouette.addQuadCurve(
+            to: CGPoint(x: botRight.x, y: cyBase - cornerR),
+            control: botRight
+        )
+        silhouette.addLine(to: topRight)
+        context.stroke(silhouette, with: .color(glass.opacity(0.6)), lineWidth: 1.2)
 
         let rimRectBack = CGRect(x: topLeft.x, y: topLeft.y - gh * 0.02,
                                  width: topRight.x - topLeft.x, height: gh * 0.04)

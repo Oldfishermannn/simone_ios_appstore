@@ -1,194 +1,160 @@
 import SwiftUI
 
-/// Fog City Nocturne — one-screen settings.
-/// No ScrollView by design: every control fits in a single frame so it never
-/// competes with the outer VerticalPageView gesture. Future expansions go to
-/// secondary pages (tap version row in Colophon).
+/// v1.4a · Settings — 学 DetailsView 极简风：FogTokens.bgDeep 黑底，
+/// 一组 hairline-divider 行，一个 footer 显示版本号和 Privacy。
+///
+/// 删掉了 v1.2 的 editorial 装饰（gutter legend / library-card codex /
+/// colophon 4 列）以及 v1.4a 一度存在的 Signature/Classic toggle。
+/// CEO 反馈：信息太多 ui 太杂，details 页就很好——向 details 学习。
 struct SettingsView: View {
     @Bindable var state: AppState
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer().frame(height: 72)
+        ZStack {
+            FogTokens.bgDeep.ignoresSafeArea()
 
-            Text("∙ Preferences ∙")
-                .fogSectionLabel()
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                    .padding(.horizontal, 20)
+                    .padding(.top, 24)
+                    .padding(.bottom, 20)
 
-            Spacer().frame(height: FogTheme.space2XL)
+                rows
+                    .padding(.horizontal, 20)
 
-            // Four setting rows
-            settingRow(
-                title: "Evolve",
-                subtitle: "the slow mood shift",
-                value: state.evolveMode.rawValue.uppercased(),
-                tappable: true,
-                action: cycleEvolve
-            )
-            fogDivider
+                Spacer(minLength: 0)
 
+                footer
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 28)
+            }
+            .frame(maxWidth: 460)
+            .frame(maxWidth: .infinity)
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Settings")
+                .fog(.title)
+                .foregroundStyle(FogTokens.textPrimary)
+            Text("notes from the listening room")
+                .font(FogTheme.serifItalic(13, weight: .light))
+                .foregroundStyle(FogTokens.textSecondary.opacity(0.7))
+        }
+    }
+
+    // MARK: - Rows
+
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 0) {
             settingRow(
                 title: "Auto Tune",
                 subtitle: "fresh channel every 25 min",
                 value: state.autoTuneEnabled ? "ON" : "OFF",
-                tappable: true,
+                isLive: state.autoTuneEnabled,
                 action: { state.autoTuneEnabled.toggle() }
             )
-            fogDivider
+
+            hairline
+
+            settingRow(
+                title: "Evolve",
+                subtitle: "the slow mood shift",
+                value: state.evolveMode.rawValue.uppercased(),
+                isLive: state.evolveMode != .locked,
+                action: cycleEvolve
+            )
+
+            hairline
 
             settingRow(
                 title: "Sleep",
-                subtitle: sleepSubtitle,
-                value: sleepDisplay,
-                tappable: true,
+                subtitle: "fade to silence",
+                value: state.activeSleepDuration?.label.uppercased() ?? "OFF",
+                isLive: state.activeSleepDuration != nil,
                 action: cycleSleep
             )
-            fogDivider
-
-            settingRow(
-                title: "Spectrum",
-                subtitle: "one shape per channel",
-                value: state.currentChannel.visualizer.displayName.uppercased(),
-                tappable: false,
-                action: {}
-            )
-
-            spectrumPreview
-                .padding(.top, FogTheme.spaceMD)
-                .padding(.bottom, FogTheme.spaceSM)
-
-            Spacer()
-
-            colophon
-
-            Spacer().frame(height: 40)
         }
-        .frame(maxWidth: 440)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 28)
     }
-
-    // MARK: - Row
 
     @ViewBuilder
     private func settingRow(
         title: String,
         subtitle: String,
         value: String,
-        tappable: Bool,
+        isLive: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: tappable ? action : {}) {
-            HStack(alignment: .firstTextBaseline) {
+        Button(action: action) {
+            HStack(alignment: .firstTextBaseline, spacing: 16) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(FogTheme.display(15, weight: .light))
+                        .font(FogTheme.display(17, weight: .light))
                         .tracking(FogTheme.trackDisplay)
-                        .foregroundStyle(FogTheme.inkPrimary)
+                        .foregroundStyle(FogTokens.textPrimary)
                     Text(subtitle)
-                        .font(FogTheme.serifItalic(11, weight: .light))
-                        .foregroundStyle(FogTheme.inkSecondary.opacity(0.7))
+                        .font(FogTheme.serifItalic(12, weight: .light))
+                        .foregroundStyle(FogTokens.textSecondary.opacity(0.65))
                 }
-                Spacer(minLength: FogTheme.spaceLG)
+
+                Spacer(minLength: 16)
+
                 Text(value)
                     .font(FogTheme.mono(11, weight: .regular))
                     .tracking(FogTheme.trackMeta)
-                    .foregroundStyle(tappable ? FogTheme.accent : FogTheme.inkSecondary)
+                    .foregroundStyle(
+                        isLive
+                            ? FogTokens.textPrimary
+                            : FogTokens.textSecondary.opacity(0.6)
+                    )
             }
-            .padding(.vertical, FogTheme.spaceMD)
+            .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!tappable)
     }
 
-    private var fogDivider: some View {
+    private var hairline: some View {
         Rectangle()
-            .fill(FogTheme.hairline)
+            .fill(FogTokens.lineHairline)
             .frame(height: 0.5)
     }
 
-    // MARK: - Spectrum mini preview
+    // MARK: - Footer
 
-    private var spectrumPreview: some View {
-        let current = state.currentChannel.visualizer
-        let styles = VisualizerStyle.allCases
-        return HStack(alignment: .bottom, spacing: 4) {
-            ForEach(Array(styles.enumerated()), id: \.element.id) { index, style in
-                let isCurrent = style == current
-                // Pseudo-random but stable heights so the strip reads as a spectrum.
-                let h = CGFloat(6 + (index * 37) % 14)
-                Rectangle()
-                    .fill(isCurrent ? FogTheme.accent : FogTheme.inkQuiet)
-                    .frame(width: 4, height: isCurrent ? 16 : h)
-            }
-        }
-        .frame(height: 20)
-    }
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            hairline
 
-    // MARK: - Colophon (book-copyright-page style)
-
-    private var colophon: some View {
-        VStack(spacing: FogTheme.spaceMD) {
-            Rectangle()
-                .fill(FogTheme.hairline)
-                .frame(height: 0.5)
-                .overlay(
-                    Text("Colophon")
-                        .font(FogTheme.mono(9, weight: .regular))
-                        .tracking(FogTheme.trackLabel)
-                        .foregroundStyle(FogTheme.inkTertiary)
-                        .padding(.horizontal, FogTheme.spaceMD)
-                        .background(FogTheme.surfaceBottom)
-                )
-
-            HStack(alignment: .top, spacing: FogTheme.spaceLG) {
-                VStack(alignment: .leading, spacing: 4) {
-                    colophonLabel("VERSION")
-                    Text("Simone v\(appVersion)")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkPrimary)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    colophonLabel("ENGINE")
-                    Text("Google Lyria RT")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkPrimary)
-                }
-            }
-            .padding(.top, FogTheme.spaceSM)
-
-            HStack(alignment: .top, spacing: FogTheme.spaceLG) {
-                VStack(alignment: .leading, spacing: 4) {
-                    colophonLabel("PRIVACY")
-                    Button {
-                        openPrivacy()
-                    } label: {
-                        Text("Read →")
+            HStack(alignment: .firstTextBaseline) {
+                Button(action: openPrivacy) {
+                    HStack(spacing: 6) {
+                        Text("Privacy policy")
+                            .font(FogTheme.mono(11, weight: .regular))
+                            .foregroundStyle(FogTokens.textPrimary)
+                        Text("↗")
                             .font(FogTheme.mono(11, weight: .regular))
                             .foregroundStyle(FogTheme.accent)
                     }
-                    .buttonStyle(.plain)
                 }
+                .buttonStyle(.plain)
+
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    colophonLabel("MADE")
-                    Text("2026 · Night")
-                        .font(FogTheme.mono(11, weight: .regular))
-                        .foregroundStyle(FogTheme.inkPrimary)
-                }
+
+                Text("v\(appVersion)")
+                    .font(FogTheme.mono(11, weight: .regular))
+                    .tracking(FogTheme.trackMeta)
+                    .foregroundStyle(FogTokens.textSecondary.opacity(0.6))
             }
+            .padding(.top, 4)
         }
     }
 
-    private func colophonLabel(_ text: String) -> some View {
-        Text(text)
-            .font(FogTheme.mono(8, weight: .regular))
-            .tracking(FogTheme.trackLabel)
-            .foregroundStyle(FogTheme.inkTertiary)
-    }
-
-    // MARK: - Actions & derived display
+    // MARK: - Actions
 
     private func cycleEvolve() {
         let modes = AppState.EvolveMode.allCases
@@ -210,22 +176,11 @@ struct SettingsView: View {
         }
     }
 
-    private var sleepDisplay: String {
-        state.activeSleepDuration?.label.uppercased() ?? "OFF"
-    }
-
-    private var sleepSubtitle: String {
-        if let end = state.sleepTimerEnd {
-            let remaining = Int(max(0, end.timeIntervalSinceNow / 60))
-            return "\(remaining) min to silence"
-        }
-        return "fade to silence"
-    }
-
     private var appVersion: String {
         let dict = Bundle.main.infoDictionary
         let short = dict?["CFBundleShortVersionString"] as? String ?? "1.0"
-        return short
+        let build = dict?["CFBundleVersion"] as? String ?? ""
+        return build.isEmpty ? short : "\(short) (\(build))"
     }
 
     private func openPrivacy() {

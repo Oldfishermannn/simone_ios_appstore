@@ -29,7 +29,7 @@ struct SpectrumCarouselView: View {
                             let visualizer = (channel == state.currentChannel)
                                 ? state.selectedVisualizer
                                 : channel.visualizer
-                            visualizerView(for: visualizer, spectrumData: spectrumData)
+                            channelVisualizer(channel: channel, visualizer: visualizer, spectrumData: spectrumData)
                                 .containerRelativeFrame(.horizontal)
                                 .id(index)
                         }
@@ -50,10 +50,12 @@ struct SpectrumCarouselView: View {
                 HStack(spacing: 4) {
                     ForEach(Array(channels.enumerated()), id: \.element) { index, _ in
                         Circle()
+                            // v1.2.1: dots were rose (warm) on cool bg — swap
+                            // to cool-axis pair.
                             .fill(
                                 index == currentIndex
-                                    ? MorandiPalette.rose
-                                    : Color.white.opacity(0.3)
+                                    ? FogTokens.accentIndigo
+                                    : FogTokens.textTertiary.opacity(0.55)
                             )
                             .frame(width: index == currentIndex ? 6 : 5,
                                    height: index == currentIndex ? 6 : 5)
@@ -88,6 +90,21 @@ struct SpectrumCarouselView: View {
             try? await Task.sleep(for: .seconds(1.5))
             guard !Task.isCancelled else { return }
             dotsVisible = false
+        }
+    }
+
+    /// v1.4a Signature dispatch — intercepts genres that own a dedicated
+    /// signature visualizer when user is in Signature mode. Everything else
+    /// (Classic mode, or a channel without a signature) falls through to the
+    /// standard visualizerView.
+    @ViewBuilder
+    private func channelVisualizer(channel: Channel, visualizer: VisualizerStyle, spectrumData: [Float]) -> some View {
+        if state.visualizationMode == .signature, case .category(.rnb) = channel {
+            RnBSignatureView(spectrumData: spectrumData, density: density)
+        } else if state.visualizationMode == .signature, case .category(.electronic) = channel {
+            ElectronicSignatureView(spectrumData: spectrumData, density: density)
+        } else {
+            visualizerView(for: visualizer, spectrumData: spectrumData)
         }
     }
 

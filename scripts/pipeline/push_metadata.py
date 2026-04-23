@@ -18,76 +18,29 @@ import jwt
 import requests
 
 BUNDLE_ID = "com.simone.ios"
-VERSION = "1.2"
-BUILD_NUMBER = "10"
+VERSION = "1.3.0"
+BUILD_NUMBER = "14"
 LOCALE = "en-US"
 PLATFORM = "IOS"
 
+APP_STORE_NAME = "Simone — AI Mood Radio"
 SUBTITLE = "AI mood radio. Press play."
-PROMOTIONAL = "Fog City Nocturne is here. New typography, refined channels, and five painted cover scenes across the five stations. Press play \u2014 Simone takes care of the rest."
-DESCRIPTION = """Simone is an AI mood radio. Tune a mood, and let it play.
+PROMOTIONAL = "Evolve drifts across instruments, density, energy. Hours of music, never the same."
+DESCRIPTION = """An AI mood radio. Tune a station, press play, let it drift.
 
-Press play and a station tunes itself \u2014 a Lo-fi tape spool turning on a quiet afternoon, a Jazz room at closing time, an R&B lounge with the decanter still out, a Rock hearth burning low, an Electronic city skyline at dusk. No playlists. No repeats. No ads. Just instrumental music, generated in real time by Google's Lyria AI, for the mood you're already in.
+Six stations \u2014 Lo-fi, Ambient, R&B, Jazz, Rock, Electronic \u2014 with dozens of sub-styles. Each with its own painted visualizer. Instrumental only, generated live by Google's Lyria AI. No playlists. No repeats. No ads.
 
-This isn't a music player. It's a radio. Pick a channel, let it drift.
+Evolve drifts across instruments, density, and energy. Set the pace: 30s / 1m / 5m / Lock. Never a jump cut. Stays fresh for hours.
 
-\u2014 WHAT YOU GET \u2014
-
-Five stations, always on
-Lo-fi \u00b7 Jazz \u00b7 R&B \u00b7 Rock \u00b7 Electronic. Each station holds dozens of sub-styles inside \u2014 from Bossa Nova and Neo Soul to Synthwave and Post Rock. Swipe sideways to change station. Tap \u25c1 \u25b7 to move through styles inside it.
-
-Evolve \u2014 quiet drift, not jump cuts
-The music subtly reshapes itself over time. Instruments come and go, density shifts, energy breathes. It never suddenly switches genre on you. Set the pace: 30s, 1m, 5m, or Lock.
-
-A visualizer for every station
-Each station carries its own visual weather \u2014 a tape spool, a green oscilloscope line, a rippling decanter, a flickering hearth, a city skyline at dusk. The picture moves with the music.
-
-Sleep timer, background play, Now Playing artwork
-Keeps going when you lock the screen. Shows up properly on the lock screen and in Control Center.
-
-Fog City Nocturne \u2014 a quiet visual language
-Cool OKLCH palette. Unbounded, Fraunces, Archivo typography. Settings fit on one calm screen. Built to stay out of the music's way.
-
-Free, with your own key when you want more
-Ships with a built-in trial key so you can just open it and listen. Bring your own Gemini API key from Google AI Studio for unlimited use. Your key lives in the iOS Keychain, never leaves your device.
-
-\u2014 HOW PEOPLE USE IT \u2014
-
-\u2022 Deep focus \u2014 Study Beats, Modal Jazz, or Minimal Techno while you work.
-\u2022 The drive \u2014 Synthwave, Post Rock, or Downtempo for long roads.
-\u2022 The room \u2014 Smooth Jazz, Neo Soul, or Bossa Nova as the background of a quiet evening at home.
-\u2022 Get-together \u2014 Chill Pop, Funky Soul, or Indie Rock at low volume behind conversation.
-\u2022 Winding down \u2014 Lo-fi Rain, Jazz Ballad, or Quiet Storm with the sleep timer on.
-
-\u2014 WHY IT EXISTS \u2014
-
-Most music apps are shelves: rows of albums, playlists, recommendations, decisions. Simone is the opposite. It's what plays in the background of a good hour \u2014 the desk, the passenger seat, the kitchen, the couch. You don't pick a song. You pick a mood, and it unfolds.
-
-Because trust is the prerequisite for simplicity. Press play. Simone takes care of the rest.
-
-\u2014 PRIVACY \u2014
-
-No accounts. No tracking. No analytics. Your API key is stored in the iOS Keychain on your device. Simone connects directly to Google's Lyria API \u2014 nothing routes through our servers, because there are no servers.
-
-\u2014 NOTES \u2014
-
-\u2022 Music is generated live, so an internet connection is required.
-\u2022 The built-in trial key is shared and rate-limited; for heavy listening, add your own key in Settings.
-\u2022 Lyria is an experimental AI model by Google. Occasional instrumental quirks are part of the territory \u2014 treat them as weather.
+No accounts. No tracking. Internet required.
 
 A calm radio, for any hour."""
-KEYWORDS = "ambient,lofi,chill,sleep,focus,study,relax,instrumental,background,generative,jazz,piano,bossa,cafe"
-WHATS_NEW = """Fog City Nocturne \u2014 a calmer visual language for the whole app.
+KEYWORDS = "ambient,lofi,chill,sleep,focus,study,relax,instrumental,background,generative,jazz,piano,radio,cafe"
+WHATS_NEW = """Evolve got deeper \u2014 drifts across instruments, density, energy.
 
-\u2022 New typography across the app: Unbounded display, Fraunces italic accents, Archivo mono tags.
-\u2022 Five station covers repainted as quiet scenes \u2014 the Lo-fi tape spool, the Jazz oscilloscope line, the R&B decanter, the Rock hearth, and the Electronic city skyline.
-\u2022 Settings now fits on a single screen. No scrolling, no hunting.
-\u2022 Cool OKLCH palette, lower contrast where it counts, more weight given to the music.
-\u2022 Swiping between channels no longer starts playback on its own \u2014 your hand decides.
-
-Same engine underneath. Same five stations. Just a calmer room to listen in."""
+\u25c1 \u25b7 changes station. Smoother paging."""
 COPYRIGHT = "\u00a9 2026 Simone"
-REVIEW_NOTES = """Simone ships with a built-in trial Gemini API key. The app is fully functional on first launch without any setup \u2014 simply tap play on the home screen. If you'd like to test the BYOK (bring-your-own-key) flow, generate a free key at https://aistudio.google.com/apikey and paste it in Settings \u2192 API Key.
+REVIEW_NOTES = """Simone is fully functional on first launch \u2014 open the app and tap play. No accounts, no setup required.
 
 Music is generated live over WebSocket via Google's Lyria RealTime API (models/lyria-realtime-exp). An internet connection is required. No user accounts, no analytics, no tracking."""
 
@@ -162,8 +115,10 @@ def update_app_info_subtitle(app_id):
     if not loc:
         sys.exit(f"No {LOCALE} appInfoLocalization on appInfo {info_id}")
     body = {"data": {"type": "appInfoLocalizations", "id": loc["id"],
-                     "attributes": {"subtitle": SUBTITLE}}}
+                     "attributes": {"name": APP_STORE_NAME,
+                                    "subtitle": SUBTITLE}}}
     call("PATCH", f"/appInfoLocalizations/{loc['id']}", json=body)
+    print(f"[appInfo] name: \"{APP_STORE_NAME}\"")
     print(f"[appInfo] subtitle set ({len(SUBTITLE)} chars): \"{SUBTITLE}\"")
 
 
@@ -212,8 +167,8 @@ def update_version_localization(version_id):
                                     "promotionalText": PROMOTIONAL,
                                     "whatsNew": WHATS_NEW}}}
     call("PATCH", f"/appStoreVersionLocalizations/{loc_id}", json=body)
-    print(f"[loc] description {len(DESCRIPTION)}c / keywords {len(KEYWORDS)}c "
-          f"/ promotional {len(PROMOTIONAL)}c / whatsNew {len(WHATS_NEW)}c")
+    print(f"[loc] desc {len(DESCRIPTION)}c / keywords {len(KEYWORDS)}c / "
+          f"promo {len(PROMOTIONAL)}c / whatsNew {len(WHATS_NEW)}c")
 
 
 def update_review_notes(version_id):

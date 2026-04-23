@@ -17,6 +17,8 @@ struct MatrixView: View {
         let xRatio: CGFloat
         let wRatio: CGFloat
         let hRatio: CGFloat
+        /// 楼底距画布底的比例。0.02 = 贴地（大图天际线），0.22 = 悬浮（小图物件）
+        let groundMarginRatio: CGFloat
         let cols: Int
         let rows: Int
         let binStart: Int
@@ -28,14 +30,24 @@ struct MatrixView: View {
     /// 主楼：几何随 expansion 从小图 pose 连续插到大图中段 pose。
     /// 窗户网格 cols=6 rows=16 固定。
     private func mainBuilding(e: CGFloat, binCount: Int) -> Building {
-        let xRatio  = 0.21 + (0.26 - 0.21) * e
-        let wRatio  = 0.58 + (0.26 - 0.58) * e
-        let hRatio  = 0.86 + (0.78 - 0.86) * e
+        // 小图 (e=0): 一栋独立高塔立在 bgDeep 里，占屏 0.38w × 0.60h，上方
+        //   留 40% 天空。物件感，和 cassette / vinyl / whiskey glass / night
+        //   window 同族——不再是满屏"满楼处理"。xRatio=0.31 略左于中，保留 Fog
+        //   的 asymmetric rhythm。
+        // 大图 (e=1): 0.26w × 0.78h 靠中偏右（skyline 中段最高那栋），3 栋辅楼
+        //   两侧淡入。
+        let xRatio  = 0.31 + (0.26 - 0.31) * e
+        let wRatio  = 0.38 + (0.26 - 0.38) * e
+        let hRatio  = 0.60 + (0.78 - 0.60) * e
+        // 楼底 margin：小图贴屏底（0.00），大图 0.02 天际线基线。
+        // v1.3 iter2 · CEO 反馈：楼要完全贴到屏幕底部，不要留夜空缝。
+        let groundMargin = 0.00 + (0.02 - 0.00) * e
         // bin 映射：小图用全 spectrum，大图聚焦主楼频段
         let binStartF = 0 + (10 - 0) * Double(e)
         let binEndF = Double(binCount - 1) + (30 - Double(binCount - 1)) * Double(e)
         return Building(
             xRatio: xRatio, wRatio: wRatio, hRatio: hRatio,
+            groundMarginRatio: groundMargin,
             cols: 6, rows: 16,
             binStart: min(binCount - 1, max(0, Int(binStartF.rounded()))),
             binEnd: min(binCount - 1, max(0, Int(binEndF.rounded()))),
@@ -47,13 +59,16 @@ struct MatrixView: View {
     /// 辅楼（仅在大图淡入）
     private func sideBuildings(binCount: Int) -> [Building] {
         [
-            Building(xRatio: 0.03, wRatio: 0.20, hRatio: 0.52, cols: 6, rows: 14,
+            Building(xRatio: 0.03, wRatio: 0.20, hRatio: 0.52, groundMarginRatio: 0.02,
+                     cols: 6, rows: 14,
                      binStart: min(0, binCount - 1), binEnd: min(12, binCount - 1),
                      opacity: 0.6,  seedOffset: 7.0),
-            Building(xRatio: 0.54, wRatio: 0.22, hRatio: 0.64, cols: 7, rows: 16,
+            Building(xRatio: 0.54, wRatio: 0.22, hRatio: 0.64, groundMarginRatio: 0.02,
+                     cols: 7, rows: 16,
                      binStart: min(26, binCount - 1), binEnd: min(44, binCount - 1),
                      opacity: 0.85, seedOffset: 31.0),
-            Building(xRatio: 0.78, wRatio: 0.19, hRatio: 0.56, cols: 6, rows: 14,
+            Building(xRatio: 0.78, wRatio: 0.19, hRatio: 0.56, groundMarginRatio: 0.02,
+                     cols: 6, rows: 14,
                      binStart: min(42, binCount - 1), binEnd: min(60, binCount - 1),
                      opacity: 0.65, seedOffset: 43.0),
         ]
@@ -93,7 +108,7 @@ struct MatrixView: View {
                               bldg: Building, binCount: Int, idleBlend: CGFloat) {
         let bx = w * bldg.xRatio
         let bh = h * bldg.hRatio
-        let by = h - bh - h * 0.02
+        let by = h - bh - h * bldg.groundMarginRatio
         let bw = w * bldg.wRatio
 
         context.fill(

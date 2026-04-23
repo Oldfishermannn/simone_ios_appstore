@@ -5,11 +5,12 @@ struct MiniPlayerView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            // Mini spectrum thumbnail
+            // v1.2.1: Mini spectrum thumbnail — was rose-on-warm-grey, now
+            // indigo-glow on bgDeep. Same shape, different temperatu re.
             RoundedRectangle(cornerRadius: 8)
                 .fill(
                     RadialGradient(
-                        colors: [MorandiPalette.rose.opacity(0.3), Color(red: 0.165, green: 0.165, blue: 0.18)],
+                        colors: [FogTokens.accentIndigo.opacity(0.28), FogTokens.bgDeep],
                         center: .center,
                         startRadius: 0,
                         endRadius: 20
@@ -23,7 +24,7 @@ struct MiniPlayerView: View {
                                 ? CGFloat([8, 14, 10][i])
                                 : CGFloat([4, 6, 4][i])
                             RoundedRectangle(cornerRadius: 1)
-                                .fill(MorandiPalette.rose.opacity(0.7))
+                                .fill(FogTokens.accentIndigo.opacity(0.7))
                                 .frame(width: 2.5, height: height)
                                 .animation(.easeInOut(duration: 0.3), value: state.audioEngine.isPlaying)
                         }
@@ -33,12 +34,12 @@ struct MiniPlayerView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(state.selectedStyle?.name ?? "Simone")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(FogTokens.textPrimary.opacity(0.88))
                     .lineLimit(1)
 
                 Text(state.audioEngine.isPlaying ? "Now Playing" : "Paused")
                     .font(.system(size: 10))
-                    .foregroundStyle(.white.opacity(0.3))
+                    .foregroundStyle(FogTokens.textTertiary)
             }
 
             Spacer()
@@ -48,7 +49,7 @@ struct MiniPlayerView: View {
             } label: {
                 Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 16))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(FogTokens.textSecondary)
             }
             .buttonStyle(.plain)
         }
@@ -56,7 +57,7 @@ struct MiniPlayerView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 14)
-                .fill(Color.white.opacity(0.04))
+                .fill(FogTokens.bgSurface.opacity(0.5))
         )
     }
 }

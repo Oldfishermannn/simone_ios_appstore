@@ -1,52 +1,48 @@
 import Foundation
 
-/// Top-level channel: Favorites sits first, then the 10 StyleCategory channels.
+/// Top-level channel — v1.4a: Favorites removed. Channel is now a thin
+/// wrapper around the 6 active StyleCategory genres
+/// (lofi / jazz / rnb / rock / electronic / ambient).
+///
+/// The wrapper enum is preserved (rather than collapsing to StyleCategory
+/// directly) because many call sites pattern-match on `case .category(...)`
+/// and we want zero churn there. The old `.favorites` case + its
+/// UserDefaults-backed visualizer picker were deleted — the NightWindow
+/// visualizer now belongs to `StyleCategory.ambient`.
 enum Channel: Hashable {
-    case favorites
     case category(StyleCategory)
 
     static var all: [Channel] {
-        [.favorites] + StyleCategory.allCases.map { .category($0) }
+        StyleCategory.allCases.map { .category($0) }
     }
 
     var displayName: String {
         switch self {
-        case .favorites: return "Favorites"
         case .category(let c): return c.displayName
         }
     }
 
-    /// Spectrum tonality is bound to the channel — no user self-select in v1.1.1.
-    /// v1.2 Favorites 评审期：五种"物件感"可视化
-    /// （drawer / firefly / letters / nightWindow / vinylBooth）
-    /// 由 UserDefaults 支持，用户可在设置里切换；category 频道仍走默认。
+    /// Spectrum tonality is bound to the channel — no user self-select.
     var visualizer: VisualizerStyle {
         switch self {
-        case .favorites: return Channel.favoritesVisualizerPreference
         case .category(let c): return c.defaultVisualizer
         }
     }
 
-    static let favoritesVisualizerKey = "favoritesVisualizer"
-    static let favoritesVisualizerOptions: [VisualizerStyle] = [.nightWindow]
-
-    static var favoritesVisualizerPreference: VisualizerStyle {
-        let raw = UserDefaults.standard.string(forKey: favoritesVisualizerKey) ?? VisualizerStyle.nightWindow.rawValue
-        let resolved = VisualizerStyle(rawValue: raw) ?? .nightWindow
-        return favoritesVisualizerOptions.contains(resolved) ? resolved : .nightWindow
-    }
-
     /// Stable string for UserDefaults persistence.
+    /// v1.4a: the old `"favorites"` key is silently migrated to `.lofi` by
+    /// `init?(rawKey:)` so existing users land on the default channel
+    /// instead of crashing.
     var rawKey: String {
         switch self {
-        case .favorites: return "favorites"
         case .category(let c): return "category:\(c.rawValue)"
         }
     }
 
     init?(rawKey: String) {
+        // v1.4a migration: old Favorites users → default to Lo-fi.
         if rawKey == "favorites" {
-            self = .favorites
+            self = .category(.lofi)
             return
         }
         guard rawKey.hasPrefix("category:") else { return nil }

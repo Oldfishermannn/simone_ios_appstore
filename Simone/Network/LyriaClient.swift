@@ -13,12 +13,25 @@ final class LyriaClient {
 
     var onAudioChunk: ((Data) -> Void)?
     var onConnected: (() -> Void)?
+    /// v1.3 · Lock 10min 跳风格修复：reconnectAndRestore 成功续接时触发，
+    /// 与 onConnected 区分（后者走 sendCurrentPrompts 重置路径）。
+    /// 典型用途：让 AudioEngine 对新 session 第一批音频做软淡入。
+    var onReconnected: (() -> Void)?
+    // v1.3 · Lock 无缝续接：reconnectAndRestore 起点通知上层准备 fallback。
+    // 与 onReconnected（重连成功）配对：started 在 cancel 老 ws 之前触发，
+    // started 之后 AudioEngine 立即开始播 ring buffer 内容，覆盖空档。
+    var onReconnectStarted: (() -> Void)?
 
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession
     private var autoReconnect = true
     private var reconnectAttempts = 0
     private var isSetupComplete = false
+    /// v1.3 · reconnectAndRestore 主动 cancel 老 ws 时 set true；
+    /// handleDisconnect 检查此 flag 决定是否触发自动重连（flag=true 时 skip，
+    /// 因为本 session 已在主动重建中，避免嵌套重入）。
+    /// setupComplete 或新 ws 失败路径 set false 恢复正常流。
+    private var isIntentionallyRestarting = false
 
     // 记忆最后的参数，用于会话轮转后恢复
     private var lastPrompts: [WeightedPrompt]?
@@ -209,6 +222,10 @@ final class LyriaClient {
     }
 
     private func handleDisconnect(error: Error) {
+        // v1.3 · 如果是 reconnectAndRestore 主动 cancel 老 ws 触发的，skip 不重连
+        // （outer reconnectAndRestore 已在建新 ws，此处再重连 = 嵌套死循环）
+        if isIntentionallyRestarting { return }
+
         let wasPlaying = isPlaying
         isSetupComplete = false
 
@@ -237,12 +254,22 @@ final class LyriaClient {
         }
     }
 
-    /// 会话轮转：重连后自动恢复 prompts/config/播放状态
-    private func reconnectAndRestore() {
+    /// 会话轮转：重连后自动恢复 prompts/config/播放状态（不触发 onConnected → 不走 sendCurrentPrompts）
+    /// v1.3 起对外开放，onPlaybackStalled 卡死自救也改走这条路径，统一会话轮转逻辑。
+    func reconnectAndRestore() {
+        // v1.3 · 防重入：isIntentionallyRestarting flag 告诉 handleDisconnect
+        // 这是我主动 cancel 老 ws，不要再触发自动重连（否则嵌套导致 fallback 40s
+        // 被反复塞 playerNode → 频繁 flush → 听感"鬼畜一小段"）。
+        guard !isIntentionallyRestarting else { return }
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else { return }
 
+        isIntentionallyRestarting = true
         connectionState = .reconnecting
         isSetupComplete = false
+
+        DispatchQueue.main.async { [weak self] in
+            self?.onReconnectStarted?()
+        }
 
         guard let url = URL(string: "\(Self.endpoint)?key=\(apiKey)") else { return }
 
@@ -270,10 +297,14 @@ final class LyriaClient {
                    let json = try? JSONSerialization.jsonObject(with: msgData) as? [String: Any],
                    json["setupComplete"] != nil {
                     self.isSetupComplete = true
+                    self.isIntentionallyRestarting = false
                     DispatchQueue.main.async {
                         self.connectionState = .connected
                         self.reconnectAttempts = 0
                         self.statusMessage = "Reconnected"
+                        // v1.3 · 通知上层：这是 reconnectAndRestore 而不是首次 connect，
+                        // 上层（AppState）据此对 AudioEngine arm 软淡入降低跳变感知。
+                        self.onReconnected?()
                     }
                     // 恢复之前的参数
                     if let prompts = self.lastPrompts {
@@ -289,6 +320,8 @@ final class LyriaClient {
                 // 继续正常接收循环
                 self.receiveMessage()
             case .failure(let error):
+                // 新 ws 失败：清 flag，让 handleDisconnect 正常走自动重连路径
+                self.isIntentionallyRestarting = false
                 self.handleDisconnect(error: error)
             }
         }
