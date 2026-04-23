@@ -222,6 +222,20 @@ private struct ChannelPage: View {
         return state.orderedStyles(for: channel).first
     }
 
+    // v1.4a: 跟踪上一次纵滑方向，让 bottomOverlay transition 跟手
+    // (+1 = 上滑切下一个: 旧文字向上消失/新文字从下滑入；
+    //  -1 = 下滑切上一个: 旧文字向下消失/新文字从上滑入)。
+    @State private var swipeDirection: Int = 1
+
+    private var styleTransition: AnyTransition {
+        let outEdge: Edge = swipeDirection > 0 ? .top : .bottom
+        let inEdge:  Edge = swipeDirection > 0 ? .bottom : .top
+        return .asymmetric(
+            insertion: .move(edge: inEdge).combined(with: .opacity),
+            removal:   .move(edge: outEdge).combined(with: .opacity)
+        )
+    }
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -314,10 +328,7 @@ private struct ChannelPage: View {
                 .foregroundStyle(FogTokens.textPrimary)
         }
         .id(displayStyle?.id ?? "_placeholder_\(channel.rawKey)")
-        .transition(.asymmetric(
-            insertion: .move(edge: .bottom).combined(with: .opacity),
-            removal: .move(edge: .top).combined(with: .opacity)
-        ))
+        .transition(styleTransition)
     }
 
     private func musicDNA(style: MoodStyle) -> some View {
@@ -369,7 +380,9 @@ private struct ChannelPage: View {
                 let h = value.translation.width
                 let v = value.translation.height
                 guard abs(v) > abs(h), abs(v) > 60 else { return }
-                onSwipeStyle(v < 0 ? +1 : -1)  // 上滑 = 下一个 style
+                let dir = v < 0 ? +1 : -1  // 上滑 = +1 = 下一个 style
+                swipeDirection = dir       // 先记方向，让 styleTransition 跟手
+                onSwipeStyle(dir)
             }
     }
 }
