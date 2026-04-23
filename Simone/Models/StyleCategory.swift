@@ -13,9 +13,10 @@ enum StyleCategory: String, CaseIterable, Codable {
 
     /// v1.2 精简：只保留 5 个核心频道。midnight/cafe/rainy/library/dreamscape
     /// 作为 case 保留做 Codable 降级兼容，但 UI 不再遍历。
-    /// v1.4a: ambient 作为第 6 个活跃频道加入 allCases 末尾。
+    /// v1.4a: ambient 作为第 6 个活跃频道。频道呈现顺序由此数组决定
+    /// （CEO 2026-04-22 拍板：ambient → lofi → rnb → jazz → rock → electronic）。
     static var allCases: [StyleCategory] {
-        [.lofi, .jazz, .rnb, .rock, .electronic, .ambient]
+        [.ambient, .lofi, .rnb, .jazz, .rock, .electronic]
     }
 
     /// Decode fallback: unknown raw values map to .lofi so old user data never crashes.
