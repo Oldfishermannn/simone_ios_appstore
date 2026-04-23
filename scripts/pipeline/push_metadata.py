@@ -19,7 +19,7 @@ import requests
 
 BUNDLE_ID = "com.simone.ios"
 VERSION = "1.3.0"
-BUILD_NUMBER = "12"
+BUILD_NUMBER = "13"
 LOCALE = "en-US"
 PLATFORM = "IOS"
 
