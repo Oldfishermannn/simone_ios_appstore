@@ -1,5 +1,15 @@
 import Foundation
 import Observation
+import os.log
+
+// v2.1 W1 instrumentation · 锁屏 ◁▷ "卡" 诊断专用。
+// Xcode Console 过滤 subsystem `simone.diag` 或字符串 `[Simone-DIAG]` 看时序。
+private let _diagLog = Logger(subsystem: "simone.diag", category: "channel")
+private func _diag(_ msg: @autoclosure () -> String) {
+    let s = msg()
+    _diagLog.info("\(s, privacy: .public)")
+    print("[Simone-DIAG] \(s)")
+}
 
 @Observable
 final class AppState {
@@ -254,16 +264,13 @@ final class AppState {
     }
 
     /// v2.1 W1 · 锁屏 ▷ 切下一频道。Channel.all 循环（lofi → ambient → rnb
-    /// → jazz → rock → electronic → lofi…）。立即同步切换：
-    /// 之前的 350ms Timer.scheduledTimer debounce 在锁屏 background 下 RunLoop
-    /// 节流不可靠，CEO 反馈"切换后卡住"——timer 没 fire 导致 audio 没 commit。
-    /// rapid 切台的鲁棒性靠 applySelection 4 态严格判断处理（中间态不动 audio
-    /// 队列，只 push lastPrompts），不靠 timer 合并。
+    /// → jazz → rock → electronic → lofi…）。立即同步切换。
     func switchToNextChannel() {
         let all = Channel.all
         guard !all.isEmpty,
               let idx = all.firstIndex(of: currentChannel) else { return }
         let next = all[(idx + 1) % all.count]
+        _diag("switchToNextChannel cur=\(currentChannel.displayName) -> \(next.displayName)")
         switchToChannel(next)
     }
 
@@ -273,6 +280,7 @@ final class AppState {
         guard !all.isEmpty,
               let idx = all.firstIndex(of: currentChannel) else { return }
         let prev = all[(idx - 1 + all.count) % all.count]
+        _diag("switchToPreviousChannel cur=\(currentChannel.displayName) -> \(prev.displayName)")
         switchToChannel(prev)
     }
 
@@ -495,23 +503,29 @@ final class AppState {
         let prompts = PromptBuilder.build(style: style)
         guard !prompts.isEmpty else { return }
 
-        // v2.1 W1 hotfix · connectionState 是 4 态，不再二分。.connecting / .reconnecting
-        // 中间态不动 audioEngine 队列（避免 clearQueue 后 sendPrompts 被 isSetupComplete
-        // 静默丢弃 → 队列空 + 无新 chunk = 静音）；只调 sendPrompts 让 lastPrompts 更新到
-        // 最新，握手/重连成功后会自动 fire 最新 prompts。
-        switch lyriaClient.connectionState {
+        let connState = lyriaClient.connectionState
+        _diag("applySelection style=\(style.name) state=\(connState) isPlaying=\(audioEngine.isPlaying) promptsN=\(prompts.count)")
+
+        // v2.1 W1 hotfix v3 · connected 路径统一用 flushScheduledBuffers（不分 isPlaying）。
+        // 根因：rapid 切台 3 次后爆鸣 + 卡住——clearQueue 只清 raw byte queue 和 scheduled
+        // counter，**不 stop playerNode**，导致 player 内部 scheduled buffers 累积 3 种 mood
+        // 的 PCM，底层硬切之间 1ms applyFadeIn/Out 远不够覆盖 mood diff → 爆鸣；同时 rapid
+        // sendPrompts 让 Lyria 服务端混乱。flushScheduledBuffers 调 playerNode.stop() 清空
+        // 内部 scheduled queue，再 play() 等新 chunks，silent 1-2s 比爆鸣好。
+        // .connecting / .reconnecting 中间态仍只 sendPrompts 让 lastPrompts 更新到最新，
+        // 不动 audioEngine 队列。
+        switch connState {
         case .disconnected:
+            _diag("applySelection -> start+connect (disconnected path)")
             audioEngine.start()
             lyriaClient.connect()
             isGenerating = true
         case .connected:
-            if audioEngine.isPlaying {
-                audioEngine.clearQueue()
-            } else {
-                audioEngine.flushScheduledBuffers()
-            }
+            _diag("applySelection -> flushScheduledBuffers + sendPrompts")
+            audioEngine.flushScheduledBuffers()
             lyriaClient.sendPrompts(prompts)
         case .connecting, .reconnecting:
+            _diag("applySelection -> sendPrompts only (mid-state, no queue ops)")
             lyriaClient.sendPrompts(prompts)
         }
         #if os(iOS)

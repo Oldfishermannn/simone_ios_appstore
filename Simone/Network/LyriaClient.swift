@@ -1,5 +1,14 @@
 import Foundation
 import Observation
+import os.log
+
+// v2.1 W1 instrumentation · 锁屏切台诊断。
+private let _lyriaDiag = Logger(subsystem: "simone.diag", category: "lyria")
+private func _ldiag(_ msg: @autoclosure () -> String) {
+    let s = msg()
+    _lyriaDiag.info("\(s, privacy: .public)")
+    print("[Simone-DIAG] \(s)")
+}
 
 enum LyriaConnectionState {
     case disconnected, connecting, connected, reconnecting
@@ -95,7 +104,11 @@ final class LyriaClient {
 
     func sendPrompts(_ prompts: [WeightedPrompt]) {
         lastPrompts = prompts
-        guard isSetupComplete else { return }
+        guard isSetupComplete else {
+            _ldiag("sendPrompts DROPPED (setupComplete=false) n=\(prompts.count) state=\(connectionState)")
+            return
+        }
+        _ldiag("sendPrompts SENT n=\(prompts.count) state=\(connectionState)")
 
         let promptDicts = prompts.map { ["text": $0.text, "weight": $0.weight] as [String: Any] }
         let msg: [String: Any] = ["clientContent": ["weightedPrompts": promptDicts]]
@@ -224,9 +237,13 @@ final class LyriaClient {
     private func handleDisconnect(error: Error) {
         // v1.3 · 如果是 reconnectAndRestore 主动 cancel 老 ws 触发的，skip 不重连
         // （outer reconnectAndRestore 已在建新 ws，此处再重连 = 嵌套死循环）
-        if isIntentionallyRestarting { return }
+        if isIntentionallyRestarting {
+            _ldiag("handleDisconnect SKIPPED (intentionalRestart) err=\(error.localizedDescription)")
+            return
+        }
 
         let wasPlaying = isPlaying
+        _ldiag("handleDisconnect wasPlaying=\(wasPlaying) err=\(error.localizedDescription)")
         isSetupComplete = false
 
         DispatchQueue.main.async {
@@ -260,9 +277,13 @@ final class LyriaClient {
         // v1.3 · 防重入：isIntentionallyRestarting flag 告诉 handleDisconnect
         // 这是我主动 cancel 老 ws，不要再触发自动重连（否则嵌套导致 fallback 40s
         // 被反复塞 playerNode → 频繁 flush → 听感"鬼畜一小段"）。
-        guard !isIntentionallyRestarting else { return }
+        guard !isIntentionallyRestarting else {
+            _ldiag("reconnectAndRestore SKIPPED (already restarting)")
+            return
+        }
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else { return }
 
+        _ldiag("reconnectAndRestore START")
         isIntentionallyRestarting = true
         connectionState = .reconnecting
         isSetupComplete = false
@@ -296,6 +317,7 @@ final class LyriaClient {
                 if let msgData,
                    let json = try? JSONSerialization.jsonObject(with: msgData) as? [String: Any],
                    json["setupComplete"] != nil {
+                    _ldiag("reconnectAndRestore DONE (setupComplete received)")
                     self.isSetupComplete = true
                     self.isIntentionallyRestarting = false
                     DispatchQueue.main.async {
