@@ -19,6 +19,12 @@ struct ImmersiveView: View {
     var onTapDetails: () -> Void = {}
     var onTapSettings: () -> Void = {}
 
+    // v2.1 iPad adapt · 用 horizontalSizeClass 区分 iPhone (.compact) vs iPad (.regular)，
+    // transport 按钮 / 间距 / styleName overlay 距离按 size class 给两套数值。
+    // iPad 上保留 v1.3 iPhone 设计的视觉比例，避免裸跑 iPhone 尺寸在大屏上变迷你。
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    private var isPad: Bool { hSizeClass == .regular }
+
     // TabView selection — 双向同步 state.currentChannel
     @State private var tabIndex: Int = 0
 
@@ -100,7 +106,7 @@ struct ImmersiveView: View {
             VStack(spacing: 0) {
                 Spacer()
                 styleOverlay
-                Spacer().frame(height: 145)
+                Spacer().frame(height: isPad ? 210 : 145)
             }
             .allowsHitTesting(false)
 
@@ -109,7 +115,7 @@ struct ImmersiveView: View {
             VStack(spacing: 0) {
                 Spacer()
                 transportRow
-                Spacer().frame(height: 80)
+                Spacer().frame(height: isPad ? 115 : 80)
             }
             .allowsHitTesting(true)
         }
@@ -249,8 +255,13 @@ struct ImmersiveView: View {
 
     // MARK: - Transport (settings · play · details on the same baseline)
 
+    // v2.1 iPad adapt · transport 尺寸两套：iPhone 保 v1.3 视觉，iPad 放大避免迷你。
+    private var transportButtonSize: CGFloat { isPad ? 68 : 52 }
+    private var transportIconSize: CGFloat { isPad ? 26 : 20 }
+    private var transportRowSpacing: CGFloat { isPad ? 48 : 32 }
+
     private var transportRow: some View {
-        HStack(spacing: 32) {
+        HStack(spacing: transportRowSpacing) {
             settingsButton
             playButton
             detailsButton
@@ -262,10 +273,10 @@ struct ImmersiveView: View {
             ZStack {
                 Circle()
                     .fill(FogTokens.bgSurface.opacity(0.5))
-                    .frame(width: 52, height: 52)
+                    .frame(width: transportButtonSize, height: transportButtonSize)
                     .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
                 Image(systemName: "gearshape")
-                    .font(.system(size: 20, weight: .regular))
+                    .font(.system(size: transportIconSize, weight: .regular))
                     .foregroundStyle(FogTokens.textSecondary)
             }
         }
@@ -278,10 +289,10 @@ struct ImmersiveView: View {
             ZStack {
                 Circle()
                     .fill(FogTokens.bgSurface.opacity(0.5))
-                    .frame(width: 52, height: 52)
+                    .frame(width: transportButtonSize, height: transportButtonSize)
                     .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
                 Image(systemName: "list.bullet")
-                    .font(.system(size: 20, weight: .regular))
+                    .font(.system(size: transportIconSize, weight: .regular))
                     .foregroundStyle(FogTokens.textSecondary)
             }
         }
@@ -299,10 +310,10 @@ struct ImmersiveView: View {
             ZStack {
                 Circle()
                     .fill(FogTokens.bgSurface.opacity(0.5))
-                    .frame(width: 52, height: 52)
+                    .frame(width: transportButtonSize, height: transportButtonSize)
                     .overlay(Circle().stroke(FogTokens.lineHairline, lineWidth: 1))
                 Image(systemName: state.audioEngine.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: transportIconSize, weight: .medium))
                     .foregroundStyle(FogTokens.textPrimary.opacity(0.8))
             }
         }
