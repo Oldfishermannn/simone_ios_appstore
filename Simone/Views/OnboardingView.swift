@@ -15,16 +15,21 @@ struct OnboardingView: View {
     @State private var appeared = false
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Nested over the main view — darken enough for text legibility
-            // while keeping visualizer + bottom buttons faintly visible, so
-            // the manual reads as an annotation of the live screen, not a
-            // separate "tutorial page."
-            Color.black.opacity(0.78)
-                .ignoresSafeArea()
+        // v2.1 iPad adapt · 用 GeometryReader 拿屏幕宽度，直接算 sidePadding 实现居中。
+        // 试过 .frame(maxWidth: 560) 在 ScrollView/HStack/VStack 多种组合 4 次都没生效，
+        // 推测 ScrollView 在 .vertical 模式下 child layout 行为被某些 modifier 干扰。
+        // 直接算 padding 是最确定的方案。
+        GeometryReader { geo in
+            // 卡片自然内容宽 ~285pt（"Lo-fi · Ambient · R&B · Jazz · Rock · Electronic"
+            // 是最长一行）；锁 380pt 给 list items 留 breathing，iPad 大屏居中显示。
+            // iPhone < 380pt 屏宽时降级 fill。
+            let contentWidth = min(380, geo.size.width - 64)
+            ZStack(alignment: .topLeading) {
+                Color.black.opacity(0.78)
+                    .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
                     header
                         .padding(.top, 8)
 
@@ -65,14 +70,15 @@ struct OnboardingView: View {
                         .padding(.top, 12)
                         .padding(.bottom, 20)
 
-                    Text("tap anywhere to begin")
-                        .font(.custom("Fraunces-Italic", size: 15))
-                        .foregroundStyle(Color.white.opacity(0.62))
+                        Text("tap anywhere to begin")
+                            .font(.custom("Fraunces-Italic", size: 15))
+                            .foregroundStyle(Color.white.opacity(0.62))
+                    }
+                    .frame(width: contentWidth, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 96)
+                    .padding(.bottom, 64)
                 }
-                .padding(.horizontal, 32)
-                .padding(.top, 96)
-                .padding(.bottom, 64)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .contentShape(Rectangle())
