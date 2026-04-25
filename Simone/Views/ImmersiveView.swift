@@ -65,6 +65,19 @@ struct ImmersiveView: View {
     private var isPlayingNow: Bool { state.audioEngine.isPlaying }
 
     var body: some View {
+        // v2.1 iPad adapt Phase 3 · GeometryReader 拿屏幕高度，spacer 走 ratio 而非
+        // hardcoded。iPhone portrait (852h) 0.17/0.094 还原 v1.3 的 145/80；iPad
+        // portrait (1194h) 算出 203/112，landscape (834h) 算出 142/78——portrait/
+        // landscape 自动适配。
+        GeometryReader { geo in
+            bodyContent(screenHeight: geo.size.height)
+        }
+    }
+
+    @ViewBuilder
+    private func bodyContent(screenHeight: CGFloat) -> some View {
+        let styleSpacerH = isPad ? screenHeight * 0.17 : 145
+        let transportSpacerH = isPad ? screenHeight * 0.094 : 80
         ZStack {
             // 底色 + big-mode dawn 渐变
             FogTokens.bgDeep.ignoresSafeArea()
@@ -106,7 +119,7 @@ struct ImmersiveView: View {
             VStack(spacing: 0) {
                 Spacer()
                 styleOverlay
-                Spacer().frame(height: isPad ? 210 : 145)
+                Spacer().frame(height: styleSpacerH)
             }
             .allowsHitTesting(false)
 
@@ -115,7 +128,7 @@ struct ImmersiveView: View {
             VStack(spacing: 0) {
                 Spacer()
                 transportRow
-                Spacer().frame(height: isPad ? 115 : 80)
+                Spacer().frame(height: transportSpacerH)
             }
             .allowsHitTesting(true)
         }
