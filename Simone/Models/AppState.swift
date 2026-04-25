@@ -253,25 +253,79 @@ final class AppState {
         }
     }
 
+    // v2.1 W1 hotfix · 锁屏 ◁▷ rapid 切台 debounce。
+    // CEO 自测点多了几次音频卡死：根因是 rapid sendPrompts + audioEngine.clearQueue
+    // 让 Lyria 服务端被反复打断生成 → 短连接错误 → 进 .reconnecting；中间态再点 ▷
+    // 触发 applySelection 走 else 分支 clearQueue 但 sendPrompts 被 isSetupComplete
+    // guard 静默丢弃 → 队列空 + 没新 chunk = 静音。
+    // Debounce 把 rapid 5 下合并为最后一个 target，commit 一次。视觉/锁屏 metadata
+    // 立即反馈不需等 debounce，只 audio + sendPrompts 等。
+    private var channelSwitchDebounce: Timer?
+    private var pendingChannelTarget: Channel?
+    private static let channelDebounceInterval: TimeInterval = 0.35
+
     /// v2.1 W1 · 锁屏 ▷ 切下一频道。Channel.all 循环（lofi → ambient → rnb
-    /// → jazz → rock → electronic → lofi…）。锁屏未播放也可切，逻辑沿用
-    /// switchToChannel：未连接只更新 selectedStyle 不强启播，已连接走
-    /// selectStyle 推 prompt 实现无缝切台。
+    /// → jazz → rock → electronic → lofi…）。base 用 pendingChannelTarget 让连续
+    /// 点击在 debounce 期间能继续累加，到达最后想要的 channel。
     func switchToNextChannel() {
         let all = Channel.all
-        guard !all.isEmpty,
-              let idx = all.firstIndex(of: currentChannel) else { return }
+        let base = pendingChannelTarget ?? currentChannel
+        guard !all.isEmpty, let idx = all.firstIndex(of: base) else { return }
         let next = all[(idx + 1) % all.count]
-        switchToChannel(next)
+        queueChannelSwitch(next)
     }
 
     /// v2.1 W1 · 锁屏 ◁ 切上一频道（与 switchToNextChannel 对称）。
     func switchToPreviousChannel() {
         let all = Channel.all
-        guard !all.isEmpty,
-              let idx = all.firstIndex(of: currentChannel) else { return }
+        let base = pendingChannelTarget ?? currentChannel
+        guard !all.isEmpty, let idx = all.firstIndex(of: base) else { return }
         let prev = all[(idx - 1 + all.count) % all.count]
-        switchToChannel(prev)
+        queueChannelSwitch(prev)
+    }
+
+    /// v2.1 W1 · 锁屏 ◁▷ 进入此入口而不是 switchToChannel：
+    /// 1) 立即更新视觉/NowPlaying metadata 让用户即时反馈
+    /// 2) audioEngine.clearQueue + lyriaClient.sendPrompts 进入 350ms debounce
+    /// 3) 静默期内继续点击只 reset timer，rapid 5 下只 commit 1 次
+    private func queueChannelSwitch(_ target: Channel) {
+        pendingChannelTarget = target
+
+        // 立即视觉反馈：currentChannel / selectedVisualizer / selectedStyle 同步更新。
+        // 不调 selectStyle（它会触发 applySelection 即时 sendPrompts），自己拼好状态
+        // 再 push NowPlaying。
+        let pickedStyle = recalledStyle(for: target) ?? orderedStyles(for: target).first
+        selectedVisualizer = target.visualizer
+        if case .category(let c) = target {
+            currentCategory = c
+        }
+        if let pickedStyle {
+            selectedStyle = pickedStyle
+            rememberStyle(pickedStyle, in: target)
+            resetEvolveState(for: pickedStyle.category)
+        }
+        currentChannel = target  // 触发 didSet → saveCurrentChannel
+        styleHistory.removeAll()
+
+        #if os(iOS)
+        if let style = selectedStyle {
+            audioEngine.updateNowPlaying(
+                scene: currentCategory.displayName,
+                style: style.name,
+                tintRGB: Self.tintRGB(for: currentCategory)
+            )
+        }
+        #endif
+
+        channelSwitchDebounce?.invalidate()
+        channelSwitchDebounce = Timer.scheduledTimer(
+            withTimeInterval: Self.channelDebounceInterval,
+            repeats: false
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.pendingChannelTarget = nil
+            self.applySelection()
+        }
     }
 
     // MARK: - Per-channel last-selected memory
@@ -493,16 +547,23 @@ final class AppState {
         let prompts = PromptBuilder.build(style: style)
         guard !prompts.isEmpty else { return }
 
-        if lyriaClient.connectionState == .disconnected {
+        // v2.1 W1 hotfix · connectionState 是 4 态，不再二分。.connecting / .reconnecting
+        // 中间态不动 audioEngine 队列（避免 clearQueue 后 sendPrompts 被 isSetupComplete
+        // 静默丢弃 → 队列空 + 无新 chunk = 静音）；只调 sendPrompts 让 lastPrompts 更新到
+        // 最新，握手/重连成功后会自动 fire 最新 prompts。
+        switch lyriaClient.connectionState {
+        case .disconnected:
             audioEngine.start()
             lyriaClient.connect()
             isGenerating = true
-        } else {
+        case .connected:
             if audioEngine.isPlaying {
                 audioEngine.clearQueue()
             } else {
                 audioEngine.flushScheduledBuffers()
             }
+            lyriaClient.sendPrompts(prompts)
+        case .connecting, .reconnecting:
             lyriaClient.sendPrompts(prompts)
         }
         #if os(iOS)
