@@ -200,6 +200,12 @@ final class AppState {
             onPause: { [weak self] in
                 self?.lyriaClient.sendCommand("pause")
                 self?.audioEngine.pause()
+            },
+            onNextChannel: { [weak self] in
+                self?.switchToNextChannel()
+            },
+            onPreviousChannel: { [weak self] in
+                self?.switchToPreviousChannel()
             }
         )
         #endif
@@ -245,6 +251,27 @@ final class AppState {
         } else {
             selectStyle(pick)
         }
+    }
+
+    /// v2.1 W1 · 锁屏 ▷ 切下一频道。Channel.all 循环（lofi → ambient → rnb
+    /// → jazz → rock → electronic → lofi…）。锁屏未播放也可切，逻辑沿用
+    /// switchToChannel：未连接只更新 selectedStyle 不强启播，已连接走
+    /// selectStyle 推 prompt 实现无缝切台。
+    func switchToNextChannel() {
+        let all = Channel.all
+        guard !all.isEmpty,
+              let idx = all.firstIndex(of: currentChannel) else { return }
+        let next = all[(idx + 1) % all.count]
+        switchToChannel(next)
+    }
+
+    /// v2.1 W1 · 锁屏 ◁ 切上一频道（与 switchToNextChannel 对称）。
+    func switchToPreviousChannel() {
+        let all = Channel.all
+        guard !all.isEmpty,
+              let idx = all.firstIndex(of: currentChannel) else { return }
+        let prev = all[(idx - 1 + all.count) % all.count]
+        switchToChannel(prev)
     }
 
     // MARK: - Per-channel last-selected memory

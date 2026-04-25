@@ -630,7 +630,7 @@ extension AudioEngine {
     ) {
         var info = [String: Any]()
         info[MPMediaItemPropertyTitle] = style ?? scene
-        info[MPMediaItemPropertyArtist] = "Simone — AI Ambient Radio"
+        info[MPMediaItemPropertyArtist] = "Simone — \(scene)"
         info[MPNowPlayingInfoPropertyIsLiveStream] = true
         // 没有 rate 的话锁屏有时不显示 artwork
         info[MPNowPlayingInfoPropertyPlaybackRate] = 1.0
@@ -643,7 +643,11 @@ extension AudioEngine {
             return UIColor(red: 196/255, green: 166/255, blue: 157/255, alpha: 1)
         }()
 
-        if let artwork = Self.makeArtwork(tint: tint, title: style ?? scene) {
+        // v2.1 W1 · artwork 改 procedural 频谱风（CEO："用 visualizer 帧快照，不要静态图"）。
+        // 取当前 spectrumData snapshot 当真实输入；spectrum 全 0（首次/切风格瞬间）走
+        // 一个柔和的 procedural baseline，避免 artwork 一片黑。
+        let snapshot = self.spectrumData
+        if let artwork = Self.makeArtwork(tint: tint, spectrum: snapshot) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: artwork.size) { _ in artwork }
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
@@ -656,55 +660,110 @@ extension AudioEngine {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
-    private static func makeArtwork(tint: UIColor, title: String) -> UIImage? {
+    /// v2.1 W1 · artwork 改 procedural 频谱风。spectrum 是 [0..1] 标准化的 64 bin
+    /// FFT magnitude（来自 AudioEngine.spectrumData）。当 spectrum 全 0 时走 baseline
+    /// procedural curve（柔和正弦包络），避免锁屏一片黑。
+    private static func makeArtwork(tint: UIColor, spectrum: [Float]) -> UIImage? {
         let size = CGSize(width: 512, height: 512)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { ctx in
-            // 渐变底（频道色 → 深色）
             let cg = ctx.cgContext
-            let colors = [tint.cgColor, UIColor(white: 0.08, alpha: 1).cgColor]
             let colorSpace = CGColorSpaceCreateDeviceRGB()
-            if let gradient = CGGradient(
+
+            // 1) 暗底：纯黑 → 频道色 radial glow（柔和氛围）
+            cg.setFillColor(UIColor(white: 0.06, alpha: 1).cgColor)
+            cg.fill(CGRect(origin: .zero, size: size))
+
+            if let radial = CGGradient(
                 colorsSpace: colorSpace,
-                colors: colors as CFArray,
+                colors: [tint.withAlphaComponent(0.42).cgColor,
+                         tint.withAlphaComponent(0.0).cgColor] as CFArray,
                 locations: [0, 1]
             ) {
-                cg.drawLinearGradient(
-                    gradient,
-                    start: CGPoint(x: 0, y: 0),
-                    end: CGPoint(x: size.width, y: size.height),
+                let center = CGPoint(x: size.width / 2, y: size.height * 0.62)
+                cg.drawRadialGradient(
+                    radial,
+                    startCenter: center, startRadius: 0,
+                    endCenter: center, endRadius: size.width * 0.7,
                     options: []
                 )
             }
 
-            // "Simone" logo
-            let brandAttr: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 48, weight: .light),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.9),
-                .kern: 4
-            ]
-            let brandSize = ("Simone" as NSString).size(withAttributes: brandAttr)
-            ("Simone" as NSString).draw(
-                at: CGPoint(x: (size.width - brandSize.width) / 2, y: 180),
-                withAttributes: brandAttr
-            )
+            // 2) 频谱条：64 条 vertical bar，从底向上。spectrum 全 0 时用 baseline 包络。
+            let bins = max(spectrum.count, 32)
+            let hasSignal = spectrum.contains(where: { $0 > 0.01 })
+            let mags: [Float] = (0..<bins).map { i in
+                if hasSignal && i < spectrum.count {
+                    return spectrum[i]
+                }
+                // baseline: 柔和正弦包络 (0.18..0.45)，中间高两边低
+                let t = Float(i) / Float(max(bins - 1, 1))
+                let env = sin(t * .pi)
+                return 0.18 + env * 0.27
+            }
 
-            // style/scene 副标题
-            let subAttr: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 26, weight: .regular),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.55)
-            ]
-            let subSize = (title as NSString).size(withAttributes: subAttr)
-            (title as NSString).draw(
-                at: CGPoint(x: (size.width - subSize.width) / 2, y: 260),
-                withAttributes: subAttr
-            )
+            let baselineY = size.height * 0.78  // 频谱条贴在底部 22% 高度
+            let topY = size.height * 0.18       // 最高条顶 18% 处
+            let maxBarHeight = baselineY - topY
+            let totalGap: CGFloat = 4
+            let barWidth = (size.width - totalGap * CGFloat(bins + 1)) / CGFloat(bins)
+
+            for i in 0..<bins {
+                let mag = CGFloat(mags[i])
+                let h = max(2, mag * maxBarHeight)
+                let x = totalGap + CGFloat(i) * (barWidth + totalGap)
+                let y = baselineY - h
+                let rect = CGRect(x: x, y: y, width: barWidth, height: h)
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: barWidth * 0.4)
+
+                // 每条 bar 内部 vertical gradient：底部 tint full, 顶部 tint lighter
+                cg.saveGState()
+                path.addClip()
+                if let g = CGGradient(
+                    colorsSpace: colorSpace,
+                    colors: [tint.withAlphaComponent(0.95).cgColor,
+                             Self._lighten(tint, by: 0.35).withAlphaComponent(0.85).cgColor] as CFArray,
+                    locations: [0, 1]
+                ) {
+                    cg.drawLinearGradient(
+                        g,
+                        start: CGPoint(x: 0, y: baselineY),
+                        end:   CGPoint(x: 0, y: y),
+                        options: [.drawsBeforeStartLocation, .drawsAfterEndLocation]
+                    )
+                }
+                cg.restoreGState()
+            }
+
+            // 3) 顶部细线作"水平面"，强化「频谱视图」气场
+            cg.setStrokeColor(tint.withAlphaComponent(0.28).cgColor)
+            cg.setLineWidth(1)
+            cg.move(to: CGPoint(x: 24, y: baselineY + 12))
+            cg.addLine(to: CGPoint(x: size.width - 24, y: baselineY + 12))
+            cg.strokePath()
         }
+    }
+
+    /// v2.1 W1：锁屏 ◁▷ 在 Simone 里走「切台」语义（Channel.all 循环），
+    /// 而不是 App 内 PlayControlView 的 nextStyle/previousStyle（同频道内换风格）。
+    /// CEO 决定：锁屏宏操作 = 频道，App 内精操作 = style。
+    /// v2.1 W1 · artwork 频谱条顶部微提亮，强化"光底"质感。amount = 0..1 比例往白拉。
+    fileprivate static func _lighten(_ c: UIColor, by amount: CGFloat) -> UIColor {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard c.getRed(&r, green: &g, blue: &b, alpha: &a) else { return c }
+        return UIColor(
+            red: min(1, r + (1 - r) * amount),
+            green: min(1, g + (1 - g) * amount),
+            blue: min(1, b + (1 - b) * amount),
+            alpha: a
+        )
     }
 
     func setupRemoteCommandCenter(
         onPlay: @escaping () -> Void,
-        onPause: @escaping () -> Void
+        onPause: @escaping () -> Void,
+        onNextChannel: @escaping () -> Void,
+        onPreviousChannel: @escaping () -> Void
     ) {
         let center = MPRemoteCommandCenter.shared()
         center.playCommand.addTarget { _ in
@@ -713,6 +772,16 @@ extension AudioEngine {
         }
         center.pauseCommand.addTarget { _ in
             onPause()
+            return .success
+        }
+        center.nextTrackCommand.isEnabled = true
+        center.nextTrackCommand.addTarget { _ in
+            onNextChannel()
+            return .success
+        }
+        center.previousTrackCommand.isEnabled = true
+        center.previousTrackCommand.addTarget { _ in
+            onPreviousChannel()
             return .success
         }
     }
