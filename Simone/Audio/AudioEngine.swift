@@ -2,6 +2,14 @@ import AVFoundation
 import Accelerate
 import Observation
 
+@inline(__always)
+private func audioDbg(_ msg: @autoclosure () -> String) {
+    #if DEBUG
+    let t = Date().timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
+    print("[Audio \(String(format: "%.3f", t))] \(msg())")
+    #endif
+}
+
 @Observable
 final class AudioEngine {
     var spectrumData: [Float] = Array(repeating: 0, count: 64)
@@ -49,6 +57,8 @@ final class AudioEngine {
     var onPlaybackStalled: (() -> Void)?
     private var lastChunkReceivedAt: Date?
     private var watchdogTimer: Timer?
+    // DEBUG-only: 周期性 audio state 输出（queue depth / underrun / chunk age）
+    private var metricsTimer: Timer?
     // v1.3 · Lock 10min 跳风格修复：10s → 20s。Lyria chunk 偶尔 >10s 间隔但不是真 stall，
     // 降低误触发频率，避免把自然的 chunk 抖动当成卡死而强制重连。
     private let stallThreshold: TimeInterval = 20
@@ -165,6 +175,7 @@ final class AudioEngine {
         }
         isPlaying = true
         startWatchdog()
+        startMetricsTimer()
     }
 
     func stop() {
@@ -175,6 +186,7 @@ final class AudioEngine {
         playerNode = nil
         isPlaying = false
         stopWatchdog()
+        stopMetricsTimer()
         bufferQueue.clear()
         resetScheduledCount()
         spectrumData = Array(repeating: 0, count: displayBins)
@@ -184,6 +196,7 @@ final class AudioEngine {
         playerNode?.pause()
         isPlaying = false
         stopWatchdog()
+        stopMetricsTimer()
     }
 
     func resume() {
@@ -197,6 +210,7 @@ final class AudioEngine {
         playerNode?.play()
         isPlaying = true
         startWatchdog()
+        startMetricsTimer()
     }
 
     func handleAudioChunk(_ data: Data) {
@@ -365,6 +379,39 @@ final class AudioEngine {
     private func stopWatchdog() {
         watchdogTimer?.invalidate()
         watchdogTimer = nil
+    }
+
+    // MARK: - Metrics (DEBUG-only, 周期性输出 audio state)
+
+    private func startMetricsTimer() {
+        #if DEBUG
+        metricsTimer?.invalidate()
+        metricsTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            self?.emitMetrics()
+        }
+        #endif
+    }
+
+    private func stopMetricsTimer() {
+        metricsTimer?.invalidate()
+        metricsTimer = nil
+    }
+
+    private func emitMetrics() {
+        #if DEBUG
+        scheduleLock.lock()
+        let sched = scheduledBufferCount
+        scheduleLock.unlock()
+        let queueCount = bufferQueue.count
+        let chunkAge: String
+        if let last = lastChunkReceivedAt {
+            chunkAge = String(format: "%.1fs", Date().timeIntervalSince(last))
+        } else {
+            chunkAge = "N/A"
+        }
+        let underrun = sched == 0
+        audioDbg("📊 queue=\(queueCount) sched=\(sched) underrun=\(underrun) chunkAge=\(chunkAge) playing=\(isPlaying)")
+        #endif
     }
 
     private func checkStall() {
