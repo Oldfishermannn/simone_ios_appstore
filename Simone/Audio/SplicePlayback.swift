@@ -1,5 +1,13 @@
 import Foundation
 
+@inline(__always)
+private func spliceDbg(_ msg: @autoclosure () -> String) {
+    #if DEBUG
+    let t = Date().timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
+    print("[Splice \(String(format: "%.3f", t))] \(msg())")
+    #endif
+}
+
 /// v1.3 · Lock 无缝续接核心 · 客户端 20s ring buffer + 重连期 fallback loop。
 ///
 /// 机制：
@@ -87,6 +95,7 @@ final class SplicePlayback: @unchecked Sendable {
         let available = recordedBytes
         guard available > 0, let enqueue = enqueuePlayback else {
             lock.unlock()
+            spliceDbg("🟠 fallback loop SKIP (no recorded data)")
             return
         }
 
@@ -94,6 +103,7 @@ final class SplicePlayback: @unchecked Sendable {
         let playableData = makeOrderedSnapshot()
         isFallbackActive = true
         lock.unlock()
+        spliceDbg("🟠 fallback loop START (recorded=\(available / Self.bytesPerSecond)s)")
 
         // 处理 loop 接缝（equal-power crossfade 80ms）
         let seamed = applySeamCrossfade(playableData)
@@ -123,6 +133,7 @@ final class SplicePlayback: @unchecked Sendable {
         lock.lock()
         isFallbackActive = false
         lock.unlock()
+        spliceDbg("🟢 fallback loop END (crossfade=\(crossfade)s)")
         armFadeOut?(crossfade)
         DispatchQueue.main.asyncAfter(deadline: .now() + crossfade) { [weak self] in
             guard let self else { return }

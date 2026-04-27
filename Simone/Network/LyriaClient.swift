@@ -1,6 +1,14 @@
 import Foundation
 import Observation
 
+@inline(__always)
+private func lyriaDbg(_ msg: @autoclosure () -> String) {
+    #if DEBUG
+    let t = Date().timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
+    print("[Lyria \(String(format: "%.3f", t))] \(msg())")
+    #endif
+}
+
 enum LyriaConnectionState {
     case disconnected, connecting, connected, reconnecting
 }
@@ -49,6 +57,7 @@ final class LyriaClient {
 
     func connect() {
         guard connectionState == .disconnected else { return }
+        lyriaDbg("🔵 connect()")
 
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else {
             DispatchQueue.main.async {
@@ -227,6 +236,7 @@ final class LyriaClient {
         if isIntentionallyRestarting { return }
 
         let wasPlaying = isPlaying
+        lyriaDbg("🔴 disconnect wasPlaying=\(wasPlaying)")
         isSetupComplete = false
 
         DispatchQueue.main.async {
@@ -264,6 +274,7 @@ final class LyriaClient {
         guard let apiKey = resolveAPIKey(), !apiKey.isEmpty else { return }
 
         isIntentionallyRestarting = true
+        lyriaDbg("🟡 reconnectAndRestore() start")
         connectionState = .reconnecting
         isSetupComplete = false
 
@@ -298,6 +309,7 @@ final class LyriaClient {
                    json["setupComplete"] != nil {
                     self.isSetupComplete = true
                     self.isIntentionallyRestarting = false
+                    lyriaDbg("🟢 reconnect setupComplete")
                     DispatchQueue.main.async {
                         self.connectionState = .connected
                         self.reconnectAttempts = 0
