@@ -115,11 +115,23 @@ final class AppState {
 
     // Dependencies
     let audioEngine = AudioEngine()
-    let lyriaClient = LyriaClient()
+    private let _initialLyriaClient = LyriaClient()
+    /// V1.4: SessionRotator 持有 LyriaClient instances. crossfade 后 activeClient swap.
+    /// `lyriaClient` (computed) forward 到 sessionRotator.activeClient,
+    /// 现有调用点 transparent 跨 swap.
+    /// 用 `let`(在 init 内 set) 而非 `lazy var` 因为 @Observable 与 lazy 不兼容.
+    let sessionRotator: SessionRotator
+    var lyriaClient: LyriaClient { sessionRotator.activeClient }
 
     private let currentChannelKey = "currentChannel"
 
     init() {
+        // v1.4: SessionRotator init —— must come before any other self.<storedVar> use.
+        self.sessionRotator = SessionRotator(
+            initialClient: _initialLyriaClient,
+            audioEngine: audioEngine
+        )
+
         // v1.1.1 migration: clean up legacy key from v1.1.0's reverted session rotation.
         UserDefaults.standard.removeObject(forKey: "sessionRotationEnabled")
 
@@ -166,21 +178,17 @@ final class AppState {
                 ?? MoodStyle.presets.first(where: { $0.id == "lofi-chill" })
         }
 
-        lyriaClient.onAudioChunk = { [weak self] data in
-            self?.audioEngine.handleAudioChunk(data)
+        // v1.4: bind hooks 到 initial client. crossfade 后 SessionRotator
+        // 通过 onActiveClientChanged 通知 → 重新绑到新 active.
+        bindLyriaHooks(to: _initialLyriaClient)
+        sessionRotator.onActiveClientChanged = { [weak self] newClient in
+            self?.bindLyriaHooks(to: newClient)
         }
-        lyriaClient.onConnected = { [weak self] in
-            self?.sendCurrentPrompts()
+        sessionRotator.promptsProvider = { [weak self] in
+            self?.makeCurrentPrompts() ?? []
         }
-        // v1.3 · Lock 10min 无缝续接修复（升级版）：
-        // - reconnectAndRestore 起点：立即从 ring buffer 开始播，覆盖 Lyria 重连空档
-        // - onReconnected 成功：endFallbackLoop 做 1.5s crossfade 淡入新 session
-        //   （原 0.5s armSoftFadeIn 由 endFallbackLoop 内部 armFadeIn hook 统一接管）
-        lyriaClient.onReconnectStarted = { [weak self] in
-            self?.audioEngine.splice.beginFallbackLoop()
-        }
-        lyriaClient.onReconnected = { [weak self] in
-            self?.audioEngine.splice.endFallbackLoop(crossfade: 1.5)
+        sessionRotator.configProvider = { [weak self] in
+            self?.buildFullConfig() ?? [:]
         }
         // 卡死自救：AudioEngine 发现 20s 无新 chunk + buffer 空 → 触发会话轮转
         // v1.3 · Lock 10min 跳风格修复：改走 reconnectAndRestore（不走 onConnected
@@ -204,6 +212,38 @@ final class AppState {
         )
         #endif
 
+    }
+
+    // MARK: - v1.4 SessionRotator helpers
+
+    /// crossfade 后 SessionRotator.activeClient 变, onActiveClientChanged 触发此方法
+    /// 把 hooks 重新绑到新 client instance.
+    private func bindLyriaHooks(to client: LyriaClient) {
+        client.onAudioChunk = { [weak self] data in
+            self?.audioEngine.handleAudioChunk(data)
+        }
+        client.onConnected = { [weak self] in
+            self?.sendCurrentPrompts()
+        }
+        // v1.3 reactive 路径 hooks (proactive 关闭时仍兜底):
+        client.onReconnectStarted = { [weak self] in
+            self?.audioEngine.splice.beginFallbackLoop()
+        }
+        client.onReconnected = { [weak self] in
+            self?.audioEngine.splice.endFallbackLoop(crossfade: 1.5)
+        }
+    }
+
+    /// SessionRotator.promptsProvider 调用 — 拿当前 selectedStyle + evolve 状态构造 prompts.
+    private func makeCurrentPrompts() -> [WeightedPrompt] {
+        guard let style = selectedStyle else { return [] }
+        return PromptBuilder.build(
+            style: style,
+            activeAccents: activeAccents,
+            activeOptionals: activeOptionals,
+            density: currentDensity,
+            energy: currentEnergy
+        )
     }
 
     // MARK: - Channel
@@ -290,12 +330,14 @@ final class AppState {
         if audioEngine.isPlaying {
             lyriaClient.sendCommand("pause")
             audioEngine.pause()
+            sessionRotator.cancelRotation()  // v1.4
             #if os(iOS)
             audioEngine.setNowPlayingRate(0)
             #endif
         } else if lyriaClient.connectionState == .connected {
             lyriaClient.sendCommand("play")
             audioEngine.resume()
+            sessionRotator.armRotationTimer()  // v1.4
             pushNowPlaying()
         } else {
             // Auto-select Lo-fi Chill preset if nothing selected
@@ -305,6 +347,7 @@ final class AppState {
             }
             audioEngine.start()
             lyriaClient.connect()
+            sessionRotator.armRotationTimer()  // v1.4
             isGenerating = true
             pushNowPlaying()
         }
@@ -327,9 +370,12 @@ final class AppState {
         let prompts = PromptBuilder.build(style: style)
         guard !prompts.isEmpty else { return }
 
+        sessionRotator.cancelRotation()  // v1.4: regenerate 改 prompts → cancel
+
         if lyriaClient.connectionState == .disconnected {
             audioEngine.start()
             lyriaClient.connect()
+            sessionRotator.armRotationTimer()  // v1.4
             isGenerating = true
         } else {
             audioEngine.clearQueue()
@@ -341,6 +387,7 @@ final class AppState {
             ]
             lyriaClient.sendConfig(config)
             lyriaClient.sendPrompts(prompts)
+            sessionRotator.armRotationTimer()  // v1.4
         }
     }
 
@@ -443,6 +490,7 @@ final class AppState {
             guard let self else { return }
             self.lyriaClient.sendCommand("pause")
             self.audioEngine.pause()
+            self.sessionRotator.cancelRotation()  // v1.4: sleep timer fired → cancel rotation
             self.activeSleepDuration = nil
             self.sleepTimerEnd = nil
         }
@@ -466,9 +514,12 @@ final class AppState {
         let prompts = PromptBuilder.build(style: style)
         guard !prompts.isEmpty else { return }
 
+        sessionRotator.cancelRotation()  // v1.4: 切 style → cancel rotation
+
         if lyriaClient.connectionState == .disconnected {
             audioEngine.start()
             lyriaClient.connect()
+            sessionRotator.armRotationTimer()  // v1.4
             isGenerating = true
         } else {
             if audioEngine.isPlaying {
@@ -477,6 +528,9 @@ final class AppState {
                 audioEngine.flushScheduledBuffers()
             }
             lyriaClient.sendPrompts(prompts)
+            if audioEngine.isPlaying {
+                sessionRotator.armRotationTimer()  // v1.4: 重置 540s 倒计时
+            }
         }
         #if os(iOS)
         audioEngine.updateNowPlaying(

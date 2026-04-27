@@ -9,6 +9,10 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var state: AppState
 
+    #if DEBUG
+    @AppStorage("feature_proactive_rotation") private var proactiveRotation: Bool = false
+    #endif
+
     var body: some View {
         ZStack {
             FogTokens.bgDeep.ignoresSafeArea()
@@ -78,6 +82,18 @@ struct SettingsView: View {
                 isLive: state.activeSleepDuration != nil,
                 action: cycleSleep
             )
+
+            #if DEBUG
+            hairline
+
+            settingRow(
+                title: "Proactive Rotation",
+                subtitle: "v1.4 dual-ws · DEBUG only",
+                value: proactiveRotation ? "ON" : "OFF",
+                isLive: proactiveRotation,
+                action: { proactiveRotation.toggle() }
+            )
+            #endif
         }
     }
 
