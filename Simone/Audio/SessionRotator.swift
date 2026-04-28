@@ -200,15 +200,20 @@ final class SessionRotator {
 
         rotatorDbg("✅ completeCrossfade — promoting secondary to primary")
 
-        // 1. 重新绑定 secondary onAudioChunk → 直接喂 audioEngine (取代之前的 handleSecondaryChunk)
+        // v1.4 fix Bug 4: 顺序矩阵 — flush 必须在 onAudioChunk 切换之前.
+        // 若先切 onAudioChunk, secondary chunk 在 microsecond 窗口内可能到达 →
+        // 进 audioEngine.bufferQueue → 紧接 flushScheduledBuffers 把它清掉.
+        // 倒过来: flush + arm fadeIn 先, 再切 onAudioChunk → 新 chunks 进 fresh queue.
+
+        // 1. flush primary 残留 buffer (清 queue, reset volume to 1.0)
+        audioEngine.flushScheduledBuffers()
+        // 2. arm fadeIn (per-sample ramp, 适用于下一个进入的 chunk)
+        audioEngine.armSoftFadeIn(duration: Self.crossfadeDuration)
+        // 3. 切换 secondary onAudioChunk → 直接喂 audioEngine (新 chunks 进 fresh queue)
         new.onAudioChunk = { [weak audioEngine] data in
             audioEngine?.handleAudioChunk(data)
         }
         new.onConnected = nil  // 不再需要
-
-        // 2. flush primary 残留 buffer + arm fadeIn (下一个 chunk 到达时柔和进入)
-        audioEngine.flushScheduledBuffers()
-        audioEngine.armSoftFadeIn(duration: Self.crossfadeDuration)
 
         // 3. swap activeClient + disconnect old primary
         let old = activeClient
