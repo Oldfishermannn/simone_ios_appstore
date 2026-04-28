@@ -51,6 +51,9 @@ final class SessionRotator {
     private static let crossfadeDuration: TimeInterval = 1.5
     // secondary onConnected 5s 兜底
     private static let secondaryTimeout: TimeInterval = 5
+    // v1.4 fix Bug 2: secondary connected 但不发 chunks (Lyria 异常)
+    // 30s 仍未 commitCrossfade → cancel,避免 quota 浪费.
+    private static let warmupTimeout: TimeInterval = 30
 
     init(initialClient: LyriaClient, audioEngine: AudioEngine) {
         self.activeClient = initialClient
@@ -78,6 +81,11 @@ final class SessionRotator {
     func cancelRotation() {
         rotationTimer?.invalidate()
         rotationTimer = nil
+        // v1.4 fix Bug 1: 如果在 .crossfading 期间 cancel, primary 已 fadeOut ramp 中,
+        // 必须 stop ramp + reset volume,否则用户 resume 后是静音.
+        if state == .crossfading {
+            audioEngine?.cancelFadeOut()
+        }
         if state != .idle {
             rotatorDbg("🚫 cancelRotation from state=\(state.rawValue)")
         }
@@ -140,6 +148,14 @@ final class SessionRotator {
         secondary?.sendConfig(config)
         secondary?.sendCommand("play")
         state = .warmingUp
+
+        // v1.4 fix Bug 2: warmup timeout watchdog —
+        // secondary 30s 仍卡 .warmingUp (不发 chunks) → cancel + 让 primary 自然超时.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.warmupTimeout) { [weak self] in
+            guard let self, self.state == .warmingUp else { return }
+            rotatorDbg("⚠️ warmup timeout (\(Int(Self.warmupTimeout))s) — secondary not producing chunks")
+            self.cancelRotation()
+        }
     }
 
     private func handleSecondaryChunk(_ data: Data) {

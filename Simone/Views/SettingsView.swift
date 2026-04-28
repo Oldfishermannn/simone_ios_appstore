@@ -91,7 +91,15 @@ struct SettingsView: View {
                 subtitle: "v1.4 dual-ws · DEBUG only",
                 value: proactiveRotation ? "ON" : "OFF",
                 isLive: proactiveRotation,
-                action: { proactiveRotation.toggle() }
+                action: {
+                    proactiveRotation.toggle()
+                    // v1.4 fix Bug 3: toggle 立即生效,不需等 9 min 重新 arm
+                    if proactiveRotation && state.audioEngine.isPlaying {
+                        state.sessionRotator.armRotationTimer()
+                    } else if !proactiveRotation {
+                        state.sessionRotator.cancelRotation()
+                    }
+                }
             )
             #endif
         }

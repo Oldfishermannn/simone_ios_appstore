@@ -251,6 +251,22 @@ final class AudioEngine {
         softFadeInLock.unlock()
     }
 
+    /// v1.4 · cancel 中途 fadeOut: stop volumeRampTimer + reset volume + clear soft ramp.
+    /// 用例: SessionRotator.cancelRotation 在 .crossfading 期间 (primary 已 fadeOut ramp 中)
+    /// — 必须 cancel 否则 ramp 跑完后 volume = 0, 用户 resume 后听不见.
+    func cancelFadeOut() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.volumeRampTimer?.invalidate()
+            self.volumeRampTimer = nil
+            self.playerNode?.volume = 1.0
+            self.softFadeOutLock.lock()
+            self.softFadeOutTotal = 0
+            self.softFadeOutConsumed = 0
+            self.softFadeOutLock.unlock()
+        }
+    }
+
     /// v1.3 · Lock 无缝续接：playerNode.volume ramp 1.0 → 0.0 over duration。
     /// 用 node-level volume 而不是 per-sample ramp——因为 fallback 已全 scheduleBuffer，
     /// per-sample ramp 对已 scheduled 的 buffer 无效（buffer PCM 内容已固定）。
